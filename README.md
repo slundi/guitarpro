@@ -1,7 +1,5 @@
 # Guitar IO
 
-# Guitar IO
-
 Rust library and command line interface (CLI) for guitar tab files.
 
 ## Roadmap

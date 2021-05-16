@@ -1,0 +1,13 @@
+[package]
+name = "Guitar-IO"
+version = "0.1.0"
+authors = ["slundi"]
+edition = "2018"
+description = "Rust library and command line interface (CLI) for guitar tab files."
+repository = "https://gitlab.com/slundi/guitar-io"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
