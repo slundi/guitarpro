@@ -35,7 +35,7 @@ const DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric G
                                             "Guitar Fret Noise", "Breath Noise",
                                             "Seashore", "Bird", "Telephone", "Helicopter", "Applause", "Gunshot"];
 
-pub struct Channel<'a> {
+pub struct Channel {
     pub channel_id: i32,
 	pub bank: i8,
 	pub program: i8,
@@ -45,7 +45,7 @@ pub struct Channel<'a> {
 	pub reverb: i8,
 	pub phaser: i8,
 	pub tremolo: i8,
-	pub name: &'a str,
+	pub name: String,
     /// Channel parameters (key-value)
 	pub parameters: HashMap<String, String>
 }
@@ -64,7 +64,7 @@ const DEFAULT_CHORUS: i8 = 0;
 const DEFAULT_REVERB: i8 = 0;
 const DEFAULT_PHASER: i8 = 0;
 const DEFAULT_TREMOLO: i8 = 0;*/
-impl Default for Channel<'_> {
+impl Default for Channel {
     fn default() -> Self { Channel {
         channel_id: 1,
         bank: 0,
@@ -75,7 +75,7 @@ impl Default for Channel<'_> {
         reverb: 0,
         phaser: 0,
         tremolo: 0,
-        name: "UNDEFINED",
+        name: String::from("UNDEFINED"),
         parameters: HashMap::new()
     }}
 }

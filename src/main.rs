@@ -30,8 +30,9 @@ fn main() {
     });
     let mut data = vec![0u8; size];
     f.take(size as u64).read_to_end(&mut data).unwrap_or_else(|_error|{panic!("Unable to read file contents");});
+    let mut song: base::Song = base::Song::default();
     match ext.as_str() {
-        "TG" => println!("Tux guitar file"),
+        "TG" => song.tg_read_data(&data),
         "GP2" | "GP3" | "GP4" | "GP5" => println!("Guitar pro file"),
         "GPX" => println!("Guitar pro file (new version)"),
         _ => panic!("Unable to process a {} file", ext),
