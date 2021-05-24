@@ -50,7 +50,8 @@ pub struct Channel<'a> {
 	pub parameters: HashMap<String, String>
 }
 
-/*
+//TODO: handle constants
+/* 
 const DEFAULT_PERCUSSION_CHANNEL: i8 = 9;
 const DEFAULT_PERCUSSION_PROGRAM: i8 = 0;
 const DEFAULT_PERCUSSION_BANK: i16 = 128;
