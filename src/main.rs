@@ -28,8 +28,8 @@ fn main() {
         else {panic!("Unknown error while opening {}", &file);}*/
         panic!("Unknown error while opening {}", &file);
     });
-    let mut data = vec![0u8; size];
-    f.take(size as u64).read_to_end(&mut data).unwrap_or_else(|_error|{panic!("Unable to read file contents");});
+    let mut data: Vec<u8> = Vec::with_capacity(size);
+    f.take(u64::from_ne_bytes(size.to_ne_bytes())).read_to_end(&mut data).unwrap_or_else(|_error|{panic!("Unable to read file contents");});
     let mut song: base::Song = base::Song::default();
     match ext.as_str() {
         "TG" => song.tg_read_data(&data),
