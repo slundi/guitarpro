@@ -1,6 +1,6 @@
-use std::convert::TryInto;
+use std::{convert::TryInto};
 
-use crate::base::Song;
+use crate::base::{Song,Channel};
 
 const EXTENSIONS: &str = "tg";
 const MIMES: &str = "audio/x-tuxguitar";
@@ -93,7 +93,27 @@ impl Song {
         //get channels
         let n = data[seek]; seek+=1;
         for _i in 0..n {
-            //self.channels.push(read_channel());
+            let mut c:Channel = Channel::default();
+            c.id = u16::from_be_bytes(data[seek..seek+1 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot channel ID")})); seek+=2;
+            c.bank = (data[seek] & 0xff) as u16; seek+=1;
+            c.program = (data[seek] & 0xff) as u16; seek+=1;
+            c.volume = (data[seek] & 0xff) as u16; seek+=1;
+            c.balance = (data[seek] & 0xff) as u16; seek+=1;
+            c.chorus = (data[seek] & 0xff) as u16; seek+=1;
+            c.reverb = (data[seek] & 0xff) as u16; seek+=1;
+            c.phaser = (data[seek] & 0xff) as u16; seek+=1;
+            c.tremolo = (data[seek] & 0xff) as u16; seek+=1;
+            let n = (data[seek] & 0xff) as usize *2; seek+=1;
+            c.name = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek);
+            //parameters
+            let count: u16 = u16::from_be_bytes(data[seek..seek+1 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot count channel parameters")})); seek+=2;
+            for _j in 0..count {
+                let n = (data[seek] & 0xff) as usize *2; seek+=1;
+                let k=read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek);
+                let v=u32::from_be_bytes(data[seek..seek+4 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot read channel parameter value")})); seek+=4;
+                c.parameters.insert(k, v);
+            }
+            self.channels.push(c);
         }
         //get headers
         let n = data[seek]; seek+=1;
