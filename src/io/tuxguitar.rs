@@ -1,6 +1,6 @@
-use std::{convert::TryInto, str::FromStr};
+use std::convert::TryInto;
 
-use crate::base::{Song};
+use crate::base::Song;
 
 const EXTENSIONS: &str = "tg";
 const MIMES: &str = "audio/x-tuxguitar";
@@ -62,30 +62,24 @@ impl Song {
         let mut seek: usize = 0;
         //version
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        println!("Version: {}", read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek));
+        let v=read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek);
         //song's name
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
         if n>0 { self.name = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        println!("{} {}", n, self.name);
         //artist
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
         if n>0 { self.artist = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        println!("{} {}", n, self.artist);
         //album
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
         if n>0 { self.album = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        println!("{} {}", n, self.album);
         //author
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
         if n>0 { self.author = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        println!("{} {}", n, self.author);
         //date
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
         if n>0 { self.date = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        println!("{} {}", n, self.date);
         //copyright
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        println!("n={}", n);
         if n>0 { self.copyright = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
         //writer
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
@@ -94,8 +88,7 @@ impl Song {
         let n = (data[seek] & 0xff) as usize *2; seek+=1;
         if n>0 { self.transcriber = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
         //comments
-        let n = i32::from_be_bytes(data[seek..seek as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot read comments length")})) as usize * 2; seek+=4;
-        println!("n={}", n);
+        let n = i32::from_be_bytes(data[seek..seek+4 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot read comments length")})) as usize; seek+=4;
         if n>0 { self.comments = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
         //get channels
         let n = data[seek]; seek+=1;
@@ -112,13 +105,12 @@ impl Song {
         for _i in 0..n {
             //self.tracks.push(read_track());
         }
-        println!("{} - {} - {} ({})", self.artist, self.album, self.name, self.date);
     }
 }
 
 
 
-fn read_RGB_color() {
+fn read_rgb_color() {
 
 }
 
@@ -126,27 +118,12 @@ fn read_lyrics() {
 
 }
 
-fn read_byte() -> u8 {
-    return 0;
-}
-
-fn read_header() {
-
-}
-
-fn read_short() {
-
-}
-
+/// Decode a string: chars are on 2 bytes
 fn read_unsigned_byte_string(data: &Vec<u8>, seek: &mut usize) -> String {
     *seek+=data.len();
-    return String::from_utf8(data.to_vec()).unwrap_or_default();//.unwrap_or_else(|_error|{panic!("Cannot get UTF8 string field {:?}",_error);});
-}
-
-fn read_integer_string() -> &'static str {
-    return "";
-}
-
-fn read_string(data: &Vec<u8>) -> &str {
-    return "";//std::str::from_utf8(&data[start..length]).unwrap_or_else(|_error|{panic!("Cannot extract string")});
+    let mut s: String = String::with_capacity(data.len()/2);
+    for i in (0usize..data.len()).step_by(2) {
+        s.push(std::char::from_u32(((data[i] as u32)<<8) + data[i+1] as u32).unwrap_or_else(||{panic!("Cannot read 2-bytes char")}));
+    }
+    return s;
 }
