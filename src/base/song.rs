@@ -82,6 +82,18 @@ pub struct MeasureHeader {
 	pub triplet_feel: i32
 	//TGSong song,
 }
+
+impl Default for MeasureHeader {
+    fn default() -> Self { MeasureHeader {
+        number: 1,
+        start: 0,
+        tempo: 0,
+        repeat_pen: false,
+        repeat_alternative: 0,
+        repeat_close: 0,
+        triplet_feel: 0,
+    }}
+}
 /* DEFAULT:
 this.number = 0;
 this.start = TGDuration.QUARTER_TIME;
@@ -183,6 +195,18 @@ pub struct Track {
     /// key=from (start at 1), value are the lyrics
 	lyrics: BTreeMap<i32, String>,
 	//private TGSong song
+}
+impl Default for Track {
+    fn default() -> Self { Track {
+        number: 1,
+        offset: 0,
+        channel_id: 25,
+        solo: false,
+        mute: false,
+        name: String::from("UNDEFINED"),
+        strings: Vec::new(),
+        lyrics: BTreeMap::new()
+    }}
 }
 /*
 this.number = 0;
@@ -293,4 +317,3 @@ impl Default for Channel {
         parameters: HashMap::new()
     }}
 }
-

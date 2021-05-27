@@ -1,6 +1,6 @@
 use std::{convert::TryInto};
 
-use crate::base::{Song,Channel};
+use crate::base::{Channel, MeasureHeader, Song, Track};
 
 const EXTENSIONS: &str = "tg";
 const MIMES: &str = "audio/x-tuxguitar";
@@ -74,7 +74,7 @@ impl Song {
         let n = data[seek]; seek+=1;
         for _i in 0..n {
             let mut c:Channel = Channel::default();
-            c.id      = u16::from_be_bytes(data[seek..seek+1 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot channel ID")})); seek+=2;
+            c.id      = u16::from_be_bytes([data[seek], data[seek+1]]); seek+=2;
             c.bank    = (data[seek] & 0xff) as u16; seek+=1;
             c.program = (data[seek] & 0xff) as u16; seek+=1;
             c.volume  = (data[seek] & 0xff) as u16; seek+=1;
@@ -94,13 +94,17 @@ impl Song {
             self.channels.push(c);
         }
         //get headers
-        let n = data[seek]; seek+=1;
+        let n = u16::from_be_bytes([data[seek], data[seek+1]]); seek+=2;
+        println!("Headers: {}", n);
         for _i in 0..n {
-            //self.measure_headers.push(read_measure_header());
+            let mut h:MeasureHeader = MeasureHeader::default();
+            //TODO
+            self.measure_headers.push(h);
         }
         //get tracks
         let n = data[seek]; seek+=1;
         for _i in 0..n {
+            let mut t:Track = Track::default();
             //self.tracks.push(read_track());
         }
     }
@@ -127,8 +131,8 @@ fn read_string(data: &Vec<u8>, seek: &mut usize, length_is_integer: bool) -> Str
         *seek+=1;
     }
     let mut s: String = String::with_capacity(n);
-    for i in (0usize..n).step_by(2) {
-        s.push(std::char::from_u32(((data[*seek + i] as u32)<<8) + data[*seek + i + 1] as u32).unwrap_or_else(||{panic!("Cannot read 2-bytes char")}));
+    for i in 0usize..n {
+        s.push(std::char::from_u32(((data[*seek + i * 2] as u32)<<8) + data[*seek + i * 2 + 1] as u32).unwrap_or_else(||{panic!("Cannot read 2-bytes char")}));
     }
     *seek += 2 * n;
     return s;
