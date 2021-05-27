@@ -60,56 +60,34 @@ const GRACE_FLAG_ON_BEAT:i32 = 0x02;
 impl Song {
     pub fn tg_read_data(&mut self, data: &Vec<u8>) {
         let mut seek: usize = 0;
-        //version
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        let v=read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek);
-        //song's name
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        if n>0 { self.name = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        //artist
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        if n>0 { self.artist = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        //album
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        if n>0 { self.album = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        //author
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        if n>0 { self.author = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        //date
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        if n>0 { self.date = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        //copyright
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        if n>0 { self.copyright = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        //writer
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        if n>0 { self.writer = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        //transcriber
-        let n = (data[seek] & 0xff) as usize *2; seek+=1;
-        if n>0 { self.transcriber = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
-        //comments
-        let n = i32::from_be_bytes(data[seek..seek+4 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot read comments length")})) as usize; seek+=4;
-        if n>0 { self.comments = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek); }
+        read_string(data, &mut seek, false); //version
+        self.name        = read_string(data, &mut seek, false);
+        self.artist      = read_string(data, &mut seek, false);
+        self.album       = read_string(data, &mut seek, false);
+        self.author      = read_string(data, &mut seek, false);
+        self.date        = read_string(data, &mut seek, false);
+        self.copyright   = read_string(data, &mut seek, false);
+        self.writer      = read_string(data, &mut seek, false);
+        self.transcriber = read_string(data, &mut seek, false);
+        self.comments    = read_string(data, &mut seek, true);
         //get channels
         let n = data[seek]; seek+=1;
         for _i in 0..n {
             let mut c:Channel = Channel::default();
-            c.id = u16::from_be_bytes(data[seek..seek+1 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot channel ID")})); seek+=2;
-            c.bank = (data[seek] & 0xff) as u16; seek+=1;
+            c.id      = u16::from_be_bytes(data[seek..seek+1 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot channel ID")})); seek+=2;
+            c.bank    = (data[seek] & 0xff) as u16; seek+=1;
             c.program = (data[seek] & 0xff) as u16; seek+=1;
-            c.volume = (data[seek] & 0xff) as u16; seek+=1;
+            c.volume  = (data[seek] & 0xff) as u16; seek+=1;
             c.balance = (data[seek] & 0xff) as u16; seek+=1;
-            c.chorus = (data[seek] & 0xff) as u16; seek+=1;
-            c.reverb = (data[seek] & 0xff) as u16; seek+=1;
-            c.phaser = (data[seek] & 0xff) as u16; seek+=1;
+            c.chorus  = (data[seek] & 0xff) as u16; seek+=1;
+            c.reverb  = (data[seek] & 0xff) as u16; seek+=1;
+            c.phaser  = (data[seek] & 0xff) as u16; seek+=1;
             c.tremolo = (data[seek] & 0xff) as u16; seek+=1;
-            let n = (data[seek] & 0xff) as usize *2; seek+=1;
-            c.name = read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek);
+            c.name    = read_string(data, &mut seek, false);
             //parameters
             let count: u16 = u16::from_be_bytes(data[seek..seek+1 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot count channel parameters")})); seek+=2;
             for _j in 0..count {
-                let n = (data[seek] & 0xff) as usize *2; seek+=1;
-                let k=read_unsigned_byte_string(&data[seek..seek+n].to_vec(), &mut seek);
+                let k=read_string(data, &mut seek, false);
                 let v=u32::from_be_bytes(data[seek..seek+4 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot read channel parameter value")})); seek+=4;
                 c.parameters.insert(k, v);
             }
@@ -138,12 +116,20 @@ fn read_lyrics() {
 
 }
 
-/// Decode a string: chars are on 2 bytes
-fn read_unsigned_byte_string(data: &Vec<u8>, seek: &mut usize) -> String {
-    *seek+=data.len();
-    let mut s: String = String::with_capacity(data.len()/2);
-    for i in (0usize..data.len()).step_by(2) {
-        s.push(std::char::from_u32(((data[i] as u32)<<8) + data[i+1] as u32).unwrap_or_else(||{panic!("Cannot read 2-bytes char")}));
+/// Read a string. The first part is the length of the string (mainly on 1 byte). Following is the string (1 char is encoded on 2 bytes)
+fn read_string(data: &Vec<u8>, seek: &mut usize, length_is_integer: bool) -> String {
+    let mut n: usize = 0;
+    if length_is_integer {
+        n = i32::from_be_bytes(data[*seek..*seek+4 as usize].try_into().unwrap_or_else(|_e|{panic!("Cannot read length")})) as usize;
+        *seek+=4;
+    } else {
+        n = (data[*seek] & 0xff) as usize;
+        *seek+=1;
     }
+    let mut s: String = String::with_capacity(n);
+    for i in (0usize..n).step_by(2) {
+        s.push(std::char::from_u32(((data[*seek + i] as u32)<<8) + data[*seek + i + 1] as u32).unwrap_or_else(||{panic!("Cannot read 2-bytes char")}));
+    }
+    *seek += 2 * n;
     return s;
 }
