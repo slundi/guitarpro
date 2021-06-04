@@ -67,19 +67,20 @@ impl Default for Song {
 	}}
 }
 
-const TRIPLET_FEEL_NONE: i32 = 1;
-const TRIPLET_FEEL_EIGHTH: i32 = 2;
-const TRIPLET_FEEL_SIXTEENTH: i32 = 3;
+pub const TRIPLET_FEEL_NONE: u8 = 1;
+pub const TRIPLET_FEEL_EIGHTH: u8 = 2;
+pub const TRIPLET_FEEL_SIXTEENTH: u8 = 3;
+#[derive(Clone)]
 pub struct MeasureHeader {
     pub number: i32,
 	pub start: i64,
 	//TGTimeSignature pub time_signature: TimeSignature,
 	pub tempo: i32,
 	//TGMarker pub marker: Marker,
-	pub repeat_pen: bool,
-	pub repeat_alternative: i32,
-	pub repeat_close: i32,
-	pub triplet_feel: i32
+	pub repeat_open: bool,
+	pub repeat_alternative: u8,
+	pub repeat_close: u16,
+	pub triplet_feel: u8
 	//TGSong song,
 }
 
@@ -88,7 +89,7 @@ impl Default for MeasureHeader {
         number: 1,
         start: 0,
         tempo: 0,
-        repeat_pen: false,
+        repeat_open: false,
         repeat_alternative: 0,
         repeat_close: 0,
         triplet_feel: 0,
@@ -147,14 +148,14 @@ for(int i = 0 ; i < this.voices.length ; i ++ ) this.voices[i] = new TGVoiceData
 */
 
 
-const DURATION_QUARTER_TIME: i64 = 960;
-const DURATION_WHOLE: i32 = 1;
-const DURATION_HALF: i32 = 2;
-const DURATION_QUARTER: i32 = 4;
-const DURATION_EIGHTH: i32 = 8;
-const DURATION_SIXTEENTH: i32 = 16;
-const DURATION_THIRTY_SECOND: i32 = 32;
-const DURATION_SIXTY_FOURTH: i32 = 64;
+pub const DURATION_QUARTER_TIME: i64 = 960;
+pub const DURATION_WHOLE: u8 = 1;
+pub const DURATION_HALF: u8 = 2;
+pub const DURATION_QUARTER: u8 = 4;
+pub const DURATION_EIGHTH: u8 = 8;
+pub const DURATION_SIXTEENTH: u8 = 16;
+pub const DURATION_THIRTY_SECOND: u8 = 32;
+pub const DURATION_SIXTY_FOURTH: u8 = 64;
 pub struct VoiceData {
     start: i64,
     velocity: i32,
@@ -178,10 +179,10 @@ this.setStart(measure.getStart());
 this.setVelocity(TGVelocities.DEFAULT);
 */
 
-const MAX_STRINGS: i32 = 25;
-const MIN_STRINGS: i32 = 1;
-const MAX_OFFSET: i32 = 24;
-const MIN_OFFSET: i32 = -24;
+pub const MAX_STRINGS: i32 = 25;
+pub const MIN_STRINGS: i32 = 1;
+pub const MAX_OFFSET: i32 = 24;
+pub const MIN_OFFSET: i32 = -24;
 pub struct Track {
     number: i32,
 	offset: i32,
@@ -238,7 +239,7 @@ this.lyrics = factory.newLyric();
 	}
 */
 
-const CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
+pub const CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
                                             "Harpsichord", "Clavinet", "Celesta",
                                             "Glockenspiel",
                                             "Music Box",
@@ -288,20 +289,20 @@ pub struct Channel {
 	pub parameters: HashMap<String, u32>
 }
 
-//TODO: handle constants
+//TODO: handle pub constants
 /* 
-const DEFAULT_PERCUSSION_CHANNEL: i8 = 9;
-const DEFAULT_PERCUSSION_PROGRAM: i8 = 0;
-const DEFAULT_PERCUSSION_BANK: i16 = 128;
+pub const DEFAULT_PERCUSSION_CHANNEL: i8 = 9;
+pub const DEFAULT_PERCUSSION_PROGRAM: i8 = 0;
+pub const DEFAULT_PERCUSSION_BANK: i16 = 128;
 
-const DEFAULT_BANK: i8 = 0;
-const DEFAULT_PROGRAM: i8 = 25;
-const DEFAULT_VOLUME: i8 = 127;
-const DEFAULT_BALANCE: i8 = 64;
-const DEFAULT_CHORUS: i8 = 0;
-const DEFAULT_REVERB: i8 = 0;
-const DEFAULT_PHASER: i8 = 0;
-const DEFAULT_TREMOLO: i8 = 0;*/
+pub const DEFAULT_BANK: i8 = 0;
+pub const DEFAULT_PROGRAM: i8 = 25;
+pub const DEFAULT_VOLUME: i8 = 127;
+pub const DEFAULT_BALANCE: i8 = 64;
+pub const DEFAULT_CHORUS: i8 = 0;
+pub const DEFAULT_REVERB: i8 = 0;
+pub const DEFAULT_PHASER: i8 = 0;
+pub const DEFAULT_TREMOLO: i8 = 0;*/
 impl Default for Channel {
     fn default() -> Self { Channel {
         id: 1,
@@ -315,5 +316,41 @@ impl Default for Channel {
         tremolo: 0,
         name: String::from("UNDEFINED"),
         parameters: HashMap::new()
+    }}
+}
+
+pub struct Duration {
+    pub value:u8,
+    pub dotted: bool,
+    pub double_dotted:bool,
+    //division type
+    pub division_enters:u8,
+    pub division_times:u8
+}
+/*	public static final TGDivisionType NORMAL = newDivisionType(1,1);
+	public static final TGDivisionType TRIPLET = newDivisionType(3,2);
+	public static final TGDivisionType[] ALTERED_DIVISION_TYPES = new TGDivisionType[]{
+		newDivisionType(3,2),
+		newDivisionType(5,4),
+		newDivisionType(6,4),
+		newDivisionType(7,4),
+		newDivisionType(9,8),
+		newDivisionType(10,8),
+		newDivisionType(11,8),
+		newDivisionType(12,8),
+		newDivisionType(13,8),
+	};
+	 */
+
+impl Duration {
+    fn convert_time(&self, time: u64) -> u64 {
+        return time * self.division_times as u64 / self.division_enters as u64;
+    }
+}
+
+impl Default for Duration {
+    fn default() -> Self { Duration {
+        value: DURATION_QUARTER, dotted: false, double_dotted: false,
+        division_enters:1, division_times:1
     }}
 }
