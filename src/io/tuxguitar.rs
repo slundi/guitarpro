@@ -1,8 +1,6 @@
-use std::convert::TryInto;
-
 use crate::base::*;
 
-const EXTENSIONS: &str = "tg";
+/*const EXTENSIONS: &str = "tg";
 const MIMES: &str = "audio/x-tuxguitar";
 const VERSION: &str = "audio/x-tuxguitar";
 const TRACK_SOLO:i32 = 0x01;
@@ -55,7 +53,7 @@ const EFFECT_POPPING:i32 = 0x020000;
 const EFFECT_FADE_IN:i32 = 0x040000;
 const EFFECT_LET_RING:i32 = 0x080000;
 const GRACE_FLAG_DEAD:i32 = 0x01;
-const GRACE_FLAG_ON_BEAT:i32 = 0x02;
+const GRACE_FLAG_ON_BEAT:i32 = 0x02;*/
 
 impl Song {
     pub fn tg_read_data(&mut self, data: &Vec<u8>) {
