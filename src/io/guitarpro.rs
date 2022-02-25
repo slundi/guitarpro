@@ -1,5 +1,10 @@
 use crate::base::*;
 
+
+const VERSION_1_0X: u8 = 10;
+const VERSION_2_2X: u8 = 22;
+const VERSION_3_00: u8 = 30;
+const VERSION_4_0X: u8 = 40;
 const VERSION_5_00: u8 = 50;
 const VERSION_5_10: u8 = 51;
 
@@ -9,7 +14,11 @@ impl Song {
         //version
         let mut version: u8;
         let tmp = read_string(data, &mut seek, false);
-        if tmp == "FICHIER GUITAR PRO v5.00" {version = VERSION_5_00;}
+        if tmp == "FICHIER GUITARE PRO v1" || tmp == "FICHIER GUITARE PRO v1.01" || tmp == "FICHIER GUITARE PRO v1.02" || tmp == "FICHIER GUITARE PRO v1.03" || tmp == "FICHIER GUITARE PRO v1.04" {version = VERSION_1_0X}
+        else if tmp == "FICHIER GUITARE PRO v2.20" || tmp == "FICHIER GUITARE PRO v2.21" {version = VERSION_2_2X}
+        else if tmp == "FICHIER GUITAR PRO v3.00" {version = VERSION_3_00}
+        else if tmp == "FICHIER GUITAR PRO v4.00" || tmp == "FICHIER GUITAR PRO v4.06" || tmp == "FICHIER GUITAR PRO L4.06" {version = VERSION_4_0X}
+        else if tmp == "FICHIER GUITAR PRO v5.00" {version = VERSION_5_00;}
         else if tmp == "FICHIER GUITAR PRO v5.10" {version = VERSION_5_10;}
 
         /*self.name        = read_string(data, &mut seek, false);
