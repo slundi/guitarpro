@@ -6,6 +6,7 @@ use std::fs;
 use std::io::Read;
 #[path = "base/song.rs"] mod base;
 #[path = "io/tuxguitar.rs"] mod tg;
+#[path = "io/guitarpro.rs"] mod gp;
 
 const GUITAR_FILE_MAX_SIZE:usize = 16777216; //16 MB, it should be enough
 

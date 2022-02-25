@@ -11,3 +11,4 @@ license = "Mozilla Public Licence (MPL) 2.0"
 
 [dependencies]
 clap = "2.33.3"
+log = "0.4"
