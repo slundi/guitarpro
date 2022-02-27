@@ -13,10 +13,29 @@ const VERSION_5_10: u8 = 51;
 const GP_BEND_SEMITONE: f32 = 25.0;
 const GP_BEND_POSITION: f32 = 60.0;
 
+struct Version {
+    data: String,
+    number: u8,
+    clipboard: bool
+}
+
 impl Song {
     pub fn gp_read_data(&mut self, data: &Vec<u8>) {
         let mut seek: usize = 0;
-        let version: u8 = read_version(data, &mut seek);
+        let version = read_version(data, &mut seek);
+        let mut clipboard = Clipboard::default();
+        //check for clipboard and read it
+        if version.number == VERSION_4_0X && version.clipboard {
+            clipboard.start_measure = read_int(data, &mut seek);
+            clipboard.stop_measure  = read_int(data, &mut seek);
+            clipboard.start_track = read_int(data, &mut seek);
+            clipboard.stop_track  = read_int(data, &mut seek);
+        }
+        if version.number == VERSION_5_00 && version.clipboard {
+            clipboard.start_beat = read_int(data, &mut seek);
+            clipboard.stop_beat  = read_int(data, &mut seek);
+            clipboard.sub_bar_copy = read_int(data, &mut seek) != 0;
+        }
         // read GP3 informations
         self.name        = read_int_size_string(data, &mut seek);
         self.subtitle    = read_int_size_string(data, &mut seek);
@@ -27,16 +46,36 @@ impl Song {
         self.author      = read_int_size_string(data, &mut seek);
         self.writer      = read_int_size_string(data, &mut seek); //tabbed by
         self.instructions= read_int_size_string(data, &mut seek); //instructions
+        let nc = read_int(data, &mut seek) as usize;
+        println!("Note count: {}", nc);
+        for i in 0..nc { //notices
+            println!("  {}\t\t{}",i, read_int_size_string(data, &mut seek));
+        }
         //read GP4 information
-        if version == 40 {
+        if version.number == 40 {
 
         }
         //read GP5 information
-        if version == 50 {
+        if version.number == 50 {
             
         }
     }
 }
+
+struct Clipboard {
+    pub start_measure: i32,
+    pub stop_measure: i32,
+    pub start_track: i32,
+    pub stop_track: i32,
+    pub start_beat: i32,
+    pub stop_beat: i32,
+    pub sub_bar_copy: bool
+}
+
+impl Default for Clipboard {
+	fn default() -> Self { Clipboard {start_measure: 1, stop_measure: 1, start_track: 1, stop_track: 1, start_beat: 1, stop_beat: 1, sub_bar_copy: false} }
+}
+
 
 /// Read a byte and increase the cursor position by 1
 /// * `data` - array of bytes
@@ -127,24 +166,32 @@ fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
 }
 
 /// Read the file version. It is on the first 30 bytes of the file.
-fn read_version(data: &Vec<u8>, seek: &mut usize) -> u8 {
+/// * `data` - array of bytes
+/// * `seek` - cursor that will be incremented
+/// * returns version
+fn read_version(data: &Vec<u8>, seek: &mut usize) -> Version {
     let n = data[0] as usize;
-    //if n>
-    let mut s = String::with_capacity(30);
+    let mut v = Version {data: String::with_capacity(30), number: 0, clipboard: false};
     for i in 1..n+1 {
         let c = data[i];
         if i == 0 {break;} //NULL symbol so we exit
-        s.push(c as char);
+        v.data.push(c as char);
     }
-    println!("Version {} {}", n, s);
+    //println!("Version {} {}", n, s);
     *seek += 31;
     //get the version
     lazy_static! {
         static ref RE: Regex = Regex::new(r"v(\d)\.(\d)").unwrap();
     }
-    let cap = RE.captures(&s).expect("Cannot extrat version code");
-    if      &cap[1] == "3" {return VERSION_3_00;}
-    else if &cap[1] == "4" {return VERSION_4_0X;}
-    else if &cap[1] == "5" {return VERSION_5_00;} //TODO: check subversions?
-    return 0;
+    let cap = RE.captures(&v.data).expect("Cannot extrat version code");
+    if      &cap[1] == "3" {v.number = VERSION_3_00;}
+    else if &cap[1] == "4" {
+        v.clipboard = v.data.starts_with("CLIPBOARD");
+        v.number = VERSION_4_0X;
+    }
+    else if &cap[1] == "5" {
+        v.clipboard = v.data.starts_with("CLIPBOARD");
+        v.number = VERSION_5_00;
+    } //TODO: check subversions?
+    return v;
 }
