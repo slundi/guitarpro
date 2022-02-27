@@ -1,4 +1,5 @@
 use crate::base::*;
+use regex::Regex;
 
 //GTPFileFormatVersion has 3 attributes : fileFormat(TGFileFormat), verstion(string), versionCode(int)
 
@@ -15,30 +16,25 @@ const GP_BEND_POSITION: f32 = 60.0;
 impl Song {
     pub fn gp_read_data(&mut self, data: &Vec<u8>) {
         let mut seek: usize = 0;
-        //version
-        let tmp = read_version(data, &mut seek);
-        let mut version: u8;
-        if tmp == "FICHIER GUITARE PRO v1" || tmp == "FICHIER GUITARE PRO v1.01" || tmp == "FICHIER GUITARE PRO v1.02" || tmp == "FICHIER GUITARE PRO v1.03" || tmp == "FICHIER GUITARE PRO v1.04" {version = VERSION_1_0X}
-        else if tmp == "FICHIER GUITARE PRO v2.20" || tmp == "FICHIER GUITARE PRO v2.21" {version = VERSION_2_2X}
-        else if tmp == "FICHIER GUITAR PRO v3.00" {version = VERSION_3_00}
-        else if tmp == "FICHIER GUITAR PRO v4.00" || tmp == "FICHIER GUITAR PRO v4.06" || tmp == "FICHIER GUITAR PRO L4.06" {version = VERSION_4_0X}
-        else if tmp == "FICHIER GUITAR PRO v5.00" {version = VERSION_5_00;}
-        else if tmp == "FICHIER GUITAR PRO v5.10" {version = VERSION_5_10;}
-
+        let version: u8 = read_version(data, &mut seek);
+        // read GP3 informations
         self.name        = read_int_size_string(data, &mut seek);
-        read_int_size_string(data, &mut seek); //subtitle
+        self.subtitle    = read_int_size_string(data, &mut seek);
         self.artist      = read_int_size_string(data, &mut seek);
         self.album       = read_int_size_string(data, &mut seek);
-        //words
-        //music
-        self.author      = read_int_size_string(data, &mut seek);
-        read_int_size_string(data, &mut seek);
-        //self.date        = read_int_size_string(data, &mut seek);
+        self.words       = read_int_size_string(data, &mut seek); //music
         self.copyright   = read_int_size_string(data, &mut seek);
-        self.writer      = read_int_size_string(data, &mut seek);
-        read_int_size_string(data, &mut seek); //instructions
-        //self.transcriber = read_int_size_string(data, &mut seek);
-        //self.comments    = read_int_size_string(data, &mut seek);
+        self.author      = read_int_size_string(data, &mut seek);
+        self.writer      = read_int_size_string(data, &mut seek); //tabbed by
+        self.instructions= read_int_size_string(data, &mut seek); //instructions
+        //read GP4 information
+        if version == 40 {
+
+        }
+        //read GP5 information
+        if version == 50 {
+            
+        }
     }
 }
 
@@ -131,7 +127,7 @@ fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
 }
 
 /// Read the file version. It is on the first 30 bytes of the file.
-fn read_version(data: &Vec<u8>, seek: &mut usize) -> String {
+fn read_version(data: &Vec<u8>, seek: &mut usize) -> u8 {
     let n = data[0] as usize;
     //if n>
     let mut s = String::with_capacity(30);
@@ -142,5 +138,13 @@ fn read_version(data: &Vec<u8>, seek: &mut usize) -> String {
     }
     println!("Version {} {}", n, s);
     *seek += 31;
-    return s;
+    //get the version
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"v(\d)\.(\d)").unwrap();
+    }
+    let cap = RE.captures(&s).expect("Cannot extrat version code");
+    if      &cap[1] == "3" {return VERSION_3_00;}
+    else if &cap[1] == "4" {return VERSION_4_0X;}
+    else if &cap[1] == "5" {return VERSION_5_00;} //TODO: check subversions?
+    return 0;
 }

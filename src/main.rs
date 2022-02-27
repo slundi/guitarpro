@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate clap;
 use clap::{Arg, App};
 use std::path::Path;
@@ -11,7 +13,8 @@ use std::io::Read;
 const GUITAR_FILE_MAX_SIZE:usize = 16777216; //16 MB, it should be enough
 
 fn main() {
-    let matches = App::new("Guitar IO").version("1.0").author("slundi <mail>").about("Read guitar file ")
+    //TODO: use clap 3.x
+    let matches = App::new("Guitar IO").version("0.1.0").author("slundi <mail>").about("Read guitar file ")
     .arg(
          Arg::with_name("input_file").takes_value(true).required(true).short("i").long("input").value_name("input_file").help("Input file path")
     ).get_matches();

@@ -45,13 +45,16 @@ impl<T: ?Sized> ReadPlus for T where T: Read {}
 
 pub struct Song {
     pub name: String,
+    pub subtitle: String, //Guitar Pro
 	pub artist: String,
 	pub album: String,
+    pub words: String, //GP
 	pub author: String,
 	pub date: String,
 	pub copyright: String,
 	pub writer: String,
 	pub transcriber: String,
+    pub instructions: String,
 	pub comments: String,
 	pub tracks: Vec<Track>,
 	pub measure_headers: Vec<MeasureHeader>,
@@ -60,7 +63,10 @@ pub struct Song {
 
 impl Default for Song {
 	fn default() -> Self { Song {
-		name:String::new(), artist:String::new(), album: String::new(), author:String::new(), date:String::new(), copyright:String::new(), writer:String::new(), transcriber:String::new(), comments:String::new(),
+		name:String::new(), subtitle: String::new(), artist:String::new(), album: String::new(),
+        words: String::new(), author:String::new(), date:String::new(),
+        copyright:String::new(), writer:String::new(), transcriber:String::new(), comments:String::new(),
+        instructions: String::new(),
 		tracks:Vec::new(),
 		measure_headers:Vec::new(),
 		channels:Vec::new(),
