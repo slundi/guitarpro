@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
 
-
 pub struct Song {
     pub name: String,
     pub subtitle: String, //Guitar Pro
@@ -23,6 +22,7 @@ pub struct Song {
 	pub channels: Vec<Channel>,
     pub lyrics: Lyrics,
     pub tempo: i16,
+    pub key: KeySignature,
 }
 
 impl Default for Song {
@@ -36,6 +36,7 @@ impl Default for Song {
 		channels:Vec::new(),
         lyrics: Lyrics::default(),
         tempo: 0,
+        key: KeySignature::default()
 	}}
 }
 
@@ -47,6 +48,7 @@ impl Default for Song {
 ///   * " " (spaces or carry returns): separates the syllables of a word
 ///   * "+": merge two syllables for the same beat
 ///   * "\[lorem ipsum...\]": hidden text
+#[derive(Clone)]
 pub struct Lyrics {
     pub lyrics1: BTreeMap<i32, String>,
     pub lyrics2: BTreeMap<i32, String>,
@@ -349,4 +351,131 @@ impl Default for Duration {
         value: DURATION_QUARTER, dotted: false, double_dotted: false,
         division_enters:1, division_times:1
     }}
+}
+
+
+/*
+    FMajorFlat = (-8, 0)
+    CMajorFlat = (-7, 0)
+    GMajorFlat = (-6, 0)
+    DMajorFlat = (-5, 0)
+    AMajorFlat = (-4, 0)
+    EMajorFlat = (-3, 0)
+    BMajorFlat = (-2, 0)
+    FMajor = (-1, 0)
+    CMajor = (0, 0)
+    GMajor = (1, 0)
+    DMajor = (2, 0)
+    AMajor = (3, 0)
+    EMajor = (4, 0)
+    BMajor = (5, 0)
+    FMajorSharp = (6, 0)
+    CMajorSharp = (7, 0)
+    GMajorSharp = (8, 0)
+
+    DMinorFlat = (-8, 1)
+    AMinorFlat = (-7, 1)
+    EMinorFlat = (-6, 1)
+    BMinorFlat = (-5, 1)
+    FMinor = (-4, 1)
+    CMinor = (-3, 1)
+    GMinor = (-2, 1)
+    DMinor = (-1, 1)
+    AMinor = (0, 1)
+    EMinor = (1, 1)
+    BMinor = (2, 1)
+    FMinorSharp = (3, 1)
+    CMinorSharp = (4, 1)
+    GMinorSharp = (5, 1)
+    DMinorSharp = (6, 1)
+    AMinorSharp = (7, 1)
+    EMinorSharp = (8, 1)
+*/
+
+const KEY_F_MAJOR_FLAT: u8 = 0;
+const KEY_C_MAJOR_FLAT: u8 = 1;
+const KEY_G_MAJOR_FLAT: u8 = 2;
+const KEY_D_MAJOR_FLAT: u8 = 3;
+const KEY_A_MAJOR_FLAT: u8 = 4;
+const KEY_E_MAJOR_FLAT: u8 = 5;
+const KEY_B_MAJOR_FLAT: u8 = 6;
+const KEY_F_MAJOR: u8 = 7;
+const KEY_C_MAJOR: u8 = 8;
+const KEY_G_MAJOR: u8 = 9;
+const KEY_D_MAJOR: u8 = 10;
+const KEY_A_MAJOR: u8 = 11;
+const KEY_E_MAJOR: u8 = 12;
+const KEY_B_MAJOR: u8 = 13;
+const KEY_F_MAJOR_SHARP: u8 = 14;
+const KEY_C_MAJOR_SHARP: u8 = 15;
+const KEY_G_MAJOR_SHARP: u8 = 16;
+const KEY_D_MINOR_FLAT: u8 = 17;
+const KEY_A_MINOR_FLAT: u8 = 18;
+const KEY_E_MINOR_FLAT: u8 = 19;
+const KEY_B_MINOR_FLAT: u8 = 20;
+const KEY_F_MINOR: u8 = 21;
+const KEY_C_MINOR: u8 = 22;
+const KEY_G_MINOR: u8 = 23;
+const KEY_D_MINOR: u8 = 24;
+const KEY_A_MINOR: u8 = 25;
+const KEY_E_MINOR: u8 = 26;
+const KEY_B_MINOR: u8 = 27;
+const KEY_F_MINOR_SHARP: u8 = 28;
+const KEY_C_MINOR_SHARP: u8 = 29;
+const KEY_G_MINOR_SHARP: u8 = 30;
+const KEY_D_MINOR_SHARP: u8 = 31;
+const KEY_A_MINOR_SHARP: u8 = 32;
+const KEY_E_MINOR_SHARP: u8 = 33;
+
+#[derive(Clone)]
+pub struct KeySignature {
+    pub key: i8,
+    pub is_minor: bool,
+}
+
+impl Default for KeySignature {
+    fn default() -> Self { KeySignature {
+        key: 0,
+        is_minor: false,
+    }}
+}
+
+impl KeySignature {
+    pub fn get_note(self) -> u8 {
+        let mut n: u8 = if self.is_minor {29} else {8};
+        n += self.key as u8;
+        return n;
+    }
+}
+
+
+//MIDI channels
+pub const DEFAULT_PERCUSSION_CHANNEL: u8 = 9;
+/// A MIDI channel describes playing data for a track.
+/// #[derive(Clone)]
+pub struct MidiChannel {
+    pub channel: u8,
+    pub effect_channel: u8,
+    pub instrument: i32,
+    pub volume: u8,
+    pub balance: u8,
+    pub chorus: u8,
+    pub reverb: u8,
+    pub phaser: u8,
+    pub tremolo: u8,
+    pub bank: i32,
+}
+
+impl Default for MidiChannel {
+    fn default() -> Self { MidiChannel {
+        channel: 0, effect_channel: 0, instrument: 0,
+        volume: 104, balance: 64,
+        chorus: 0, reverb: 0, phaser: 0, tremolo: 0, bank: 0,
+    }}
+}
+
+impl MidiChannel {
+    pub fn is_percussion_channel(self) -> bool {
+        return self.channel % 16 == DEFAULT_PERCUSSION_CHANNEL;
+    }
 }

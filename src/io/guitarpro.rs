@@ -56,10 +56,10 @@ impl Song {
             println!("Triplet feel: {}", triplet_feel);
             if version.number == VERSION_4_0X {} //read lyrics
             self.tempo = read_int(data, &mut seek) as i16;
-            let key = read_int(data, &mut seek);
-            println!("Tempo: {}\t\tKey: {}", self.tempo, key);
+            self.key.key = read_int(data, &mut seek) as i8;
+            println!("Tempo: {}\t\tKey: {}", self.tempo, self.key.key);
             if version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
-            //midi channels
+            //midi channels read_midi_channels(data, &mut seek)
             let measure_count = read_int(data, &mut seek);
             let measure_count = read_int(data, &mut seek);
             if version.number == VERSION_4_0X {} //annotate error reading
@@ -101,6 +101,38 @@ impl Song {
         lyrics.lyrics4.insert(read_int(data, seek), read_int_size_string(data, seek));
         lyrics.lyrics5.insert(read_int(data, seek), read_int_size_string(data, seek));
         return lyrics;
+    }
+
+    /** Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
+        * port1/channel1
+        * port1/channel2
+        * ...
+        * port1/channel16
+        * port2/channel1
+        * ...
+        * port4/channel16
+
+        Each channel has the following form:
+        * Instrument: `int`.
+        * Volume: `byte`.
+        * Balance: `byte`.
+        * Chorus: `byte`.
+        * Reverb: `byte`.
+        * Phaser: `byte`.
+        * Tremolo: `byte`.
+        * blank1: `byte`.
+        * blank2: `byte`.
+     */
+    fn read_midi_channels(&mut self, data: &Vec<u8>, seek: &mut usize) {
+        for i in 0u8..64u8 {
+            let mut c = MidiChannel {channel: i, effect_channel: i, instrument: read_int(data, seek),
+                volume: read_signed_byte(data, seek), balance: read_signed_byte(data, seek),
+                chorus: read_signed_byte(data, seek), reverb: read_signed_byte(data, seek), phaser: read_signed_byte(data, seek), tremolo: read_signed_byte(data, seek),
+                ..Default::default()
+            };
+            //FIXME: if c.is_percussion_channel() && c.instrument == -1 {c.instrument = 0;}
+            //TODO: channels in Song
+        }
     }
 }
 
