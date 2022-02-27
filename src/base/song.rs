@@ -2,46 +2,8 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 //use std::io::{self, Read, Seek, SeekFrom};
 
-/*/// Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
-pub struct Chunks<R> {
-    pub read: R,
-    pub size: usize,
-    pub hint: (usize, Option<usize>),
-}
-impl<R> Chunks<R> {
-    pub fn new(read: R, size: usize) -> Self { Self { read, size, hint: (0, None), } }
-    pub fn from_seek(mut read: R, size: usize) -> io::Result<Self> where R: Seek, {
-        let old_pos = read.seek(SeekFrom::Current(0))?;
-        let len = read.seek(SeekFrom::End(0))?;
+// Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
 
-        let rest = (len - old_pos) as usize; // len is always >= old_pos but they are u64
-        if rest != 0 { read.seek(SeekFrom::Start(old_pos))?; }
-
-        let min = rest / size + if rest % size != 0 { 1 } else { 0 };
-        Ok(Self { read, size,
-            hint: (min, None), // this could be wrong I'm unsure
-        })
-    }
-    // This could be useful if you want to try to recover from an error
-    pub fn into_inner(self) -> R { self.read }
-}
-impl<R> Iterator for Chunks<R> where R: Read, {
-    type Item = io::Result<Vec<u8>>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let mut chunk = Vec::with_capacity(self.size);
-        match self.read.by_ref().take(chunk.capacity() as u64).read_to_end(&mut chunk) {
-            Ok(n) => { if n != 0 { Some(Ok(chunk)) } else {None}}
-            Err(e) => Some(Err(e)),
-        }
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.hint }
-}
-trait ReadPlus: Read {
-    fn chunks(self, size: usize) -> Chunks<Self>
-    where Self: Sized, { Chunks::new(self, size) }
-}
-impl<T: ?Sized> ReadPlus for T where T: Read {}
-*/
 
 pub struct Song {
     pub name: String,
@@ -58,7 +20,9 @@ pub struct Song {
 	pub comments: String,
 	pub tracks: Vec<Track>,
 	pub measure_headers: Vec<MeasureHeader>,
-	pub channels: Vec<Channel>
+	pub channels: Vec<Channel>,
+    pub lyrics: Lyrics,
+    pub tempo: i16,
 }
 
 impl Default for Song {
@@ -70,12 +34,40 @@ impl Default for Song {
 		tracks:Vec::new(),
 		measure_headers:Vec::new(),
 		channels:Vec::new(),
+        lyrics: Lyrics::default(),
+        tempo: 0,
 	}}
 }
 
-pub const TRIPLET_FEEL_NONE: u8 = 1;
-pub const TRIPLET_FEEL_EIGHTH: u8 = 2;
-pub const TRIPLET_FEEL_SIXTEENTH: u8 = 3;
+/// Struct to keep lyrics
+/// On guitar pro files (gp4 or later), you can have 5 lines of lyrics.
+/// It is store on a BTreeMap:
+/// * the key is the mesure number
+/// * the value is the text. Syntax:
+///   * " " (spaces or carry returns): separates the syllables of a word
+///   * "+": merge two syllables for the same beat
+///   * "\[lorem ipsum...\]": hidden text
+pub struct Lyrics {
+    pub lyrics1: BTreeMap<i32, String>,
+    pub lyrics2: BTreeMap<i32, String>,
+    pub lyrics3: BTreeMap<i32, String>,
+    pub lyrics4: BTreeMap<i32, String>,
+    pub lyrics5: BTreeMap<i32, String>,
+}
+
+impl Default for Lyrics {
+    fn default() -> Self { Lyrics {
+        lyrics1: BTreeMap::new(),
+        lyrics2: BTreeMap::new(),
+        lyrics3: BTreeMap::new(),
+        lyrics4: BTreeMap::new(),
+        lyrics5: BTreeMap::new(),
+    }}
+}
+
+pub const TRIPLET_FEEL_NONE: u8 = 0;
+pub const TRIPLET_FEEL_EIGHTH: u8 = 1;
+pub const TRIPLET_FEEL_SIXTEENTH: u8 = 2;
 #[derive(Clone)]
 pub struct MeasureHeader {
     pub number: i32,
@@ -199,8 +191,6 @@ pub struct Track {
 	//measures: Vec<Measure>,
 	strings: Vec<String>,
 	//color: Color,
-    /// key=from (start at 1), value are the lyrics
-	lyrics: BTreeMap<i32, String>,
 	//private TGSong song
 }
 impl Default for Track {
@@ -212,7 +202,7 @@ impl Default for Track {
         mute: false,
         name: String::from("UNDEFINED"),
         strings: Vec::new(),
-        lyrics: BTreeMap::new()
+        //lyrics: BTreeMap::new()
     }}
 }
 /*

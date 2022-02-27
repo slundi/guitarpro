@@ -37,28 +37,70 @@ impl Song {
             clipboard.sub_bar_copy = read_int(data, &mut seek) != 0;
         }
         // read GP3 informations
-        self.name        = read_int_size_string(data, &mut seek);
+        self.name        = read_int_size_string(data, &mut seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
         self.subtitle    = read_int_size_string(data, &mut seek);
         self.artist      = read_int_size_string(data, &mut seek);
         self.album       = read_int_size_string(data, &mut seek);
         self.words       = read_int_size_string(data, &mut seek); //music
         self.copyright   = read_int_size_string(data, &mut seek);
-        self.author      = read_int_size_string(data, &mut seek);
         self.writer      = read_int_size_string(data, &mut seek); //tabbed by
         self.instructions= read_int_size_string(data, &mut seek); //instructions
+        //notices
         let nc = read_int(data, &mut seek) as usize;
-        println!("Note count: {}", nc);
-        for i in 0..nc { //notices
-            println!("  {}\t\t{}",i, read_int_size_string(data, &mut seek));
-        }
-        //read GP4 information
-        if version.number == 40 {
-
+        if nc >0 {
+            for i in 0..nc { 
+                println!("  {}\t\t{}",i, read_int_size_string(data, &mut seek));
+        }}
+        if version.number < VERSION_5_00 {
+            let triplet_feel = if read_bool(data, &mut seek) {TRIPLET_FEEL_EIGHTH} else {TRIPLET_FEEL_NONE};
+            println!("Triplet feel: {}", triplet_feel);
+            if version.number == VERSION_4_0X {} //read lyrics
+            self.tempo = read_int(data, &mut seek) as i16;
+            let key = read_int(data, &mut seek);
+            println!("Tempo: {}\t\tKey: {}", self.tempo, key);
+            if version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
+            //midi channels
+            let measure_count = read_int(data, &mut seek);
+            let measure_count = read_int(data, &mut seek);
+            if version.number == VERSION_4_0X {} //annotate error reading
         }
         //read GP5 information
         if version.number == 50 {
-            
+            //self.lyrics = 
+            self.read_lyrics(data, &mut seek);
+        /*song.masterEffect = self.readRSEMasterEffect()
+        song.pageSetup = self.readPageSetup()
+        song.tempoName = self.readIntByteSizeString()
+        song.tempo = self.readInt()
+        song.hideTempo = self.readBool() if self.versionTuple > (5, 0, 0) else False
+        song.key = gp.KeySignature((self.readSignedByte(), 0))
+        self.readInt()  # octave
+        channels = self.readMidiChannels()
+        directions = self.readDirections()
+        song.masterEffect.reverb = self.readInt()
+        measureCount = self.readInt()
+        trackCount = self.readInt()
+        with self.annotateErrors('reading'):
+            self.readMeasureHeaders(song, measureCount, directions)
+            self.readTracks(song, trackCount, channels)
+            self.readMeasures(song) */
         }
+    }
+
+    /// Read lyrics.
+    ///
+    /// First, read an `i32` that points to the track lyrics are bound to. Then it is followed by 5 lyric lines. Each one constists of
+    /// number of starting measure encoded in`i32` and`int-size-string` holding text of the lyric line.
+    fn read_lyrics(&mut self, data: &Vec<u8>, seek: &mut usize) -> Lyrics {
+        let track = read_int(data, seek) as usize;
+        println!("Lyrics for track #{}", track);
+        let mut lyrics = Lyrics::default();
+        lyrics.lyrics1.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics2.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics3.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics4.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics5.insert(read_int(data, seek), read_int_size_string(data, seek));
+        return lyrics;
     }
 }
 
@@ -76,6 +118,7 @@ impl Default for Clipboard {
 	fn default() -> Self { Clipboard {start_measure: 1, stop_measure: 1, start_track: 1, stop_track: 1, start_beat: 1, stop_beat: 1, sub_bar_copy: false} }
 }
 
+//reading functions
 
 /// Read a byte and increase the cursor position by 1
 /// * `data` - array of bytes
@@ -195,3 +238,5 @@ fn read_version(data: &Vec<u8>, seek: &mut usize) -> Version {
     } //TODO: check subversions?
     return v;
 }
+
+//writing functions
