@@ -59,7 +59,7 @@ impl Song {
             self.key.key = read_int(data, &mut seek) as i8;
             println!("Tempo: {}\t\tKey: {}", self.tempo, self.key.key);
             if version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
-            //midi channels read_midi_channels(data, &mut seek)
+            self.read_midi_channels(data, &mut seek);
             let measure_count = read_int(data, &mut seek);
             let measure_count = read_int(data, &mut seek);
             if version.number == VERSION_4_0X {} //annotate error reading
@@ -125,13 +125,13 @@ impl Song {
      */
     fn read_midi_channels(&mut self, data: &Vec<u8>, seek: &mut usize) {
         for i in 0u8..64u8 {
-            let mut c = MidiChannel {channel: i, effect_channel: i, instrument: read_int(data, seek),
-                volume: read_signed_byte(data, seek), balance: read_signed_byte(data, seek),
-                chorus: read_signed_byte(data, seek), reverb: read_signed_byte(data, seek), phaser: read_signed_byte(data, seek), tremolo: read_signed_byte(data, seek),
-                ..Default::default()
-            };
-            //FIXME: if c.is_percussion_channel() && c.instrument == -1 {c.instrument = 0;}
-            //TODO: channels in Song
+            let instrument = read_int(data, seek);
+            let mut c = MidiChannel::default();
+            c.channel = i; c.effect_channel = i;
+            c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);
+            c.chorus = read_signed_byte(data, seek); c.reverb = read_signed_byte(data, seek); c.phaser = read_signed_byte(data, seek); c.tremolo = read_signed_byte(data, seek);
+            c.set_instrument(instrument);
+            self.channels.push(c);
         }
     }
 }

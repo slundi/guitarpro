@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-//use std::io::{self, Read, Seek, SeekFrom};
 
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
-
+#[derive(Clone)]
 pub struct Song {
     pub name: String,
     pub subtitle: String, //Guitar Pro
@@ -19,7 +18,7 @@ pub struct Song {
 	pub comments: String,
 	pub tracks: Vec<Track>,
 	pub measure_headers: Vec<MeasureHeader>,
-	pub channels: Vec<Channel>,
+	pub channels: Vec<MidiChannel>,
     pub lyrics: Lyrics,
     pub tempo: i16,
     pub key: KeySignature,
@@ -33,7 +32,7 @@ impl Default for Song {
         instructions: String::new(),
 		tracks:Vec::new(),
 		measure_headers:Vec::new(),
-		channels:Vec::new(),
+		channels:Vec::with_capacity(64),
         lyrics: Lyrics::default(),
         tempo: 0,
         key: KeySignature::default()
@@ -183,6 +182,7 @@ pub const MAX_STRINGS: i32 = 25;
 pub const MIN_STRINGS: i32 = 1;
 pub const MAX_OFFSET: i32 = 24;
 pub const MIN_OFFSET: i32 = -24;
+#[derive(Clone)]
 pub struct Track {
     number: i32,
 	offset: i32,
@@ -452,11 +452,11 @@ impl KeySignature {
 //MIDI channels
 pub const DEFAULT_PERCUSSION_CHANNEL: u8 = 9;
 /// A MIDI channel describes playing data for a track.
-/// #[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct MidiChannel {
     pub channel: u8,
     pub effect_channel: u8,
-    pub instrument: i32,
+    instrument: i32,
     pub volume: u8,
     pub balance: u8,
     pub chorus: u8,
@@ -476,6 +476,13 @@ impl Default for MidiChannel {
 
 impl MidiChannel {
     pub fn is_percussion_channel(self) -> bool {
-        return self.channel % 16 == DEFAULT_PERCUSSION_CHANNEL;
+        if (self.channel % 16) == DEFAULT_PERCUSSION_CHANNEL {true}
+        else {false}
+    }
+    pub fn set_instrument(mut self, instrument: i32) {
+        if instrument == -1 && ((self.channel % 16) == DEFAULT_PERCUSSION_CHANNEL){
+            self.instrument = 0;
+        }
+        else {self.instrument = instrument;}
     }
 }
