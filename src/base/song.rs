@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
+use fraction::ToPrimitive;
+
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
 #[derive(Clone)]
 pub struct Song {
@@ -22,6 +24,9 @@ pub struct Song {
     pub lyrics: Lyrics,
     pub tempo: i16,
     pub key: KeySignature,
+
+    pub(super) triplet_feel: u8,
+    pub(super) current_measure_number: u16,
 }
 
 impl Default for Song {
@@ -35,7 +40,9 @@ impl Default for Song {
 		channels:Vec::with_capacity(64),
         lyrics: Lyrics::default(),
         tempo: 0,
-        key: KeySignature::default()
+        key: KeySignature::default(),
+
+        triplet_feel:0, current_measure_number: 0,
 	}}
 }
 
@@ -69,17 +76,27 @@ impl Default for Lyrics {
 pub const TRIPLET_FEEL_NONE: u8 = 0;
 pub const TRIPLET_FEEL_EIGHTH: u8 = 1;
 pub const TRIPLET_FEEL_SIXTEENTH: u8 = 2;
+
+#[derive(Clone)]
+pub struct TimeSignature {
+    pub numerator: i8,
+    pub denominator: i8,
+    pub beams: Vec<i32>,
+}
+
 #[derive(Clone)]
 pub struct MeasureHeader {
-    pub number: i32,
+    pub number: u16,
 	pub start: i64,
-	//TGTimeSignature pub time_signature: TimeSignature,
+	pub time_signature: TimeSignature,
 	pub tempo: i32,
-	//TGMarker pub marker: Marker,
+	pub marker: Marker,
 	pub repeat_open: bool,
-	pub repeat_alternative: u8,
-	pub repeat_close: u16,
-	pub triplet_feel: u8
+	pub repeat_alternative: i8,
+	pub repeat_close: i8,
+	pub triplet_feel: u8,
+    pub key_signature: KeySignature,
+    pub double_bar: bool,
 	//TGSong song,
 }
 
@@ -92,49 +109,12 @@ impl Default for MeasureHeader {
         repeat_alternative: 0,
         repeat_close: 0,
         triplet_feel: 0,
+        key_signature: KeySignature::default(),
+        double_bar: false,
+        marker: Marker::default(),
+        time_signature: TimeSignature {numerator: 4, denominator: 0, beams: vec![2, 2, 2, 2]}, //TODO: denominator
     }}
 }
-/* DEFAULT:
-this.number = 0;
-this.start = TGDuration.QUARTER_TIME;
-this.timeSignature = factory.newTimeSignature();
-this.tempo = factory.newTempo();
-this.marker = null;
-this.tripletFeel = TRIPLET_FEEL_NONE;
-this.repeatOpen = false;
-this.repeatClose = 0;
-this.repeatAlternative = 0;
-this.checkMarker();
-	public void setNumber(int number) {
-		this.number = number;
-		this.checkMarker();
-	}
-    private void checkMarker(){
-		if(hasMarker()){
-			this.marker.setMeasure(getNumber());
-		}
-	}
-	public long getLength(){
-		return getTimeSignature().getNumerator() * getTimeSignature().getDenominator().getTime();
-	}
-    //tempo
-    public long getInMillis(){
-		double millis = (60.00 / getValue() * SECOND_IN_MILLIS);
-		return (long)millis;
-	}
-	
-	public long getInUSQ(){
-		double usq = ((60.00 / getValue() * SECOND_IN_MILLIS) * 1000.00);
-		return (long)usq;
-	}
-	
-	public static TGTempo fromUSQ(TGFactory factory,int usq){
-		double value = ((60.00 * SECOND_IN_MILLIS) / (usq / 1000.00));
-		TGTempo tempo = factory.newTempo();
-		tempo.setValue((int)value);
-		return tempo;
-	}
-*/
 
 pub struct BeatData {
     current_start: i64,
@@ -321,24 +301,12 @@ pub struct Duration {
     pub value:u8,
     pub dotted: bool,
     pub double_dotted:bool,
+    /// The time resulting with a 64th note and a 3/2 tuplet
+    pub min_time: u8,
     //division type
     pub division_enters:u8,
     pub division_times:u8
 }
-/*	public static final TGDivisionType NORMAL = newDivisionType(1,1);
-	public static final TGDivisionType TRIPLET = newDivisionType(3,2);
-	public static final TGDivisionType[] ALTERED_DIVISION_TYPES = new TGDivisionType[]{
-		newDivisionType(3,2),
-		newDivisionType(5,4),
-		newDivisionType(6,4),
-		newDivisionType(7,4),
-		newDivisionType(9,8),
-		newDivisionType(10,8),
-		newDivisionType(11,8),
-		newDivisionType(12,8),
-		newDivisionType(13,8),
-	};
-	 */
 
 impl Duration {
     fn convert_time(&self, time: u64) -> u64 {
@@ -349,83 +317,61 @@ impl Duration {
 impl Default for Duration {
     fn default() -> Self { Duration {
         value: DURATION_QUARTER, dotted: false, double_dotted: false,
-        division_enters:1, division_times:1
+        division_enters:1, division_times:1,
+        min_time: 0
     }}
 }
 
+/// A *n:m* tuplet.
+struct Tuplet {
+    enters: u8,
+    times: u8,
+}
+impl Tuplet {
+    fn is_supported(self) -> bool {
+        return [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)].contains(&(self.enters, self.times));
+    }
+    fn get_time(self) -> u8 {
+        let result = fraction::Fraction::new(self.enters, self.times);
+        if result.denom().expect("Cannot get fraction denominator") == &1 {1}
+        else {result.to_u8().expect("Cannot get fraction result")}
+    }
+}
 
-/*
-    FMajorFlat = (-8, 0)
-    CMajorFlat = (-7, 0)
-    GMajorFlat = (-6, 0)
-    DMajorFlat = (-5, 0)
-    AMajorFlat = (-4, 0)
-    EMajorFlat = (-3, 0)
-    BMajorFlat = (-2, 0)
-    FMajor = (-1, 0)
-    CMajor = (0, 0)
-    GMajor = (1, 0)
-    DMajor = (2, 0)
-    AMajor = (3, 0)
-    EMajor = (4, 0)
-    BMajor = (5, 0)
-    FMajorSharp = (6, 0)
-    CMajorSharp = (7, 0)
-    GMajorSharp = (8, 0)
-
-    DMinorFlat = (-8, 1)
-    AMinorFlat = (-7, 1)
-    EMinorFlat = (-6, 1)
-    BMinorFlat = (-5, 1)
-    FMinor = (-4, 1)
-    CMinor = (-3, 1)
-    GMinor = (-2, 1)
-    DMinor = (-1, 1)
-    AMinor = (0, 1)
-    EMinor = (1, 1)
-    BMinor = (2, 1)
-    FMinorSharp = (3, 1)
-    CMinorSharp = (4, 1)
-    GMinorSharp = (5, 1)
-    DMinorSharp = (6, 1)
-    AMinorSharp = (7, 1)
-    EMinorSharp = (8, 1)
-*/
-
-const KEY_F_MAJOR_FLAT: u8 = 0;
-const KEY_C_MAJOR_FLAT: u8 = 1;
-const KEY_G_MAJOR_FLAT: u8 = 2;
-const KEY_D_MAJOR_FLAT: u8 = 3;
-const KEY_A_MAJOR_FLAT: u8 = 4;
-const KEY_E_MAJOR_FLAT: u8 = 5;
-const KEY_B_MAJOR_FLAT: u8 = 6;
-const KEY_F_MAJOR: u8 = 7;
-const KEY_C_MAJOR: u8 = 8;
-const KEY_G_MAJOR: u8 = 9;
-const KEY_D_MAJOR: u8 = 10;
-const KEY_A_MAJOR: u8 = 11;
-const KEY_E_MAJOR: u8 = 12;
-const KEY_B_MAJOR: u8 = 13;
-const KEY_F_MAJOR_SHARP: u8 = 14;
-const KEY_C_MAJOR_SHARP: u8 = 15;
-const KEY_G_MAJOR_SHARP: u8 = 16;
-const KEY_D_MINOR_FLAT: u8 = 17;
-const KEY_A_MINOR_FLAT: u8 = 18;
-const KEY_E_MINOR_FLAT: u8 = 19;
-const KEY_B_MINOR_FLAT: u8 = 20;
-const KEY_F_MINOR: u8 = 21;
-const KEY_C_MINOR: u8 = 22;
-const KEY_G_MINOR: u8 = 23;
-const KEY_D_MINOR: u8 = 24;
-const KEY_A_MINOR: u8 = 25;
-const KEY_E_MINOR: u8 = 26;
-const KEY_B_MINOR: u8 = 27;
-const KEY_F_MINOR_SHARP: u8 = 28;
-const KEY_C_MINOR_SHARP: u8 = 29;
-const KEY_G_MINOR_SHARP: u8 = 30;
-const KEY_D_MINOR_SHARP: u8 = 31;
-const KEY_A_MINOR_SHARP: u8 = 32;
-const KEY_E_MINOR_SHARP: u8 = 33;
+const KEY_F_MAJOR_FLAT: (i8, bool) = (-8, false);
+const KEY_C_MAJOR_FLAT: (i8, bool) = (-7, false);
+const KEY_G_MAJOR_FLAT: (i8, bool) = (-6, false);
+const KEY_D_MAJOR_FLAT: (i8, bool) = (-5, false);
+const KEY_A_MAJOR_FLAT: (i8, bool) = (-4, false);
+const KEY_E_MAJOR_FLAT: (i8, bool) = (-3, false);
+const KEY_B_MAJOR_FLAT: (i8, bool) = (-2, false);
+const KEY_F_MAJOR: (i8, bool) = (-1, false);
+const KEY_C_MAJOR: (i8, bool) = (0, false);
+const KEY_G_MAJOR: (i8, bool) = (1, false);
+const KEY_D_MAJOR: (i8, bool) = (2, false);
+const KEY_A_MAJOR: (i8, bool) = (3, false);
+const KEY_E_MAJOR: (i8, bool) = (4, false);
+const KEY_B_MAJOR: (i8, bool) = (5, false);
+const KEY_F_MAJOR_SHARP: (i8, bool) = (6, false);
+const KEY_C_MAJOR_SHARP: (i8, bool) = (7, false);
+const KEY_G_MAJOR_SHARP: (i8, bool) = (8, false);
+const KEY_D_MINOR_FLAT: (i8, bool) = (-8, true);
+const KEY_A_MINOR_FLAT: (i8, bool) = (-7, true);
+const KEY_E_MINOR_FLAT: (i8, bool) = (-6, true);
+const KEY_B_MINOR_FLAT: (i8, bool) = (-5, true);
+const KEY_F_MINOR: (i8, bool) = (-4, true);
+const KEY_C_MINOR: (i8, bool) = (-3, true);
+const KEY_G_MINOR: (i8, bool) = (-2, true);
+const KEY_D_MINOR: (i8, bool) = (-1, true);
+const KEY_A_MINOR: (i8, bool) = (0, true);
+const KEY_E_MINOR: (i8, bool) = (1, true);
+const KEY_B_MINOR: (i8, bool) = (2, true);
+const KEY_F_MINOR_SHARP: (i8, bool) = (3, true);
+const KEY_C_MINOR_SHARP: (i8, bool) = (4, true);
+const KEY_G_MINOR_SHARP: (i8, bool) = (5, true);
+const KEY_D_MINOR_SHARP: (i8, bool) = (6, true);
+const KEY_A_MINOR_SHARP: (i8, bool) = (7, true);
+const KEY_E_MINOR_SHARP: (i8, bool) = (8, true);
 
 #[derive(Clone)]
 pub struct KeySignature {
@@ -440,15 +386,6 @@ impl Default for KeySignature {
     }}
 }
 
-impl KeySignature {
-    pub fn get_note(self) -> u8 {
-        let mut n: u8 = if self.is_minor {29} else {8};
-        n += self.key as u8;
-        return n;
-    }
-}
-
-
 //MIDI channels
 pub const DEFAULT_PERCUSSION_CHANNEL: u8 = 9;
 /// A MIDI channel describes playing data for a track.
@@ -457,12 +394,12 @@ pub struct MidiChannel {
     pub channel: u8,
     pub effect_channel: u8,
     instrument: i32,
-    pub volume: u8,
-    pub balance: u8,
-    pub chorus: u8,
-    pub reverb: u8,
-    pub phaser: u8,
-    pub tremolo: u8,
+    pub volume: i8,
+    pub balance: i8,
+    pub chorus: i8,
+    pub reverb: i8,
+    pub phaser: i8,
+    pub tremolo: i8,
     pub bank: i32,
 }
 
@@ -480,9 +417,19 @@ impl MidiChannel {
         else {false}
     }
     pub fn set_instrument(mut self, instrument: i32) {
-        if instrument == -1 && ((self.channel % 16) == DEFAULT_PERCUSSION_CHANNEL){
+        if instrument == -1 && self.is_percussion_channel() {
             self.instrument = 0;
         }
         else {self.instrument = instrument;}
     }
+
+    pub fn get_instrument(self) -> i32 {return self.instrument;}
 }
+
+/// A marker annotation for beats.
+#[derive(Clone)]
+pub struct Marker {
+    pub title: String,
+    pub color: i32,
+}
+impl Default for Marker {fn default() -> Self { Marker {title: "Section".to_owned(), color: 0xff0000}}}
