@@ -97,7 +97,6 @@ pub struct MeasureHeader {
 	pub triplet_feel: u8,
     pub key_signature: KeySignature,
     pub double_bar: bool,
-	//TGSong song,
 }
 
 impl Default for MeasureHeader {

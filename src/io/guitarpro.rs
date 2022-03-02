@@ -62,7 +62,16 @@ impl Song {
             self.read_midi_channels(data, &mut seek);
             let measure_count = read_int(data, &mut seek) as usize;
             let track_count = read_int(data, &mut seek) as usize;
-            self.read_measure_headers(data, &mut seek, measure_count);
+            // Read measure headers. The *measures* are written one after another, their number have been specified previously.
+            for i in 1..measure_count + 1  {
+                self.current_measure_number = i as u16;
+                self.read_measure_header(data, &mut seek, i);
+            }
+            self.current_measure_number = 0;
+            // read tracks
+            for i in 0..track_count {
+
+            }
             if version.number == VERSION_4_0X {} //annotate error reading
         }
         //read GP5 information
@@ -138,22 +147,6 @@ impl Song {
         }
     }
 
-    /// Read measure headers. The *measures* are written one after another, their number have been specified previously.
-    fn read_measure_headers(&mut self, data: &Vec<u8>, seek: &mut usize, count: usize) {
-        /* previous = None
-        for number in range(1, measureCount + 1):
-            self._currentMeasureNumber = number
-            header, _ = self.readMeasureHeader(number, song, previous)
-            song.addMeasureHeader(header)
-            previous = header
-        self._currentMeasureNumber = None */
-        for i in 1..count + 1 {
-            self.current_measure_number = i as u16;
-            self.read_measure_header(data, seek, i);
-        }
-        self.current_measure_number = 0;
-    }
-
     /// Read measure header. The first byte is the measure's flags. It lists the data given in the current measure.
     /// - *0x01*: numerator of the key signature
     /// - *0x02*: denominator of the key signature
@@ -174,14 +167,15 @@ impl Song {
     /// - Marker: see :meth:`GP3File.readMarker`.
     /// - Tonality of the measure: 2 :ref:`Bytes <byte>`. These values encode a key signature change on the current piece. First byte is key signature root, second is key signature type.
     fn read_measure_header(&mut self, data: &Vec<u8>, seek: &mut usize, number: usize) {
+        println!("N={}\tmeasure_headers={}", number, self.measure_headers.len());
         let flag = read_byte(data, seek);
         let mut mh = MeasureHeader::default();
         mh.number = number as u16;
         mh.start  = 0;
         mh.triplet_feel = self.triplet_feel.clone();
         //we need a previous header for the next 2 flags
-        mh.time_signature.numerator = if (flag & 0x01 )== 0x01 && number > 1 {read_signed_byte(data, seek)} else {self.measure_headers[number-1].time_signature.numerator};
-        mh.time_signature.denominator = if (flag & 0x02) == 0x02 && number > 1 {read_signed_byte(data, seek)} else {self.measure_headers[number-1].time_signature.denominator};
+        mh.time_signature.numerator   = if (flag & 0x01 )== 0x01 && number == 1 {read_signed_byte(data, seek)} else {self.measure_headers[number-1].time_signature.numerator}; //TODO: FIXME: index out of bounds
+        mh.time_signature.denominator = if (flag & 0x02) == 0x02 && number == 1 {read_signed_byte(data, seek)} else {self.measure_headers[number-1].time_signature.denominator};
         mh.repeat_open = (flag & 0x04) == 0x04;
         if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);}
         if (flag & 0x10) == 0x10 {mh.repeat_alternative = self.read_repeat_alternative(data, seek);}
