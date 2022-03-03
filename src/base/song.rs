@@ -163,27 +163,37 @@ pub const MAX_OFFSET: i32 = 24;
 pub const MIN_OFFSET: i32 = -24;
 #[derive(Clone)]
 pub struct Track {
-    number: i32,
-	offset: i32,
-	channel_id: i32,
-	solo: bool,
-	mute: bool,
-	name: String,
-	//measures: Vec<Measure>,
-	strings: Vec<String>,
-	//color: Color,
-	//private TGSong song
+    pub number: i32,
+	pub offset: i32,
+	pub channel_id: i32,
+	pub solo: bool,
+	pub mute: bool,
+    pub visible: bool,
+	pub name: String,
+	pub strings: Vec<(u8, u8)>,
+	pub color: i32,
+    pub percussion_track: bool,
+    pub twelve_stringed_guitar_track: bool,
+    pub banjo_track: bool,
+    pub port: u8,
+    pub fret_count: u8,
+    pub indicate_tuning: bool,
+    pub use_RSE: bool,
 }
 impl Default for Track {
     fn default() -> Self { Track {
         number: 1,
         offset: 0,
         channel_id: 25,
-        solo: false,
-        mute: false,
-        name: String::from("UNDEFINED"),
-        strings: Vec::new(),
-        //lyrics: BTreeMap::new()
+        solo: false, mute: false, visible: true,
+        name: String::from("Track 1"),
+        strings: vec![(1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)],
+        banjo_track: false, twelve_stringed_guitar_track: false, percussion_track: false,
+        fret_count: 24,
+        color: 0xff0000,
+        port: 1,
+        indicate_tuning: false,
+        use_RSE: false,
     }}
 }
 /*
@@ -432,3 +442,10 @@ pub struct Marker {
     pub color: i32,
 }
 impl Default for Marker {fn default() -> Self { Marker {title: "Section".to_owned(), color: 0xff0000}}}
+
+/// A guitar string with a special tuning.
+#[derive(Clone)]
+pub struct GuitarString {
+    pub number: u8,
+    pub value:  u8,
+}

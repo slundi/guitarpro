@@ -70,7 +70,7 @@ impl Song {
             self.current_measure_number = 0;
             // read tracks
             for i in 0..track_count {
-
+                self.read_track(data, &mut seek, i);
             }
             if version.number == VERSION_4_0X {} //annotate error reading
         }
@@ -191,6 +191,48 @@ impl Song {
             mh.double_bar = (flag & 0x80) == 0x80;
         }
         self.measure_headers.push(mh);
+    }
+
+    /// Read a  track. The first byte is the track's flags. It presides the track's attributes:
+    /// - *0x01*: drums track
+    /// - *0x02*: 12 stringed guitar track
+    /// - *0x04*: banjo track
+    /// - *0x08*: *blank*
+    /// - *0x10*: *blank*
+    /// - *0x20*: *blank*
+    /// - *0x40*: *blank*
+    /// - *0x80*: *blank*
+    ///
+    /// Flags are followed by:
+    /// - Name: `byte-size-string`. A 40 characters long string containing the track's name.
+    /// - Number of strings: `int`. An integer equal to the number of strings of the track.
+    /// - Tuning of the strings: List of 7 `Ints <int>`. The tuning of the strings is stored as a 7-integers table, 
+    /// the "Number of strings" first integers being really used. The strings are stored from the highest to the lowest.
+    /// - Port: `int`. The number of the MIDI port used.
+    /// - Channel. See `read_channel`. - Number of frets: `int`. The number of frets of the instrument.
+    /// - Height of the capo: `int`. The number of the fret on which a capo is set. If no capo is used, the value is 0.
+    /// - Track's color. The track's displayed color in Guitar Pro.
+    fn read_track(&mut self, data: &Vec<u8>, seek: &mut usize, number: usize) {
+        let mut track = Track::default();
+        let flags = read_byte(data, seek);
+        track.percussion_track = (flags & 0x01) == 0x01;
+        track.twelve_stringed_guitar_track = (flags & 0x02) == 0x02;
+        track.banjo_track = (flags & 0x04) == 0x04;
+        //track.name = read_byte_size_string(data, seek); 
+        let string_count = read_int(data, seek);
+        for i in 0..7 {
+            let i_tuning = read_int(data, seek) as u8;
+            if string_count > i {
+                //track.strings.push(GuitarString {number: i + 1 as u8, value: i_tuning});
+            }
+        }
+        track.port = read_int(data, seek) as u8;
+        //track.channel = self.read_channels(data, seek);
+        if track.channel_id == 9 {track.percussion_track = true;}
+        track.fret_count = read_int(data, seek) as u8;
+        track.offset = read_int(data, seek);
+        track.color = self.read_color(data, seek);
+        self.tracks.push(track);
     }
 
     /// Read a marker. The markers are written in two steps:
