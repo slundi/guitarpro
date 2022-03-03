@@ -167,24 +167,29 @@ impl Song {
     /// - Marker: see :meth:`GP3File.readMarker`.
     /// - Tonality of the measure: 2 :ref:`Bytes <byte>`. These values encode a key signature change on the current piece. First byte is key signature root, second is key signature type.
     fn read_measure_header(&mut self, data: &Vec<u8>, seek: &mut usize, number: usize) {
-        println!("N={}\tmeasure_headers={}", number, self.measure_headers.len());
+        //println!("N={}\tmeasure_headers={}", number, self.measure_headers.len());
         let flag = read_byte(data, seek);
         let mut mh = MeasureHeader::default();
         mh.number = number as u16;
         mh.start  = 0;
         mh.triplet_feel = self.triplet_feel.clone();
         //we need a previous header for the next 2 flags
-        mh.time_signature.numerator   = if (flag & 0x01 )== 0x01 && number == 1 {read_signed_byte(data, seek)} else {self.measure_headers[number-1].time_signature.numerator}; //TODO: FIXME: index out of bounds
-        mh.time_signature.denominator = if (flag & 0x02) == 0x02 && number == 1 {read_signed_byte(data, seek)} else {self.measure_headers[number-1].time_signature.denominator};
-        mh.repeat_open = (flag & 0x04) == 0x04;
-        if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);}
-        if (flag & 0x10) == 0x10 {mh.repeat_alternative = self.read_repeat_alternative(data, seek);}
-        if (flag & 0x20) == 0x20 {self.read_marker(data, seek, &mut mh);}
-        if (flag & 0x40) == 0x40 {
-            mh.key_signature.key = read_signed_byte(data, seek);
-            mh.key_signature.is_minor = read_signed_byte(data, seek) != 0;
-        } else if mh.number > 1 {mh.key_signature = self.measure_headers[number-1].key_signature.clone();}
-        mh.double_bar = (flag & 0x80) == 0x80;
+        let mut skip = false; //in case number-1 is out of bounds for the measure_headers vector
+        if (flag & 0x01 )== 0x01 {mh.time_signature.numerator = read_signed_byte(data, seek);}
+        else if number < self.measure_headers.len() {mh.time_signature.numerator = self.measure_headers[number-1].time_signature.numerator;}
+        if number >= self.measure_headers.len() {skip = true;}
+        if !skip {
+            mh.time_signature.denominator = if (flag & 0x02) == 0x02 {read_signed_byte(data, seek)} else {self.measure_headers[number-1].time_signature.denominator};
+            mh.repeat_open = (flag & 0x04) == 0x04;
+            if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);}
+            if (flag & 0x10) == 0x10 {mh.repeat_alternative = self.read_repeat_alternative(data, seek);}
+            if (flag & 0x20) == 0x20 {self.read_marker(data, seek, &mut mh);}
+            if (flag & 0x40) == 0x40 {
+                mh.key_signature.key = read_signed_byte(data, seek);
+                mh.key_signature.is_minor = read_signed_byte(data, seek) != 0;
+            } else if mh.number > 1 {mh.key_signature = self.measure_headers[number-1].key_signature.clone();}
+            mh.double_bar = (flag & 0x80) == 0x80;
+        }
         self.measure_headers.push(mh);
     }
 
