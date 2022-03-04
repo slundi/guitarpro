@@ -165,11 +165,12 @@ pub const MIN_OFFSET: i32 = -24;
 pub struct Track {
     pub number: i32,
 	pub offset: i32,
-	pub channel_id: i32,
+	pub channel: MidiChannel, //pub channel_id: i32,
 	pub solo: bool,
 	pub mute: bool,
     pub visible: bool,
 	pub name: String,
+    /// A guitar string with a special tuning.
 	pub strings: Vec<(u8, u8)>,
 	pub color: i32,
     pub percussion_track: bool,
@@ -184,7 +185,7 @@ impl Default for Track {
     fn default() -> Self { Track {
         number: 1,
         offset: 0,
-        channel_id: 25,
+        channel: MidiChannel::default(), //channel_id: 25,
         solo: false, mute: false, visible: true,
         name: String::from("Track 1"),
         strings: vec![(1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)],
@@ -194,6 +195,7 @@ impl Default for Track {
         port: 1,
         indicate_tuning: false,
         use_RSE: false,
+        
     }}
 }
 /*
@@ -442,10 +444,3 @@ pub struct Marker {
     pub color: i32,
 }
 impl Default for Marker {fn default() -> Self { Marker {title: "Section".to_owned(), color: 0xff0000}}}
-
-/// A guitar string with a special tuning.
-#[derive(Clone)]
-pub struct GuitarString {
-    pub number: u8,
-    pub value:  u8,
-}

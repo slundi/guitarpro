@@ -69,9 +69,7 @@ impl Song {
             }
             self.current_measure_number = 0;
             // read tracks
-            for i in 0..track_count {
-                self.read_track(data, &mut seek, i);
-            }
+            for i in 0..track_count {self.read_track(data, &mut seek, i);}
             if version.number == VERSION_4_0X {} //annotate error reading
         }
         //read GP5 information
@@ -218,17 +216,26 @@ impl Song {
         track.percussion_track = (flags & 0x01) == 0x01;
         track.twelve_stringed_guitar_track = (flags & 0x02) == 0x02;
         track.banjo_track = (flags & 0x04) == 0x04;
-        //track.name = read_byte_size_string(data, seek); 
-        let string_count = read_int(data, seek);
-        for i in 0..7 {
+        track.name = read_byte_size_string(data, seek); 
+        let string_count = read_int(data, seek) as u8;
+        for i in 0u8..7u8 {
             let i_tuning = read_int(data, seek) as u8;
             if string_count > i {
-                //track.strings.push(GuitarString {number: i + 1 as u8, value: i_tuning});
+                track.strings.push((i + 1 as u8, i_tuning));
             }
         }
         track.port = read_int(data, seek) as u8;
-        //track.channel = self.read_channels(data, seek);
-        if track.channel_id == 9 {track.percussion_track = true;}
+        // Read MIDI channel. MIDI channel in Guitar Pro is represented by two integers. First
+        // is zero-based number of channel, second is zero-based number of channel used for effects.
+        let index = read_int(data, seek) -1 ;
+        let effect_channel = read_int(data, seek) -1;
+        if 0 <= index && (index as usize) < self.channels.len() {
+            track.channel = self.channels[index as usize].clone();
+            if track.channel.get_instrument() < 0 {track.channel.set_instrument(0);}
+            if !track.channel.is_percussion_channel() {track.channel.effect_channel = effect_channel as u8;}
+        }
+        //
+        if track.channel.channel == 9 {track.percussion_track = true;}
         track.fret_count = read_int(data, seek) as u8;
         track.offset = read_int(data, seek);
         track.color = self.read_color(data, seek);
@@ -359,12 +366,19 @@ fn read_double(data: &Vec<u8>, seek: &mut usize ) -> f64 {
 /// Read a string.
 fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
     let n = read_int(data, seek) as usize;
-    //let mut s = 
-    //println!("Slice {}", std::str::from_utf8(&data[*seek..*seek+n]).unwrap());
-    let parse = String::from_utf8(data[*seek..*seek+n].to_vec());
+    let parse = std::str::from_utf8(&data[*seek..*seek+n]);
     if parse.is_err() {panic!("Unable to read string");}
     *seek += n;
-    return parse.unwrap();
+    return parse.unwrap().to_string();
+}
+
+/// Read a string.
+fn read_byte_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
+    let n = read_byte(data, seek) as usize;
+    let parse = std::str::from_utf8(&data[*seek..*seek+n]);
+    if parse.is_err() {panic!("Unable to read string");}
+    *seek += n;
+    return parse.unwrap().to_string();
 }
 
 /// Read the file version. It is on the first 30 bytes of the file.
