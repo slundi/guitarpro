@@ -13,11 +13,10 @@ use std::io::Read;
 const GUITAR_FILE_MAX_SIZE:usize = 16777216; //16 MB, it should be enough
 
 #[derive(Parser, Debug)]
-#[clap(author="slundi", version="0.1.0", about="Read guitar pro files", long_about = None)]
+#[clap(author="slundi", version, about="Read guitar pro files", long_about = None)]
 struct Args {
     /// Input file
-    #[clap(short='i', long, help="Input file path")]
-    input: String,
+    #[clap(short='i', long, help="Input file path")] input: String,
 }
 
 fn main() {
