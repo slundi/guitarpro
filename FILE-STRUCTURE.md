@@ -50,21 +50,17 @@ The musical notes are stored as integers. The value of the C(0) is 0, and each i
 
 ### Version
 
-30 character string (not counting the byte announcing the real length of the string as explained in GENERAL) representing the version number.  Only the first n characters (n being given by the value described previously) characters are considered.
+30 character string (not counting the byte announcing the real length of the string as explained in GENERAL) representing the version number. Only the first n characters (n being given by the value described previously) characters are considered.
 
 Possible values are:
 
-* FICHIER GUITARE PRO v1
-* FICHIER GUITARE PRO v1.01
-* FICHIER GUITARE PRO v1.02
-* FICHIER GUITARE PRO v1.03
-* FICHIER GUITARE PRO v1.04
-* FICHIER GUITAR PRO v2.20
-* FICHIER GUITAR PRO v2.21
-* FICHIER GUITAR PRO v3.00
-* FICHIER GUITAR PRO v4.00
-* FICHIER GUITAR PRO v4.06
-* FICHIER GUITAR PRO L4.06
+| **Extension** | **Header values** |
+|:-------------:|-------------------|
+| **GP1**       | FICHIER GUITARE PRO v1<br/>FICHIER GUITARE PRO v1.01<br/>FICHIER GUITARE PRO v1.02<br/>FICHIER GUITARE PRO v1.03<br/>FICHIER GUITARE PRO v1.04  |
+| **GP2**       | FICHIER GUITAR PRO v2.20<br/>FICHIER GUITAR PRO v2.21  |
+| **GP3**       | FICHIER GUITAR PRO v3.00  |
+| **GP4**       | FICHIER GUITAR PRO v4.00<br/>FICHIER GUITAR PRO v4.06<br/>FICHIER GUITAR PRO L4.06  |
+| **GP5**       | FICHIER GUITAR PRO v5.00<br/>FICHIER GUITAR PRO v5.10  |
 
 *__Translator's Note__: "Fichier" is French for "File".  It is left untranslated above, as the program expects the string in French.*
 
