@@ -3,15 +3,15 @@ use regex::Regex;
 
 //GTPFileFormatVersion has 3 attributes : fileFormat(TGFileFormat), verstion(string), versionCode(int)
 
-const VERSION_1_0X: u8 = 10;
-const VERSION_2_2X: u8 = 22;
+const _VERSION_1_0X: u8 = 10;
+const _VERSION_2_2X: u8 = 22;
 const VERSION_3_00: u8 = 30;
 const VERSION_4_0X: u8 = 40;
 const VERSION_5_00: u8 = 50;
 const VERSION_5_10: u8 = 51;
 
-const GP_BEND_SEMITONE: f32 = 25.0;
-const GP_BEND_POSITION: f32 = 60.0;
+const _GP_BEND_SEMITONE: f32 = 25.0;
+const _GP_BEND_POSITION: f32 = 60.0;
 
 struct Version {
     data: String,
@@ -68,12 +68,12 @@ impl Song {
                 self.read_measure_header(data, &mut seek, i);
             }
             self.current_measure_number = 0;
-            // read tracks
+            // read tracks //TODO: FIXME
             for i in 0..track_count {self.read_track(data, &mut seek, i);}
             if version.number == VERSION_4_0X {} //annotate error reading
         }
         //read GP5 information
-        if version.number == 50 {
+        if version.number == VERSION_5_00 || version.number == VERSION_5_10 {
             //self.lyrics = 
             self.read_lyrics(data, &mut seek);
         /*song.masterEffect = self.readRSEMasterEffect()
@@ -146,14 +146,14 @@ impl Song {
     }
 
     /// Read measure header. The first byte is the measure's flags. It lists the data given in the current measure.
-    /// - *0x01*: numerator of the key signature
-    /// - *0x02*: denominator of the key signature
-    /// - *0x04*: beginning of repeat
-    /// - *0x08*: end of repeat
-    /// - *0x10*: number of alternate ending
-    /// - *0x20*: presence of a marker
-    /// - *0x40*: tonality of the measure
-    /// - *0x80*: presence of a double bar
+    /// - `0x01`: numerator of the key signature
+    /// - `0x02`: denominator of the key signature
+    /// - `0x04`: beginning of repeat
+    /// - `0x08`: end of repeat
+    /// - `0x10`: number of alternate ending
+    /// - `0x20`: presence of a marker
+    /// - `0x40`: tonality of the measure
+    /// - `0x80`: presence of a double bar
     ///
     /// Each of these elements is present only if the corresponding bit is a 1.
     /// The different elements are written (if they are present) from lowest to highest bit.
@@ -192,14 +192,14 @@ impl Song {
     }
 
     /// Read a  track. The first byte is the track's flags. It presides the track's attributes:
-    /// - *0x01*: drums track
-    /// - *0x02*: 12 stringed guitar track
-    /// - *0x04*: banjo track
-    /// - *0x08*: *blank*
-    /// - *0x10*: *blank*
-    /// - *0x20*: *blank*
-    /// - *0x40*: *blank*
-    /// - *0x80*: *blank*
+    /// - `0x01`: drums track
+    /// - `0x02`: 12 stringed guitar track
+    /// - `0x04`: banjo track
+    /// - `0x08`: *blank*
+    /// - `0x10`: *blank*
+    /// - `0x20`: *blank*
+    /// - `0x40`: *blank*
+    /// - `0x80`: *blank*
     ///
     /// Flags are followed by:
     /// - Name: `byte-size-string`. A 40 characters long string containing the track's name.
@@ -210,7 +210,7 @@ impl Song {
     /// - Channel. See `read_channel`. - Number of frets: `int`. The number of frets of the instrument.
     /// - Height of the capo: `int`. The number of the fret on which a capo is set. If no capo is used, the value is 0.
     /// - Track's color. The track's displayed color in Guitar Pro.
-    fn read_track(&mut self, data: &Vec<u8>, seek: &mut usize, number: usize) {
+    fn read_track(&mut self, data: &Vec<u8>, seek: &mut usize, _number: usize) {
         let mut track = Track::default();
         let flags = read_byte(data, seek);
         track.percussion_track = (flags & 0x01) == 0x01;

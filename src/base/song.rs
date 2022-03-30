@@ -115,7 +115,7 @@ impl Default for MeasureHeader {
     }}
 }
 
-pub struct BeatData {
+pub struct _BeatData {
     current_start: i64,
     voices: Vec<VoiceData>
 }
@@ -126,14 +126,14 @@ for(int i = 0 ; i < this.voices.length ; i ++ ) this.voices[i] = new TGVoiceData
 */
 
 
-pub const DURATION_QUARTER_TIME: i64 = 960;
-pub const DURATION_WHOLE: u8 = 1;
-pub const DURATION_HALF: u8 = 2;
+pub const _DURATION_QUARTER_TIME: i64 = 960;
+pub const _DURATION_WHOLE: u8 = 1;
+pub const _DURATION_HALF: u8 = 2;
 pub const DURATION_QUARTER: u8 = 4;
-pub const DURATION_EIGHTH: u8 = 8;
-pub const DURATION_SIXTEENTH: u8 = 16;
-pub const DURATION_THIRTY_SECOND: u8 = 32;
-pub const DURATION_SIXTY_FOURTH: u8 = 64;
+pub const _DURATION_EIGHTH: u8 = 8;
+pub const _DURATION_SIXTEENTH: u8 = 16;
+pub const _DURATION_THIRTY_SECOND: u8 = 32;
+pub const _DURATION_SIXTY_FOURTH: u8 = 64;
 pub struct VoiceData {
     start: i64,
     velocity: i32,
@@ -157,10 +157,10 @@ this.setStart(measure.getStart());
 this.setVelocity(TGVelocities.DEFAULT);
 */
 
-pub const MAX_STRINGS: i32 = 25;
-pub const MIN_STRINGS: i32 = 1;
-pub const MAX_OFFSET: i32 = 24;
-pub const MIN_OFFSET: i32 = -24;
+pub const _MAX_STRINGS: i32 = 25;
+pub const _MIN_STRINGS: i32 = 1;
+pub const _MAX_OFFSET: i32 = 24;
+pub const _MIN_OFFSET: i32 = -24;
 #[derive(Clone)]
 pub struct Track {
     pub number: i32,
@@ -228,7 +228,7 @@ this.lyrics = factory.newLyric();
 	}
 */
 
-pub const CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
+pub const _CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
                                             "Harpsichord", "Clavinet", "Celesta",
                                             "Glockenspiel",
                                             "Music Box",
@@ -339,10 +339,10 @@ struct Tuplet {
     times: u8,
 }
 impl Tuplet {
-    fn is_supported(self) -> bool {
+    fn _is_supported(self) -> bool {
         return [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)].contains(&(self.enters, self.times));
     }
-    fn get_time(self) -> u8 {
+    fn _get_time(self) -> u8 {
         let result = fraction::Fraction::new(self.enters, self.times);
         if result.denom().expect("Cannot get fraction denominator") == &1 {1}
         else {result.to_u8().expect("Cannot get fraction result")}
