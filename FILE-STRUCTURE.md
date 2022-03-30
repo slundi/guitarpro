@@ -44,7 +44,7 @@ The musical notes are stored as integers. The value of the C(0) is 0, and each i
     * Beat 1 : note 1..i
     * Beat 2 : note 1..i
     * Beat i : note 1..i
-* Chord diagrams
+* [Chord diagrams](FILE-STRUCTURE-CHORD-DIAGRAMS.md)
 
 ## Headers
 
