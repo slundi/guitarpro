@@ -92,7 +92,7 @@ The first byte is the beat header. It lists the data present in the current beat
 * **Text**: If the presence of a text is indicated by the bit 2 of the header, it is written here. It behaves like most of the previous strings. We first find an integer coding the text length + 1, followed by the string containing the text (at the format described in [GENERAL](FILE-STRUCTURE.md)).
 * **Effect on beats**: If the presence of an effect is indicated by the bit 3 of the header, it is written at this place. The detail of this operation is specified [here](FILE-STRUCTURE-EFFECTS.md). Effects on beats include tremolo bars, bends...
 * **Mix table change event**: If the presence of an event linked to the mix table is indicated by the bit 4 of the header, it is written here. The detail of this operation is specified in  Mix table change event.
-* **Note**: The note itself is written here. The detail of this operation is specified in [Note](FILE-STRUCTURE-??????.md).
+* **Note**: The note itself is written here. The detail of this operation is specified in [Note](FILE-STRUCTURE-NOTE.md).
 
 ## Mix table change event
 
