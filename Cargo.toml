@@ -12,6 +12,6 @@ license = "Mozilla Public Licence (MPL) 2.0"
 [dependencies]
 regex = "1"
 lazy_static = "1"
-clap = "2"
+clap = { version = "3", features = ["derive"] }
 log = "0.4"
 fraction = "*"
