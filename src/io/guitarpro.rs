@@ -49,7 +49,7 @@ impl Song {
         let nc = read_int(data, &mut seek) as usize;
         if nc >0 { for i in 0..nc {  println!("  {}\t\t{}",i, read_int_size_string(data, &mut seek)); }}
         if version.number < VERSION_5_00 {
-            self.triplet_feel = if read_bool(data, &mut seek) {TRIPLET_FEEL_EIGHTH} else {TRIPLET_FEEL_NONE};
+            self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
             //println!("Triplet feel: {}", self.triplet_feel);
             if version.number == VERSION_4_0X {} //read lyrics
             self.tempo = read_int(data, &mut seek) as i16;
@@ -62,12 +62,13 @@ impl Song {
             println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
             // Read measure headers. The *measures* are written one after another, their number have been specified previously.
             for i in 1..measure_count + 1  {
-                self.current_measure_number = i as u16;
+                //self.current_measure_number = Some(i as u16);
                 self.read_measure_header(data, &mut seek, i);
             }
-            self.current_measure_number = 0;
+            //self.current_measure_number = Some(0);
             // read tracks //TODO: FIXME
             for i in 0..track_count {self.read_track(data, &mut seek, i);}
+            self.read_measures(data, &mut seek);
             if version.number == VERSION_4_0X {} //annotate error reading
         }
         //read GP5 information
@@ -109,26 +110,20 @@ impl Song {
         return lyrics;
     }
 
-    /** Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
-        * port1/channel1
-        * port1/channel2
-        * ...
-        * port1/channel16
-        * port2/channel1
-        * ...
-        * port4/channel16
-
-        Each channel has the following form:
-        * Instrument: `int`.
-        * Volume: `byte`.
-        * Balance: `byte`.
-        * Chorus: `byte`.
-        * Reverb: `byte`.
-        * Phaser: `byte`.
-        * Tremolo: `byte`.
-        * blank1: `byte`.
-        * blank2: `byte`.
-     */
+    /// Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
+    ///`port1/channel1`, `port1/channel2`, ..., `port1/channel16`, `port2/channel1`, ..., `port4/channel16`.
+    ///
+    /// Each channel has the following form:
+    ///
+    /// * **Instrument**: `int`
+    /// * **Volume**: `byte`
+    /// * **Balance**: `byte`
+    /// * **Chorus**: `byte`
+    /// * **Reverb**: `byte`
+    /// * **Phaser**: `byte`
+    /// * **Tremolo**: `byte`
+    /// * **blank1**: `byte` => Backward compatibility with version 3.0
+    /// * **blank2**: `byte` => Backward compatibility with version 3.0
     fn read_midi_channels(&mut self, data: &Vec<u8>, seek: &mut usize) {
         for i in 0u8..64u8 {
             let instrument = read_int(data, seek);
@@ -267,6 +262,63 @@ impl Song {
             existing_alternative |= h.repeat_alternative;
         }
         return (1 << value) - 1 ^ existing_alternative;
+    }
+
+    fn read_measures(&mut self, data: &Vec<u8>, seek: &mut usize) {
+        let mut start = DURATION_QUARTER_TIME;
+        for h in 0..self.measure_headers.len() {
+            self.measure_headers[h].start = start;
+            for t in 0..self.tracks.len() {
+                self.current_track = Some(self.tracks[t].clone());
+
+                /*measure = gp.Measure(track, header)
+                self._currentMeasureNumber = measure.number
+                track.measures.append(measure)
+                self.readMeasure(measure)*/
+                //self.read_measure(data, seek);
+            }
+            start += self.measure_headers[h].length();
+        }
+        self.current_track = None;
+        self.current_measure_number = None;
+    }
+    /*fn read_measure(&mut self, data: &Vec<u8>, seek: &mut usize) -> Measure {
+        //let mut m = Measure::new();
+    }*/
+    /// The grace notes are stored in the file with 4 variables, written in the following order.
+    /// * **Fret**: `byte`. The fret number the grace note is made from.
+    /// * **Dynamic**: `byte`. The grace note dynamic is coded like this (default value is 6):
+    ///   * 1: ppp
+    ///   * 2: pp
+    ///   * 3: p
+    ///   * 4: mp
+    ///   * 5: mf
+    ///   * 6: f
+    ///   * 7: ff
+    ///   * 8: fff
+    /// * **Transition**: `byte`. This variable determines the transition type used to make the grace note: `0: None`, `1: Slide`, `2: Bend`, `3: Hammer`.
+    /// * **Duration**: `byte`. Determines the grace note duration, coded this way: `3: Sixteenth note`, `2: Twenty-fourth note`, `1: Thirty-second note`.
+    fn read_grace_note(&mut self, data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
+        let mut ge = GraceEffect::default();
+        ge.fret = read_signed_byte(data, seek);
+        //TODO: velocity
+        //ge.duration = 1 << (7 - read_byte(data, seek));
+        ge.duration = match read_byte(data, seek) {
+            1 => DURATION_THIRTY_SECOND,
+            2 => DURATION_TWENTY_FOURTH, //TODO: FIXME: ?
+            3 => DURATION_SIXTEENTH,
+            _ => panic!("Cannot get grace note effect duration"),
+        };
+        ge.is_dead = ge.fret == -1;
+        ge.is_on_beat = false;
+        ge.transition = match read_signed_byte(data, seek) {
+            0 => GraceEffectTransition::NONE,
+            1 => GraceEffectTransition::SLIDE,
+            2 => GraceEffectTransition::BEND,
+            3 => GraceEffectTransition::HAMMER,
+            _ => panic!("Cannot get grace note effect transition"),
+        };
+        return ge;
     }
 }
 

@@ -6,6 +6,7 @@ use fraction::ToPrimitive;
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
 #[derive(Clone)]
 pub struct Song {
+    //TODO: store guitar pro version?
     pub name: String,
     pub subtitle: String, //Guitar Pro
 	pub artist: String,
@@ -18,6 +19,7 @@ pub struct Song {
 	pub transcriber: String,
     pub instructions: String,
 	pub comments: String,
+
 	pub tracks: Vec<Track>,
 	pub measure_headers: Vec<MeasureHeader>,
 	pub channels: Vec<MidiChannel>,
@@ -25,8 +27,9 @@ pub struct Song {
     pub tempo: i16,
     pub key: KeySignature,
 
-    pub(super) triplet_feel: u8,
-    pub(super) current_measure_number: u16,
+    pub triplet_feel: TripletFeel,
+    pub current_measure_number: Option<u16>,
+    pub current_track: Option<Track>,
 }
 
 impl Default for Song {
@@ -42,7 +45,8 @@ impl Default for Song {
         tempo: 0,
         key: KeySignature::default(),
 
-        triplet_feel:0, current_measure_number: 0,
+        triplet_feel: TripletFeel::NONE,
+        current_measure_number: None, current_track: None,
 	}}
 }
 
@@ -73,9 +77,9 @@ impl Default for Lyrics {
     }}
 }
 
-pub const TRIPLET_FEEL_NONE: u8 = 0;
-pub const TRIPLET_FEEL_EIGHTH: u8 = 1;
-pub const TRIPLET_FEEL_SIXTEENTH: u8 = 2;
+/// An enumeration of different triplet feels.
+#[derive(Clone)]
+pub enum TripletFeel { NONE, EIGHTH, SIXTEENTH }
 
 #[derive(Clone)]
 pub struct TimeSignature {
@@ -94,12 +98,11 @@ pub struct MeasureHeader {
 	pub repeat_open: bool,
 	pub repeat_alternative: i8,
 	pub repeat_close: i8,
-	pub triplet_feel: u8,
+	pub triplet_feel: TripletFeel,
     /// Tonality of the measure
     pub key_signature: KeySignature,
     pub double_bar: bool,
 }
-
 impl Default for MeasureHeader {
     fn default() -> Self { MeasureHeader {
         number: 1,
@@ -108,12 +111,15 @@ impl Default for MeasureHeader {
         repeat_open: false,
         repeat_alternative: 0,
         repeat_close: 0,
-        triplet_feel: 0,
+        triplet_feel: TripletFeel::NONE,
         key_signature: KeySignature::default(),
         double_bar: false,
         marker: Marker::default(),
         time_signature: TimeSignature {numerator: 4, denominator: 0, beams: vec![2, 2, 2, 2]}, //TODO: denominator
     }}
+}
+impl MeasureHeader {
+    pub fn length(&self) -> i64 {0 /*return (self.time_signature.numerator as i64) * (self.time_signature.denominator.time as i64);*/}
 }
 
 pub struct _BeatData {
@@ -127,14 +133,15 @@ for(int i = 0 ; i < this.voices.length ; i ++ ) this.voices[i] = new TGVoiceData
 */
 
 
-pub const _DURATION_QUARTER_TIME: i64 = 960;
-pub const _DURATION_WHOLE: u8 = 1;
-pub const _DURATION_HALF: u8 = 2;
+pub const DURATION_QUARTER_TIME: i64 = 960;
+pub const DURATION_WHOLE: u8 = 1;
+pub const DURATION_HALF: u8 = 2;
 pub const DURATION_QUARTER: u8 = 4;
-pub const _DURATION_EIGHTH: u8 = 8;
-pub const _DURATION_SIXTEENTH: u8 = 16;
-pub const _DURATION_THIRTY_SECOND: u8 = 32;
-pub const _DURATION_SIXTY_FOURTH: u8 = 64;
+pub const DURATION_EIGHTH: u8 = 8;
+pub const DURATION_SIXTEENTH: u8 = 16;
+pub const DURATION_TWENTY_FOURTH: u8 = 24;
+pub const DURATION_THIRTY_SECOND: u8 = 32;
+pub const DURATION_SIXTY_FOURTH: u8 = 64;
 pub struct VoiceData {
     start: i64,
     velocity: i32,
@@ -162,6 +169,11 @@ pub const _MAX_STRINGS: i32 = 25;
 pub const _MIN_STRINGS: i32 = 1;
 pub const _MAX_OFFSET: i32 = 24;
 pub const _MIN_OFFSET: i32 = -24;
+
+/// Values of auto-accentuation on the beat found in track RSE settings
+#[derive(Clone)]
+pub enum Accentuation { NONE, VERY_SOFT, SOFT, MEDIUM, STRONG, VERY_STRONG }
+
 #[derive(Clone)]
 pub struct Track {
     pub number: i32,
@@ -453,3 +465,58 @@ pub struct Marker {
     pub color: i32,
 }
 impl Default for Marker {fn default() -> Self { Marker {title: "Section".to_owned(), color: 0xff0000}}}
+
+/// An enumeration of available clefs
+#[derive(Clone)]
+pub enum MeasureClef { TREBLE, BASS, TENOR, ALTO }
+/// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
+#[derive(Clone)]
+pub enum LineBreak { NONE, BREAK, PROTECT }
+/// Voice directions indicating the direction of beams
+#[derive(Clone)]
+pub enum VoiceDirection { NONE, UP, DOWN }
+/// All beat stroke directions
+#[derive(Clone)]
+pub enum BeatStrokeDirection { NONE, UP, DOWN }
+#[derive(Clone)]
+pub enum BeatStatus { EMPTY, NORMAL, REST }
+/// Characteristic of articulation
+#[derive(Clone)]
+pub enum SlapEffect { NONE, TAPPING, SLAPPING, POPPING }
+
+/// "A measure contains multiple voices of beats
+#[derive(Clone)]
+pub struct Measure {
+    track: Track,
+    header: MeasureHeader,
+    clef: MeasureClef, //= MeasureClef.treble
+    voices: Vec<Voice>, //List['Voice'] = None
+    lineBreak: LineBreak, // = LineBreak.none
+}
+
+/// A voice contains multiple beats
+#[derive(Clone)]
+struct Voice {
+    measure: Measure, //circular depth?
+    //beats: Vec<Beat>,
+    directions: VoiceDirection,
+}
+
+/// Octave signs
+#[derive(Clone)]
+pub enum Octave { NONE, OTTAVA, QUINDICESIMA, OTTAVABASSA, QUINDICESIMABASSA }
+
+/// All transition types for grace notes
+#[derive(Clone)]
+pub enum GraceEffectTransition { NONE, SLIDE, BEND, HAMMER}
+pub struct GraceEffect {
+    pub duration: u8,
+    pub fret: i8,
+    pub is_dead: bool,
+    pub is_on_beat: bool,
+    pub transition: GraceEffectTransition,
+    pub velocity: i32,
+}
+impl Default for GraceEffect {
+    fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::NONE, velocity: 0}} //TODO: velocity
+}
