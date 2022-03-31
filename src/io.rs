@@ -1,5 +1,9 @@
 use regex::Regex;
 
+lazy_static! {
+    static ref RE_VERSION: Regex = Regex::new(r"v(\d)\.(\d)").unwrap();
+}
+
 //reading functions
 
 /// Read a byte and increase the cursor position by 1
@@ -113,10 +117,7 @@ pub fn read_version(data: &Vec<u8>, seek: &mut usize) -> crate::gp::Version {
     //println!("Version {} {}", n, s);
     *seek += 31;
     //get the version
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"v(\d)\.(\d)").unwrap();
-    }
-    let cap = RE.captures(&v.data).expect("Cannot extrat version code");
+    let cap = RE_VERSION.captures(&v.data).expect("Cannot extrat version code");
     if      &cap[1] == "3" {v.number = crate::gp::VERSION_3_00;}
     else if &cap[1] == "4" {
         v.clipboard = v.data.starts_with("CLIPBOARD");

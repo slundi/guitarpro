@@ -315,10 +315,10 @@ impl Song {
         ge.is_dead = ge.fret == -1;
         ge.is_on_beat = false;
         ge.transition = match read_signed_byte(data, seek) {
-            0 => GraceEffectTransition::NONE,
-            1 => GraceEffectTransition::SLIDE,
-            2 => GraceEffectTransition::BEND,
-            3 => GraceEffectTransition::HAMMER,
+            0 => GraceEffectTransition::None,
+            1 => GraceEffectTransition::Slide,
+            2 => GraceEffectTransition::Bend,
+            3 => GraceEffectTransition::Hammer,
             _ => panic!("Cannot get grace note effect transition"),
         };
         return ge;
@@ -473,7 +473,7 @@ pub const _MIN_OFFSET: i32 = -24;
 
 /// Values of auto-accentuation on the beat found in track RSE settings
 #[derive(Clone)]
-pub enum Accentuation { NONE, VERY_SOFT, SOFT, MEDIUM, STRONG, VERY_STRONG }
+pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
 
 #[derive(Clone)]
 pub struct Track {
@@ -493,7 +493,7 @@ pub struct Track {
     pub port: u8,
     pub fret_count: u8,
     pub indicate_tuning: bool,
-    pub use_RSE: bool,
+    pub use_rse: bool,
 }
 impl Default for Track {
     fn default() -> Self { Track {
@@ -508,7 +508,7 @@ impl Default for Track {
         color: 0xff0000,
         port: 1,
         indicate_tuning: false,
-        use_RSE: false,
+        use_rse: false,
         
     }}
 }
@@ -648,14 +648,13 @@ impl Default for Duration {
 }
 
 /// A *n:m* tuplet.
+#[derive(Clone)]
 struct Tuplet {
     enters: u8,
     times: u8,
 }
 impl Tuplet {
-    fn _is_supported(self) -> bool {
-        return [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)].contains(&(self.enters, self.times));
-    }
+    fn _is_supported(self) -> bool { return [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)].contains(&(self.enters, self.times)); }
     fn _get_time(self) -> u8 {
         let result = fraction::Fraction::new(self.enters, self.times);
         if result.denom().expect("Cannot get fraction denominator") == &1 {1}
@@ -800,21 +799,21 @@ impl Marker {
 
 /// An enumeration of available clefs
 #[derive(Clone)]
-pub enum MeasureClef { TREBLE, BASS, TENOR, ALTO }
+pub enum MeasureClef { Treble, Bass, Tenor, Alto }
 /// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
 #[derive(Clone)]
-pub enum LineBreak { NONE, BREAK, PROTECT }
+pub enum LineBreak { None, Break, Protect }
 /// Voice directions indicating the direction of beams
 #[derive(Clone)]
-pub enum VoiceDirection { NONE, UP, DOWN }
+pub enum VoiceDirection { None, Up, Down }
 /// All beat stroke directions
 #[derive(Clone)]
-pub enum BeatStrokeDirection { NONE, UP, DOWN }
+pub enum BeatStrokeDirection { None, Up, Down }
 #[derive(Clone)]
-pub enum BeatStatus { EMPTY, NORMAL, REST }
+pub enum BeatStatus { Empty, Normal, Rest }
 /// Characteristic of articulation
 #[derive(Clone)]
-pub enum SlapEffect { NONE, TAPPING, SLAPPING, POPPING }
+pub enum SlapEffect { None, Tapping, Slapping, Popping }
 
 /// "A measure contains multiple voices of beats
 #[derive(Clone)]
@@ -836,11 +835,11 @@ struct Voice {
 
 /// Octave signs
 #[derive(Clone)]
-pub enum Octave { NONE, OTTAVA, QUINDICESIMA, OTTAVABASSA, QUINDICESIMABASSA }
+pub enum Octave { None, Ottava, Quindicesima, Ottavabassa, Quindicesimabassa }
 
 /// All transition types for grace notes
 #[derive(Clone)]
-pub enum GraceEffectTransition { NONE, SLIDE, BEND, HAMMER}
+pub enum GraceEffectTransition { None, Slide, Bend, Hammer }
 pub struct GraceEffect {
     pub duration: u8,
     pub fret: i8,
@@ -850,5 +849,5 @@ pub struct GraceEffect {
     pub velocity: i32,
 }
 impl Default for GraceEffect {
-    fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::NONE, velocity: 0}} //TODO: velocity
+    fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::None, velocity: 0}} //TODO: velocity
 }
