@@ -188,32 +188,35 @@ impl Song {
     }
 
     /// Read a  track. The first byte is the track's flags. It presides the track's attributes:
-    /// - `0x01`: drums track
-    /// - `0x02`: 12 stringed guitar track
-    /// - `0x04`: banjo track
-    /// - `0x08`: *blank*
-    /// - `0x10`: *blank*
-    /// - `0x20`: *blank*
-    /// - `0x40`: *blank*
-    /// - `0x80`: *blank*
+    /// 
+    /// | **bit 7 to 3** | **bit 2**   | **bit 1**                | **bit 0**   |
+    /// |----------------|-------------|--------------------------|-------------|
+    /// | Blank bits     | Banjo track | 12 stringed guitar track | Drums track |
     ///
     /// Flags are followed by:
-    /// - Name: `byte-size-string`. A 40 characters long string containing the track's name.
-    /// - Number of strings: `int`. An integer equal to the number of strings of the track.
-    /// - Tuning of the strings: List of 7 `Ints <int>`. The tuning of the strings is stored as a 7-integers table, 
-    /// the "Number of strings" first integers being really used. The strings are stored from the highest to the lowest.
-    /// - Port: `int`. The number of the MIDI port used.
-    /// - Channel. See `read_channel`. - Number of frets: `int`. The number of frets of the instrument.
-    /// - Height of the capo: `int`. The number of the fret on which a capo is set. If no capo is used, the value is 0.
-    /// - Track's color. The track's displayed color in Guitar Pro.
+    ///
+    /// * **Name**: `string`. A 40 characters long string containing the track's name.
+    /// * **Number of strings**: `integer`. An integer equal to the number of strings of the track.
+    /// * **Tuning of the strings**: Table of integers. The tuning of the strings is stored as a 7-integers table, the "Number of strings" first integers being really used. The strings are stored from the highest to the lowest.
+    /// * **Port**: `integer`. The number of the MIDI port used.
+    /// * **Channel**: `integer`. The number of the MIDI channel used. The channel 10 is the drums channel.
+    /// * **ChannelE**: `integer`. The number of the MIDI channel used for effects.
+    /// * **Number of frets**: `integer`. The number of frets of the instrument.
+    /// * **Height of the capo**: `integer`. The number of the fret on which a capo is present. If no capo is used, the value is `0x00000000`.
+    /// * **Track's color**: `color`. The track's displayed color in Guitar Pro.
     fn read_track(&mut self, data: &Vec<u8>, seek: &mut usize, _number: usize) {
         let mut track = Track::default();
+        //read the flag
         let flags = read_byte(data, seek);
-        track.percussion_track = (flags & 0x01) == 0x01;
-        track.twelve_stringed_guitar_track = (flags & 0x02) == 0x02;
-        track.banjo_track = (flags & 0x04) == 0x04;
-        track.name = read_byte_size_string(data, seek); 
+        track.percussion_track = (flags & 0x01) == 0x01; //Drums track
+        track.twelve_stringed_guitar_track = (flags & 0x02) == 0x02; //12 stringed guitar track
+        track.banjo_track = (flags & 0x04) == 0x04; //Banjo track
+
+        track.name = read_byte_size_string(data, seek); //FIXME: read 40 chars
+        *seek += 40 - track.name.len();
+        println!("Track: {}", track.name);
         let string_count = read_int(data, seek) as u8;
+        track.strings.clear();
         for i in 0u8..7u8 {
             let i_tuning = read_int(data, seek) as u8;
             if string_count > i {
@@ -235,6 +238,7 @@ impl Song {
         track.fret_count = read_int(data, seek) as u8;
         track.offset = read_int(data, seek);
         track.color = self.read_color(data, seek);
+        println!("\tInstrument: {} \t Strings: {} {} ({:?})", track.channel.get_instrument_name(), string_count, track.strings.len(), track.strings);
         self.tracks.push(track);
     }
 
@@ -371,6 +375,7 @@ fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
 /// Read a string.
 fn read_byte_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
     let n = read_byte(data, seek) as usize;
+    //println!("read_byte_size_string: n={}", n);
     let parse = std::str::from_utf8(&data[*seek..*seek+n]);
     if parse.is_err() {panic!("Unable to read string");}
     *seek += n;
