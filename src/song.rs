@@ -135,7 +135,7 @@ impl Song {
         //read GP5 information
         if self.version.number == VERSION_5_00 || self.version.number == VERSION_5_10 {
             //self.lyrics = 
-            self.read_lyrics(data, &mut seek);
+            Lyrics::read(data, &mut seek);
         /*song.masterEffect = self.readRSEMasterEffect()
         song.pageSetup = self.readPageSetup()
         song.tempoName = self.readIntByteSizeString()
@@ -155,49 +155,8 @@ impl Song {
         }
     }
 
-    /// Read lyrics.
-    ///
-    /// First, read an `i32` that points to the track lyrics are bound to. Then it is followed by 5 lyric lines. Each one consists of
-    /// number of starting measure encoded in`i32` and`int-size-string` holding text of the lyric line.
-    fn read_lyrics(&mut self, data: &Vec<u8>, seek: &mut usize) -> Lyrics {
-        let track = read_int(data, seek) as usize;
-        println!("Lyrics for track #{}", track);
-        let mut lyrics = Lyrics::default();
-        lyrics.lyrics1.insert(read_int(data, seek), read_int_size_string(data, seek));
-        lyrics.lyrics2.insert(read_int(data, seek), read_int_size_string(data, seek));
-        lyrics.lyrics3.insert(read_int(data, seek), read_int_size_string(data, seek));
-        lyrics.lyrics4.insert(read_int(data, seek), read_int_size_string(data, seek));
-        lyrics.lyrics5.insert(read_int(data, seek), read_int_size_string(data, seek));
-        return lyrics;
-    }
-
-    /// Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
-    ///`port1/channel1`, `port1/channel2`, ..., `port1/channel16`, `port2/channel1`, ..., `port4/channel16`.
-    ///
-    /// Each channel has the following form:
-    ///
-    /// * **Instrument**: `int`
-    /// * **Volume**: `byte`
-    /// * **Balance**: `byte`
-    /// * **Chorus**: `byte`
-    /// * **Reverb**: `byte`
-    /// * **Phaser**: `byte`
-    /// * **Tremolo**: `byte`
-    /// * **blank1**: `byte` => Backward compatibility with version 3.0
-    /// * **blank2**: `byte` => Backward compatibility with version 3.0
-    fn read_midi_channels(&mut self, data: &Vec<u8>, seek: &mut usize) {
-        for i in 0u8..64u8 {
-            let instrument = read_int(data, seek);
-            let mut c = MidiChannel::default();
-            c.channel = i; c.effect_channel = i;
-            c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);
-            c.chorus = read_signed_byte(data, seek); c.reverb = read_signed_byte(data, seek); c.phaser = read_signed_byte(data, seek); c.tremolo = read_signed_byte(data, seek);
-            c.set_instrument(instrument);
-            println!("Channel: {}\t Volume: {}\tBalance: {}\tInstrument={}, {}, {}", c.channel, c.volume, c.balance, instrument, c.get_instrument(), c.get_instrument_name());
-            self.channels.push(c);
-            *seek += 2;
-        }
-    }
+    /// Read all the MIDI channels
+    fn read_midi_channels(&mut self, data: &Vec<u8>, seek: &mut usize) { for i in 0u8..64u8 { self.channels.push(MidiChannel::read(data, seek, i)); } }
 
     /// Read measure header. The first byte is the measure's flags. It lists the data given in the current measure.
     /// 
@@ -234,7 +193,7 @@ impl Song {
         mh.repeat_open = (flag & 0x04) == 0x04; //Beginning of repeat
         if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);} //End of repeat
         if (flag & 0x10) == 0x10 {mh.repeat_alternative = self.read_repeat_alternative(data, seek);} //Number of alternate endin
-        if (flag & 0x20) == 0x20 {self.read_marker(data, seek, &mut mh);} //Presence of a marker
+        if (flag & 0x20) == 0x20 {mh.marker.read(data, seek);} //Presence of a marker
         if (flag & 0x40) == 0x40 { //Tonality of the measure 
             mh.key_signature.key = read_signed_byte(data, seek);
             mh.key_signature.is_minor = read_signed_byte(data, seek) != 0;
@@ -293,26 +252,9 @@ impl Song {
         if track.channel.channel == 9 {track.percussion_track = true;}
         track.fret_count = read_int(data, seek) as u8;
         track.offset = read_int(data, seek);
-        track.color = self.read_color(data, seek);
+        track.color = read_color(data, seek);
         println!("\tInstrument: {} \t Strings: {} {} ({:?})", track.channel.get_instrument_name(), string_count, track.strings.len(), track.strings);
         self.tracks.push(track);
-    }
-
-    /// Read a marker. The markers are written in two steps:
-    /// - first is written an integer equal to the marker's name length + 1
-    /// - then a string containing the marker's name. Finally the marker's color is written.
-    fn read_marker(&mut self, data: &Vec<u8>, seek: &mut usize, measure_header: &mut MeasureHeader) {
-        measure_header.marker.title = read_int_size_string(data, seek);
-        measure_header.marker.color = self.read_color(data, seek);
-    }
-
-    /// Read a color. Colors are used by `Marker` and `Track`. They consist of 3 consecutive bytes and one blank byte.
-    fn read_color(&mut self, data: &Vec<u8>, seek: &mut usize) -> i32 {
-        let r = read_byte(data, seek) as i32;
-        let g = read_byte(data, seek) as i32;
-        let b = read_byte(data, seek) as i32;
-        *seek += 1;
-        return r * 65536 + g * 256 + b;
     }
 
     fn read_repeat_alternative(&mut self, data: &Vec<u8>, seek: &mut usize) -> i8 {
@@ -407,21 +349,33 @@ impl Default for Clipboard {
 ///   * "\[lorem ipsum...\]": hidden text
 #[derive(Clone)]
 pub struct Lyrics {
+    pub track_choice: u8,
+    pub max_line_count: u8,
     pub lyrics1: BTreeMap<i32, String>,
     pub lyrics2: BTreeMap<i32, String>,
     pub lyrics3: BTreeMap<i32, String>,
     pub lyrics4: BTreeMap<i32, String>,
     pub lyrics5: BTreeMap<i32, String>,
 }
-
 impl Default for Lyrics {
-    fn default() -> Self { Lyrics {
-        lyrics1: BTreeMap::new(),
-        lyrics2: BTreeMap::new(),
-        lyrics3: BTreeMap::new(),
-        lyrics4: BTreeMap::new(),
-        lyrics5: BTreeMap::new(),
-    }}
+    fn default() -> Self { Lyrics { track_choice: 0, max_line_count: 5, lyrics1: BTreeMap::new(), lyrics2: BTreeMap::new(), lyrics3: BTreeMap::new(), lyrics4: BTreeMap::new(), lyrics5: BTreeMap::new(), }}
+}
+impl Lyrics {
+    /// Read lyrics.
+    ///
+    /// First, read an `i32` that points to the track lyrics are bound to. Then it is followed by 5 lyric lines. Each one consists of
+    /// number of starting measure encoded in`i32` and`int-size-string` holding text of the lyric line.
+    pub fn read(data: &Vec<u8>, seek: &mut usize) -> Lyrics {
+        let mut lyrics = Lyrics::default();
+        lyrics.track_choice = read_int(data, seek) as u8;
+        println!("Lyrics for track #{}", lyrics.track_choice);
+        lyrics.lyrics1.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics2.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics3.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics4.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics5.insert(read_int(data, seek), read_int_size_string(data, seek));
+        return lyrics;
+    }
 }
 
 /// An enumeration of different triplet feels.
@@ -782,11 +736,7 @@ pub struct MidiChannel {
 }
 
 impl Default for MidiChannel {
-    fn default() -> Self { MidiChannel {
-        channel: 0, effect_channel: 0, instrument: 0,
-        volume: 104, balance: 64,
-        chorus: 0, reverb: 0, phaser: 0, tremolo: 0, bank: 0,
-    }}
+    fn default() -> Self { MidiChannel { channel: 0, effect_channel: 0, instrument: 0, volume: 104, balance: 64, chorus: 0, reverb: 0, phaser: 0, tremolo: 0, bank: 0, }}
 }
 
 impl MidiChannel {
@@ -803,6 +753,32 @@ impl MidiChannel {
 
     pub fn get_instrument(self) -> i32 {return self.instrument;}
     pub fn get_instrument_name(&self) -> String {return String::from(CHANNEL_DEFAULT_NAMES[self.instrument as usize]);} //TODO: FIXME: does not seems OK
+
+    /// Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
+    ///`port1/channel1`, `port1/channel2`, ..., `port1/channel16`, `port2/channel1`, ..., `port4/channel16`.
+    ///
+    /// Each channel has the following form:
+    ///
+    /// * **Instrument**: `int`
+    /// * **Volume**: `byte`
+    /// * **Balance**: `byte`
+    /// * **Chorus**: `byte`
+    /// * **Reverb**: `byte`
+    /// * **Phaser**: `byte`
+    /// * **Tremolo**: `byte`
+    /// * **blank1**: `byte` => Backward compatibility with version 3.0
+    /// * **blank2**: `byte` => Backward compatibility with version 3.0
+    pub fn read(data: &Vec<u8>, seek: &mut usize, channel: u8) -> MidiChannel {
+        let instrument = read_int(data, seek);
+        let mut c = MidiChannel::default();
+        c.channel = channel; c.effect_channel = channel;
+        c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);
+        c.chorus = read_signed_byte(data, seek); c.reverb = read_signed_byte(data, seek); c.phaser = read_signed_byte(data, seek); c.tremolo = read_signed_byte(data, seek);
+        c.set_instrument(instrument);
+        //println!("Channel: {}\t Volume: {}\tBalance: {}\tInstrument={}, {}, {}", c.channel, c.volume, c.balance, instrument, c.get_instrument(), c.get_instrument_name());
+        *seek += 2;
+        return c;
+    }
 }
 
 /// A marker annotation for beats.
@@ -812,6 +788,15 @@ pub struct Marker {
     pub color: i32,
 }
 impl Default for Marker {fn default() -> Self { Marker {title: "Section".to_owned(), color: 0xff0000}}}
+impl Marker {
+    /// Read a marker. The markers are written in two steps:
+    /// - first is written an integer equal to the marker's name length + 1
+    /// - then a string containing the marker's name. Finally the marker's color is written.
+    fn read(&mut self, data: &Vec<u8>, seek: &mut usize) {
+        self.title = read_int_size_string(data, seek);
+        self.color = read_color(data, seek);
+    }
+}
 
 /// An enumeration of available clefs
 #[derive(Clone)]

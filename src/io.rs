@@ -129,4 +129,13 @@ pub fn read_version(data: &Vec<u8>, seek: &mut usize) -> crate::gp::Version {
     return v;
 }
 
+/// Read a color. Colors are used by `Marker` and `Track`. They consist of 3 consecutive bytes and one blank byte.
+pub fn read_color(data: &Vec<u8>, seek: &mut usize) -> i32 {
+    let r = read_byte(data, seek) as i32;
+    let g = read_byte(data, seek) as i32;
+    let b = read_byte(data, seek) as i32;
+    *seek += 1;
+    return r * 65536 + g * 256 + b;
+}
+
 //writing functions
