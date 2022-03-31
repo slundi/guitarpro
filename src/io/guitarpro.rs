@@ -47,21 +47,19 @@ impl Song {
         self.instructions= read_int_size_string(data, &mut seek); //instructions
         //notices
         let nc = read_int(data, &mut seek) as usize;
-        if nc >0 {
-            for i in 0..nc { 
-                println!("  {}\t\t{}",i, read_int_size_string(data, &mut seek));
-        }}
+        if nc >0 { for i in 0..nc {  println!("  {}\t\t{}",i, read_int_size_string(data, &mut seek)); }}
         if version.number < VERSION_5_00 {
             self.triplet_feel = if read_bool(data, &mut seek) {TRIPLET_FEEL_EIGHTH} else {TRIPLET_FEEL_NONE};
             //println!("Triplet feel: {}", self.triplet_feel);
             if version.number == VERSION_4_0X {} //read lyrics
             self.tempo = read_int(data, &mut seek) as i16;
             self.key.key = read_int(data, &mut seek) as i8;
-            println!("Tempo: {}\t\tKey: {}", self.tempo, self.key.key);
+            println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
             if version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
             self.read_midi_channels(data, &mut seek);
             let measure_count = read_int(data, &mut seek) as usize;
             let track_count = read_int(data, &mut seek) as usize;
+            println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
             // Read measure headers. The *measures* are written one after another, their number have been specified previously.
             for i in 1..measure_count + 1  {
                 self.current_measure_number = i as u16;
@@ -139,31 +137,29 @@ impl Song {
             c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);
             c.chorus = read_signed_byte(data, seek); c.reverb = read_signed_byte(data, seek); c.phaser = read_signed_byte(data, seek); c.tremolo = read_signed_byte(data, seek);
             c.set_instrument(instrument);
-            //println!("Channel: {}\t Volume: {}\tBalance: {}\tInstrument={}, {}", c.channel, c.volume, c.balance, instrument, c.get_instrument());
+            println!("Channel: {}\t Volume: {}\tBalance: {}\tInstrument={}, {}, {}", c.channel, c.volume, c.balance, instrument, c.get_instrument(), c.get_instrument_name());
             self.channels.push(c);
             *seek += 2;
         }
     }
 
     /// Read measure header. The first byte is the measure's flags. It lists the data given in the current measure.
-    /// - `0x01`: numerator of the key signature
-    /// - `0x02`: denominator of the key signature
-    /// - `0x04`: beginning of repeat
-    /// - `0x08`: end of repeat
-    /// - `0x10`: number of alternate ending
-    /// - `0x20`: presence of a marker
-    /// - `0x40`: tonality of the measure
-    /// - `0x80`: presence of a double bar
+    /// 
+    /// | **Bit 7** | **Bit 6** | **Bit 5** | **Bit 4** | **Bit 3** | **Bit 2** | **Bit 1** | **Bit 0** |
+    /// |-----------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
+    /// | Presence of a double bar  | Tonality of the measure  | Presence of a marker  | Number of alternate ending | End of repeat | Beginning of repeat | Denominator of the (key) signature | Numerator of the (key) signature |
     ///
-    /// Each of these elements is present only if the corresponding bit is a 1.
-    /// The different elements are written (if they are present) from lowest to highest bit.
+    /// Each of these elements is present only if the corresponding bit is a 1. The different elements are written (if they are present) from lowest to highest bit.  
     /// Exceptions are made for the double bar and the beginning of repeat whose sole presence is enough, complementary data is not necessary.
-    /// - Numerator of the key signature: :ref:`byte`.
-    /// - Denominator of the key signature: :ref:`byte`.
-    /// - End of repeat: :ref:`byte`. Number of repeats until the previous beginning of repeat.
-    /// - Number of alternate ending: :ref:`byte`.
-    /// - Marker: see :meth:`GP3File.readMarker`.
-    /// - Tonality of the measure: 2 :ref:`Bytes <byte>`. These values encode a key signature change on the current piece. First byte is key signature root, second is key signature type.
+
+    /// * **Numerator of the (key) signature**: `byte`. Numerator of the (key) signature of the piece
+    /// * **Denominator of the (key) signature**: `byte`. Denominator of the (key) signature of the piece
+    /// * **End of repeat**: `byte`. Number of repeats until the previous Beginning of repeat. Nombre de renvoi jusqu'au début de renvoi précédent.
+    /// * **Number of alternate ending**: `byte`. The number of alternate ending.
+    /// * **Marker**: The markers are written in two steps:
+    /// 1) First is written an `integer` equal to the marker's name length + 1
+    /// 2) a string containing the marker's name. Finally the marker's color is written.
+    /// * **Tonality of the measure**: `byte`. This value encodes a key (signature) change on the current piece. It is encoded as: `0: C`, `1: G (#)`, `2: D (##)`, `-1: F (b)`, ...
     fn read_measure_header(&mut self, data: &Vec<u8>, seek: &mut usize, number: usize) {
         //println!("N={}\tmeasure_headers={}", number, self.measure_headers.len());
         let flag = read_byte(data, seek);
@@ -172,22 +168,22 @@ impl Song {
         mh.start  = 0;
         mh.triplet_feel = self.triplet_feel.clone();
         //we need a previous header for the next 2 flags
-        let mut skip = false; //in case number-1 is out of bounds for the measure_headers vector
+        //Numerator of the (key) signature
         if (flag & 0x01 )== 0x01 {mh.time_signature.numerator = read_signed_byte(data, seek);}
         else if number < self.measure_headers.len() {mh.time_signature.numerator = self.measure_headers[number-1].time_signature.numerator;}
-        if number >= self.measure_headers.len() {skip = true;}
-        if !skip {
-            mh.time_signature.denominator = if (flag & 0x02) == 0x02 {read_signed_byte(data, seek)} else {self.measure_headers[number-1].time_signature.denominator};
-            mh.repeat_open = (flag & 0x04) == 0x04;
-            if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);}
-            if (flag & 0x10) == 0x10 {mh.repeat_alternative = self.read_repeat_alternative(data, seek);}
-            if (flag & 0x20) == 0x20 {self.read_marker(data, seek, &mut mh);}
-            if (flag & 0x40) == 0x40 {
-                mh.key_signature.key = read_signed_byte(data, seek);
-                mh.key_signature.is_minor = read_signed_byte(data, seek) != 0;
-            } else if mh.number > 1 {mh.key_signature = self.measure_headers[number-1].key_signature.clone();}
-            mh.double_bar = (flag & 0x80) == 0x80;
-        }
+        //Denominator of the (key) signature
+        if (flag & 0x02) == 0x02 {mh.time_signature.denominator = read_signed_byte(data, seek);}
+        else if number < self.measure_headers.len() {mh.time_signature.denominator = self.measure_headers[number-1].time_signature.denominator;}
+
+        mh.repeat_open = (flag & 0x04) == 0x04; //Beginning of repeat
+        if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);} //End of repeat
+        if (flag & 0x10) == 0x10 {mh.repeat_alternative = self.read_repeat_alternative(data, seek);} //Number of alternate endin
+        if (flag & 0x20) == 0x20 {self.read_marker(data, seek, &mut mh);} //Presence of a marker
+        if (flag & 0x40) == 0x40 { //Tonality of the measure 
+            mh.key_signature.key = read_signed_byte(data, seek);
+            mh.key_signature.is_minor = read_signed_byte(data, seek) != 0;
+        } else if mh.number > 1 && number < self.measure_headers.len() {mh.key_signature = self.measure_headers[number-1].key_signature.clone();}
+        mh.double_bar = (flag & 0x80) == 0x80; //presence of a double bar
         self.measure_headers.push(mh);
     }
 

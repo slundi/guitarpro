@@ -20,14 +20,14 @@ The measures are written one after another, their number having been specified p
 Each of these elements is present only if the corresponding bit is a 1. The different elements are written (if they are present) from lowest to highest bit.  
 Exceptions are made for the double bar and the beginning of repeat whose sole presence is enough, complementary data is not necessary.
 
-* **Numerator of the (key) signature**: Byte. Numerator of the (key) signature of the piece
-* **Denominator of the (key) signature**: Byte. Denominator of the (key) signature of the piece
-* **End of repeat**: Byte. Number of repeats until the previous Beginning of repeat. Nombre de renvoi jusqu'au début de renvoi précédent.
-* **Number of alternate ending**: Byte. The number of alternate ending.
+* **Numerator of the (key) signature**: `byte`. Numerator of the (key) signature of the piece
+* **Denominator of the (key) signature**: `byte`. Denominator of the (key) signature of the piece
+* **End of repeat**: `byte`. Number of repeats until the previous Beginning of repeat. Nombre de renvoi jusqu'au début de renvoi précédent.
+* **Number of alternate ending**: `byte`. The number of alternate ending.
 * **Marker**: The markers are written in two steps:
   1) First is written an `integer` equal to the marker's name length + 1
   2) a string containing the marker's name. Finally the marker's color is written.
-* **Tonality of the measure**: Byte. This value encodes a key (signature) change on the current piece. It is encoded as: `0: C`, `1: G (#)`, `2: D (##)`, `-1: F (b)`, ...
+* **Tonality of the measure**: `byte`. This value encodes a key (signature) change on the current piece. It is encoded as: `0: C`, `1: G (#)`, `2: D (##)`, `-1: F (b)`, ...
 
 ## Tracks
 

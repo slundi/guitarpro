@@ -95,6 +95,7 @@ pub struct MeasureHeader {
 	pub repeat_alternative: i8,
 	pub repeat_close: i8,
 	pub triplet_feel: u8,
+    /// Tonality of the measure
     pub key_signature: KeySignature,
     pub double_bar: bool,
 }
@@ -228,7 +229,7 @@ this.lyrics = factory.newLyric();
 	}
 */
 
-pub const _CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
+pub const CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
                                             "Harpsichord", "Clavinet", "Celesta",
                                             "Glockenspiel",
                                             "Music Box",
@@ -349,7 +350,7 @@ impl Tuplet {
     }
 }
 
-const KEY_F_MAJOR_FLAT: (i8, bool) = (-8, false);
+/*const KEY_F_MAJOR_FLAT: (i8, bool) = (-8, false);
 const KEY_C_MAJOR_FLAT: (i8, bool) = (-7, false);
 const KEY_G_MAJOR_FLAT: (i8, bool) = (-6, false);
 const KEY_D_MAJOR_FLAT: (i8, bool) = (-5, false);
@@ -382,19 +383,26 @@ const KEY_C_MINOR_SHARP: (i8, bool) = (4, true);
 const KEY_G_MINOR_SHARP: (i8, bool) = (5, true);
 const KEY_D_MINOR_SHARP: (i8, bool) = (6, true);
 const KEY_A_MINOR_SHARP: (i8, bool) = (7, true);
-const KEY_E_MINOR_SHARP: (i8, bool) = (8, true);
+const KEY_E_MINOR_SHARP: (i8, bool) = (8, true);*/
+
+pub const KEY_SIGNATURES: [&'static str; 34] = ["F♭ major", "C♭ major", "G♭ major", "D♭ major", "A♭ major", "E♭ major", "B♭ major",
+            "F major", "C major", "G major", "D major", "A major", "E major", "B major",
+            "F# major", "C# major", "G# major",
+            "D♭ minor", "A♭ minor", "E♭ minor", "B♭ minor",
+            "F minor", "C minor", "G minor", "D minor", "A minor", "E minor", "B minor",
+            "F# minor", "C# minor", "G# minor", "D# minor", "A# minor", "E# minor"];
 
 #[derive(Clone)]
 pub struct KeySignature {
     pub key: i8,
     pub is_minor: bool,
 }
-
-impl Default for KeySignature {
-    fn default() -> Self { KeySignature {
-        key: 0,
-        is_minor: false,
-    }}
+impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
+impl KeySignature {
+    pub fn to_string(&self) -> String {
+        let index: usize = if self.is_minor {(23i8 + self.key) as usize} else {(8i8 + self.key) as usize};
+        return String::from(KEY_SIGNATURES[index]);
+    }
 }
 
 //MIDI channels
@@ -435,6 +443,7 @@ impl MidiChannel {
     }
 
     pub fn get_instrument(self) -> i32 {return self.instrument;}
+    pub fn get_instrument_name(&self) -> String {return String::from(CHANNEL_DEFAULT_NAMES[self.instrument as usize]);} //TODO: FIXME: does not seems OK
 }
 
 /// A marker annotation for beats.
