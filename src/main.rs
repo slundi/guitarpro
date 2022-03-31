@@ -6,8 +6,8 @@ use std::path::Path;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::Read;
-#[path = "base/song.rs"] mod base;
-#[path = "io/guitarpro.rs"] mod gp;
+#[path = "song.rs"] mod gp;
+#[path = "io.rs"] mod io;
 
 const GUITAR_FILE_MAX_SIZE:usize = 16777216; //16 MB, it should be enough
 
@@ -35,7 +35,7 @@ fn main() {
     });
     let mut data: Vec<u8> = Vec::with_capacity(size);
     f.take(u64::from_ne_bytes(size.to_ne_bytes())).read_to_end(&mut data).unwrap_or_else(|_error|{panic!("Unable to read file contents");});
-    let mut song: base::Song = base::Song::default();
+    let mut song: gp::Song = gp::Song::default();
     match ext.as_str() {
         "GP1" | "GP2" | "GP3" | "GP4" | "GP5" => {
             println!("Guitar pro file"); //old Guitar Pro files
