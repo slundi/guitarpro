@@ -39,7 +39,7 @@ fn main() {
     match ext.as_str() {
         "GP1" | "GP2" | "GP3" | "GP4" | "GP5" => {
             println!("Guitar pro file"); //old Guitar Pro files
-            song.gp_read_data(&data);
+            song.read_data(&data);
             println!("Artist: \"{}\"", song.artist);
             println!("Title:  \"{}\"", song.name);
             println!("Album:  \"{}\"", song.album);

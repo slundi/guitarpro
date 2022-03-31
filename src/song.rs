@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use fraction::ToPrimitive;
 
+#[derive(Clone)]
 pub struct Version {
     pub data: String,
     pub number: u8,
@@ -24,7 +25,7 @@ const _GP_BEND_POSITION: f32 = 60.0;
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
 #[derive(Clone)]
 pub struct Song {
-    //TODO: store guitar pro version?
+    pub version: Version,
     pub name: String,
     pub subtitle: String, //Guitar Pro
 	pub artist: String,
@@ -52,6 +53,7 @@ pub struct Song {
 
 impl Default for Song {
 	fn default() -> Self { Song {
+        version: Version {data: String::with_capacity(30), clipboard: false, number: 0},
 		name:String::new(), subtitle: String::new(), artist:String::new(), album: String::new(),
         words: String::new(), author:String::new(), date:String::new(),
         copyright:String::new(), writer:String::new(), transcriber:String::new(), comments:String::new(),
@@ -69,42 +71,52 @@ impl Default for Song {
 }
 
 impl Song {
-    pub fn gp_read_data(&mut self, data: &Vec<u8>) {
-        let mut seek: usize = 0;
-        let version = read_version(data, &mut seek);
+    /// Read and process version
+    fn read_version(&mut self, data: &Vec<u8>, seek: &mut usize) {
+        self.version = read_version(data, seek);
         let mut clipboard = Clipboard::default();
         //check for clipboard and read it
-        if version.number == VERSION_4_0X && version.clipboard {
-            clipboard.start_measure = read_int(data, &mut seek);
-            clipboard.stop_measure  = read_int(data, &mut seek);
-            clipboard.start_track = read_int(data, &mut seek);
-            clipboard.stop_track  = read_int(data, &mut seek);
+        if self.version.number == VERSION_4_0X && self.version.clipboard {
+            clipboard.start_measure = read_int(data, seek);
+            clipboard.stop_measure  = read_int(data, seek);
+            clipboard.start_track = read_int(data, seek);
+            clipboard.stop_track  = read_int(data, seek);
         }
-        if version.number == VERSION_5_00 && version.clipboard {
-            clipboard.start_beat = read_int(data, &mut seek);
-            clipboard.stop_beat  = read_int(data, &mut seek);
-            clipboard.sub_bar_copy = read_int(data, &mut seek) != 0;
+        if self.version.number == VERSION_5_00 && self.version.clipboard {
+            clipboard.start_beat = read_int(data, seek);
+            clipboard.stop_beat  = read_int(data, seek);
+            clipboard.sub_bar_copy = read_int(data, seek) != 0;
         }
+    }
+    /// Read meta information (name, artist, ...)
+    fn read_meta(&mut self, data: &Vec<u8>, seek: &mut usize) {
         // read GP3 informations
-        self.name        = read_int_size_string(data, &mut seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
-        self.subtitle    = read_int_size_string(data, &mut seek);
-        self.artist      = read_int_size_string(data, &mut seek);
-        self.album       = read_int_size_string(data, &mut seek);
-        self.words       = read_int_size_string(data, &mut seek); //music
-        self.copyright   = read_int_size_string(data, &mut seek);
-        self.writer      = read_int_size_string(data, &mut seek); //tabbed by
-        self.instructions= read_int_size_string(data, &mut seek); //instructions
+        self.name        = read_int_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
+        self.subtitle    = read_int_size_string(data, seek);
+        self.artist      = read_int_size_string(data, seek);
+        self.album       = read_int_size_string(data, seek);
+        self.words       = read_int_size_string(data, seek); //music
+        self.copyright   = read_int_size_string(data, seek);
+        self.writer      = read_int_size_string(data, seek); //tabbed by
+        self.instructions= read_int_size_string(data, seek); //instructions
         //notices
-        let nc = read_int(data, &mut seek) as usize;
-        if nc >0 { for i in 0..nc {  println!("  {}\t\t{}",i, read_int_size_string(data, &mut seek)); }}
-        if version.number < VERSION_5_00 {
+        let nc = read_int(data, seek) as usize;
+        if nc >0 { for i in 0..nc {  println!("  {}\t\t{}",i, read_int_size_string(data, seek)); }}
+    }
+
+    pub fn read_data(&mut self, data: &Vec<u8>) {
+        let mut seek: usize = 0;
+        self.read_version(data, &mut seek);
+        self.read_meta(data, &mut seek);
+        
+        if self.version.number < VERSION_5_00 {
             self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
             //println!("Triplet feel: {}", self.triplet_feel);
-            if version.number == VERSION_4_0X {} //read lyrics
+            if self.version.number == VERSION_4_0X {} //read lyrics
             self.tempo = read_int(data, &mut seek) as i16;
             self.key.key = read_int(data, &mut seek) as i8;
             println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
-            if version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
+            if self.version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
             self.read_midi_channels(data, &mut seek);
             let measure_count = read_int(data, &mut seek) as usize;
             let track_count = read_int(data, &mut seek) as usize;
@@ -118,10 +130,10 @@ impl Song {
             // read tracks //TODO: FIXME
             for i in 0..track_count {self.read_track(data, &mut seek, i);}
             self.read_measures(data, &mut seek);
-            if version.number == VERSION_4_0X {} //annotate error reading
+            if self.version.number == VERSION_4_0X {} //annotate error reading
         }
         //read GP5 information
-        if version.number == VERSION_5_00 || version.number == VERSION_5_10 {
+        if self.version.number == VERSION_5_00 || self.version.number == VERSION_5_10 {
             //self.lyrics = 
             self.read_lyrics(data, &mut seek);
         /*song.masterEffect = self.readRSEMasterEffect()
