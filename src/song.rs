@@ -253,7 +253,7 @@ impl Song {
         track.fret_count = read_int(data, seek) as u8;
         track.offset = read_int(data, seek);
         track.color = read_color(data, seek);
-        println!("\tInstrument: {} \t Strings: {} {} ({:?})", track.channel.get_instrument_name(), string_count, track.strings.len(), track.strings);
+        //println!("\tInstrument: {} \t Strings: {} {} ({:?})", track.channel.get_instrument_name(), string_count, track.strings.len(), track.strings);
         self.tracks.push(track);
     }
 
@@ -273,12 +273,25 @@ impl Song {
             self.measure_headers[h].start = start;
             for t in 0..self.tracks.len() {
                 self.current_track = Some(self.tracks[t].clone());
-
-                /*measure = gp.Measure(track, header)
-                self._currentMeasureNumber = measure.number
-                track.measures.append(measure)
-                self.readMeasure(measure)*/
-                //self.read_measure(data, seek);
+                let mut m = Measure::default();
+                m.track = self.tracks[t].clone();           //measure = gp.Measure(track, header)
+                m.header= self.measure_headers[h].clone(); //self._currentMeasureNumber = measure.number
+                { //Read a measure
+                    let start = self.measure_headers[h].start;
+                    //let voice = &m.voices[0];
+                    //current_voice_number = 1
+                    { //read_voice
+                        let beats = read_int(data, seek) as usize;
+                        for b in 0..beats {
+                            //self._currentBeatNumber = beat + 1
+                            //start += self.readBeat(start, voice)
+                            let flags = read_byte(data, seek);
+                            //beat = self.getBeat(voice, start)
+                        }
+                    }
+                    //current_voice_number = None
+                }
+                //track.measures.append(measure)
             }
             start += self.measure_headers[h].length();
         }
@@ -334,7 +347,6 @@ struct Clipboard {
     pub stop_beat: i32,
     pub sub_bar_copy: bool
 }
-
 impl Default for Clipboard {
 	fn default() -> Self { Clipboard {start_measure: 1, stop_measure: 1, start_track: 1, stop_track: 1, start_beat: 1, stop_beat: 1, sub_bar_copy: false} }
 }
@@ -420,7 +432,7 @@ impl Default for MeasureHeader {
     }}
 }
 impl MeasureHeader {
-    pub fn length(&self) -> i64 {0 /*return (self.time_signature.numerator as i64) * (self.time_signature.denominator.time as i64);*/}
+    pub fn length(&self) -> i64 {0 /*TODO: return (self.time_signature.numerator as i64) * (self.time_signature.denominator.time as i64);*/}
 }
 
 pub struct _BeatData {
@@ -512,6 +524,7 @@ impl Default for Track {
         
     }}
 }
+
 /*
 this.number = 0;
 this.offset = 0;
@@ -591,7 +604,6 @@ pub struct Channel {
     /// Channel parameters (key-value)
 	pub parameters: HashMap<String, u32>
 }
-
 //TODO: handle pub constants
 /* 
 pub const DEFAULT_PERCUSSION_CHANNEL: i8 = 9;
@@ -622,44 +634,77 @@ impl Default for Channel {
     }}
 }
 
+/*/// A *n:m* tuplet.
+#[derive(Clone)]
+struct Tuplet {
+    enters: u8,
+    times: u8,
+}*/
+const SUPPORTED_TUPLETS: [(u8, u8); 10] = [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)];
+/*impl Default for Tuplet { fn default() -> Self { Tuplet { enters: 1, times: 1 }}}
+impl Tuplet {
+    fn is_supported(self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.enters, self.times)); }
+    fn convert_time(self) -> u8 {
+        let result = fraction::Fraction::new(self.enters, self.times);
+        if result.denom().expect("Cannot get fraction denominator") == &1 {1}
+        else {result.to_u8().expect("Cannot get fraction result")}
+    }
+}*/
+#[derive(Clone)]
 pub struct Duration {
     pub value:u8,
     pub dotted: bool,
     pub double_dotted:bool,
     /// The time resulting with a 64th note and a 3/2 tuplet
     pub min_time: u8,
-    //division type
-    pub division_enters:u8,
-    pub division_times:u8
+    //Tuplet division type
+    pub tuplet_enters:u8, pub tuplet_times:u8
 }
-
 impl Duration {
-    fn convert_time(&self, time: u64) -> u64 {
-        return time * self.division_times as u64 / self.division_enters as u64;
+    //fn convert_time(&self, time: u64) -> u64 { return time * self.division_times as u64 / self.division_enters as u64; }
+
+    // /Read beat duration.
+    /// Duration is composed of byte signifying duration and an integer that maps to `Tuplet`. The byte maps to following values:
+    /// 
+    /// * *-2*: whole note
+    /// * *-1*: half note
+    /// * *0*: quarter note
+    /// * *1*: eighth note
+    /// * *2*: sixteenth note
+    /// * *3*: thirty-second note
+    pub fn read(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
+        let mut d = Duration::default();
+        d.value = 1 << (read_signed_byte(data, seek) + 2);
+        d.dotted = (flags & 0x01) == 0x01;
+        if (flags & 0x20) == 0x20 {
+            let i_tuplet = read_int(data, seek);
+            if i_tuplet == 3 {}
+            else if i_tuplet == 5 {}
+            else if i_tuplet == 6 {}
+            else if i_tuplet == 7 {}
+            else if i_tuplet == 9 {}
+            else if i_tuplet == 10 {}
+            else if i_tuplet == 11 {}
+            else if i_tuplet == 12 {}
+            else if i_tuplet == 13 {}
+        }
+        return d;
     }
-}
 
-impl Default for Duration {
-    fn default() -> Self { Duration {
-        value: DURATION_QUARTER, dotted: false, double_dotted: false,
-        division_enters:1, division_times:1,
-        min_time: 0
-    }}
-}
+    pub fn is_supported(self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times)); }
 
-/// A *n:m* tuplet.
-#[derive(Clone)]
-struct Tuplet {
-    enters: u8,
-    times: u8,
-}
-impl Tuplet {
-    fn _is_supported(self) -> bool { return [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)].contains(&(self.enters, self.times)); }
-    fn _get_time(self) -> u8 {
-        let result = fraction::Fraction::new(self.enters, self.times);
+    pub fn convert_time(self) -> u8 {
+        let result = fraction::Fraction::new(self.tuplet_enters, self.tuplet_times);
         if result.denom().expect("Cannot get fraction denominator") == &1 {1}
         else {result.to_u8().expect("Cannot get fraction result")}
     }
+}
+impl Default for Duration {
+    fn default() -> Self { Duration {
+        value: DURATION_QUARTER, dotted: false, double_dotted: false,
+        tuplet_enters:1, tuplet_times:1,
+        min_time: 0
+    }}
 }
 
 /*const KEY_F_MAJOR_FLAT: (i8, bool) = (-8, false);
@@ -733,20 +778,16 @@ pub struct MidiChannel {
     pub tremolo: i8,
     pub bank: i32,
 }
-
 impl Default for MidiChannel {
     fn default() -> Self { MidiChannel { channel: 0, effect_channel: 0, instrument: 0, volume: 104, balance: 64, chorus: 0, reverb: 0, phaser: 0, tremolo: 0, bank: 0, }}
 }
-
 impl MidiChannel {
     pub fn is_percussion_channel(self) -> bool {
         if (self.channel % 16) == DEFAULT_PERCUSSION_CHANNEL {true}
         else {false}
     }
     pub fn set_instrument(mut self, instrument: i32) {
-        if instrument == -1 && self.is_percussion_channel() {
-            self.instrument = 0;
-        }
+        if instrument == -1 && self.is_percussion_channel() { self.instrument = 0; }
         else {self.instrument = instrument;}
     }
 
@@ -818,19 +859,26 @@ pub enum SlapEffect { None, Tapping, Slapping, Popping }
 /// "A measure contains multiple voices of beats
 #[derive(Clone)]
 pub struct Measure {
-    track: Track,
-    header: MeasureHeader,
-    clef: MeasureClef, //= MeasureClef.treble
-    voices: Vec<Voice>, //List['Voice'] = None
-    lineBreak: LineBreak, // = LineBreak.none
+    pub track: Track,
+    pub header: MeasureHeader,
+    pub clef: MeasureClef,
+    pub voices: Vec<Voice>, 
+    pub line_break: LineBreak,
 }
+impl Default for Measure {fn default() -> Self { Measure {track: Track::default(), header: MeasureHeader::default(), clef: MeasureClef::Treble, voices: Vec::new(), line_break: LineBreak::None }}}
 
 /// A voice contains multiple beats
 #[derive(Clone)]
-struct Voice {
-    measure: Measure, //circular depth?
-    //beats: Vec<Beat>,
-    directions: VoiceDirection,
+pub struct Voice {
+    pub measure: Measure, //circular depth?
+    pub beats: Vec<Beat>,
+    pub directions: VoiceDirection,
+}
+impl Default for Voice {fn default() -> Self { Voice { measure: Measure::default(), beats: Vec::new(), directions: VoiceDirection::None }}}
+
+#[derive(Clone)]
+pub struct Beat {
+
 }
 
 /// Octave signs
