@@ -7,7 +7,12 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io::Read;
 #[path = "song.rs"] mod gp;
-#[path = "io.rs"] mod io;
+mod io;
+mod effects;
+mod key_signature;
+mod midi;
+mod mix_table;
+mod chord;
 
 const GUITAR_FILE_MAX_SIZE:usize = 16777216; //16 MB, it should be enough
 

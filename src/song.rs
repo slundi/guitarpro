@@ -1,9 +1,10 @@
 use crate::io::*;
+use crate::key_signature::*;
+use crate::effects::*;
+use crate::midi::*;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-
-use fraction::ToPrimitive;
 
 #[derive(Clone)]
 pub struct Version {
@@ -274,7 +275,7 @@ impl Song {
             for t in 0..self.tracks.len() {
                 self.current_track = Some(self.tracks[t].clone());
                 let mut m = Measure::default();
-                m.track = self.tracks[t].clone();           //measure = gp.Measure(track, header)
+                m.track = self.tracks[t].clone();          //measure = gp.Measure(track, header)
                 m.header= self.measure_headers[h].clone(); //self._currentMeasureNumber = measure.number
                 { //Read a measure
                     let start = self.measure_headers[h].start;
@@ -395,13 +396,6 @@ impl Lyrics {
 pub enum TripletFeel { NONE, EIGHTH, SIXTEENTH }
 
 #[derive(Clone)]
-pub struct TimeSignature {
-    pub numerator: i8,
-    pub denominator: i8,
-    pub beams: Vec<i32>,
-}
-
-#[derive(Clone)]
 pub struct MeasureHeader {
     pub number: u16,
 	pub start: i64,
@@ -445,16 +439,6 @@ this.voices = new TGVoiceData[TGBeat.MAX_VOICES];
 for(int i = 0 ; i < this.voices.length ; i ++ ) this.voices[i] = new TGVoiceData(measure);
 */
 
-
-pub const DURATION_QUARTER_TIME: i64 = 960;
-pub const DURATION_WHOLE: u8 = 1;
-pub const DURATION_HALF: u8 = 2;
-pub const DURATION_QUARTER: u8 = 4;
-pub const DURATION_EIGHTH: u8 = 8;
-pub const DURATION_SIXTEENTH: u8 = 16;
-pub const DURATION_TWENTY_FOURTH: u8 = 24;
-pub const DURATION_THIRTY_SECOND: u8 = 32;
-pub const DURATION_SIXTY_FOURTH: u8 = 64;
 pub struct VoiceData {
     start: i64,
     velocity: i32,
@@ -555,41 +539,6 @@ this.lyrics = factory.newLyric();
 	}
 */
 
-pub const CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
-                                            "Harpsichord", "Clavinet", "Celesta",
-                                            "Glockenspiel",
-                                            "Music Box",
-                                            "Vibraphone", "Marimba", "Xylophone", "Tubular Bell",
-                                            "Dulcimer",
-                                            "Hammond Organ", "Perc Organ", "Rock Organ", "Church Organ", "Reed Organ",
-                                            "Accordion",
-                                            "Harmonica",
-                                            "Tango Accordion",
-                                            "Nylon Str Guitar", "Steel String Guitar", "Jazz Electric Gtr", "Clean Guitar", "Muted Guitar", "Overdrive Guitar", "Distortion Guitar", "Guitar Harmonics",
-                                            "Acoustic Bass", "Fingered Bass", "Picked Bass", "Fretless Bass", "Slap Bass 1", "Slap Bass 2", "Syn Bass 1", "Syn Bass 2",
-                                            "Violin", "Viola", "Cello", "Contrabass",
-                                            "Tremolo Strings", "Pizzicato Strings",
-                                            "Orchestral Harp",
-                                            "Timpani",
-                                            "Ensemble Strings", "Slow Strings", "Synth Strings 1", "Synth Strings 2",
-                                            "Choir Aahs", "Voice Oohs", "Syn Choir",
-                                            "Orchestra Hit",
-                                            "Trumpet", "Trombone", "Tuba", "Muted Trumpet", "French Horn", "Brass Ensemble", "Syn Brass 1", "Syn Brass 2",
-                                            "Soprano Sax", "Alto Sax", "Tenor Sax", "Baritone Sax",
-                                            "Oboe", "English Horn", "Bassoon", "Clarinet", "Piccolo", "Flute", "Recorder", "Pan Flute", "Bottle Blow", "Shakuhachi", "Whistle", "Ocarina",
-                                            "Syn Square Wave", "Syn Saw Wave", "Syn Calliope", "Syn Chiff", "Syn Charang", "Syn Voice", "Syn Fifths Saw", "Syn Brass and Lead",
-                                            "Fantasia", "Warm Pad", "Polysynth", "Space Vox", "Bowed Glass", "Metal Pad", "Halo Pad", "Sweep Pad", "Ice Rain", "Soundtrack", "Crystal", "Atmosphere",
-                                            "Brightness", "Goblins", "Echo Drops", "Sci Fi",
-                                            "Sitar", "Banjo", "Shamisen", "Koto", "Kalimba",
-                                            "Bag Pipe",
-                                            "Fiddle",
-                                            "Shanai",
-                                            "Tinkle Bell",
-                                            "Agogo",
-                                            "Steel Drums", "Woodblock", "Taiko Drum", "Melodic Tom", "Syn Drum", "Reverse Cymbal",
-                                            "Guitar Fret Noise", "Breath Noise",
-                                            "Seashore", "Bird", "Telephone", "Helicopter", "Applause", "Gunshot"];
-
 pub struct Channel {
     pub id: u16,
 	pub bank: u16,
@@ -632,193 +581,6 @@ impl Default for Channel {
         name: String::from("UNDEFINED"),
         parameters: HashMap::new()
     }}
-}
-
-/*/// A *n:m* tuplet.
-#[derive(Clone)]
-struct Tuplet {
-    enters: u8,
-    times: u8,
-}*/
-const SUPPORTED_TUPLETS: [(u8, u8); 10] = [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)];
-/*impl Default for Tuplet { fn default() -> Self { Tuplet { enters: 1, times: 1 }}}
-impl Tuplet {
-    fn is_supported(self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.enters, self.times)); }
-    fn convert_time(self) -> u8 {
-        let result = fraction::Fraction::new(self.enters, self.times);
-        if result.denom().expect("Cannot get fraction denominator") == &1 {1}
-        else {result.to_u8().expect("Cannot get fraction result")}
-    }
-}*/
-#[derive(Clone)]
-pub struct Duration {
-    pub value:u8,
-    pub dotted: bool,
-    pub double_dotted:bool,
-    /// The time resulting with a 64th note and a 3/2 tuplet
-    pub min_time: u8,
-    //Tuplet division type
-    pub tuplet_enters:u8, pub tuplet_times:u8
-}
-impl Duration {
-    //fn convert_time(&self, time: u64) -> u64 { return time * self.division_times as u64 / self.division_enters as u64; }
-
-    // /Read beat duration.
-    /// Duration is composed of byte signifying duration and an integer that maps to `Tuplet`. The byte maps to following values:
-    /// 
-    /// * *-2*: whole note
-    /// * *-1*: half note
-    /// * *0*: quarter note
-    /// * *1*: eighth note
-    /// * *2*: sixteenth note
-    /// * *3*: thirty-second note
-    pub fn read(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
-        let mut d = Duration::default();
-        d.value = 1 << (read_signed_byte(data, seek) + 2);
-        d.dotted = (flags & 0x01) == 0x01;
-        if (flags & 0x20) == 0x20 {
-            let i_tuplet = read_int(data, seek);
-            if i_tuplet == 3 {}
-            else if i_tuplet == 5 {}
-            else if i_tuplet == 6 {}
-            else if i_tuplet == 7 {}
-            else if i_tuplet == 9 {}
-            else if i_tuplet == 10 {}
-            else if i_tuplet == 11 {}
-            else if i_tuplet == 12 {}
-            else if i_tuplet == 13 {}
-        }
-        return d;
-    }
-
-    pub fn is_supported(self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times)); }
-
-    pub fn convert_time(self) -> u8 {
-        let result = fraction::Fraction::new(self.tuplet_enters, self.tuplet_times);
-        if result.denom().expect("Cannot get fraction denominator") == &1 {1}
-        else {result.to_u8().expect("Cannot get fraction result")}
-    }
-}
-impl Default for Duration {
-    fn default() -> Self { Duration {
-        value: DURATION_QUARTER, dotted: false, double_dotted: false,
-        tuplet_enters:1, tuplet_times:1,
-        min_time: 0
-    }}
-}
-
-/*const KEY_F_MAJOR_FLAT: (i8, bool) = (-8, false);
-const KEY_C_MAJOR_FLAT: (i8, bool) = (-7, false);
-const KEY_G_MAJOR_FLAT: (i8, bool) = (-6, false);
-const KEY_D_MAJOR_FLAT: (i8, bool) = (-5, false);
-const KEY_A_MAJOR_FLAT: (i8, bool) = (-4, false);
-const KEY_E_MAJOR_FLAT: (i8, bool) = (-3, false);
-const KEY_B_MAJOR_FLAT: (i8, bool) = (-2, false);
-const KEY_F_MAJOR: (i8, bool) = (-1, false);
-const KEY_C_MAJOR: (i8, bool) = (0, false);
-const KEY_G_MAJOR: (i8, bool) = (1, false);
-const KEY_D_MAJOR: (i8, bool) = (2, false);
-const KEY_A_MAJOR: (i8, bool) = (3, false);
-const KEY_E_MAJOR: (i8, bool) = (4, false);
-const KEY_B_MAJOR: (i8, bool) = (5, false);
-const KEY_F_MAJOR_SHARP: (i8, bool) = (6, false);
-const KEY_C_MAJOR_SHARP: (i8, bool) = (7, false);
-const KEY_G_MAJOR_SHARP: (i8, bool) = (8, false);
-const KEY_D_MINOR_FLAT: (i8, bool) = (-8, true);
-const KEY_A_MINOR_FLAT: (i8, bool) = (-7, true);
-const KEY_E_MINOR_FLAT: (i8, bool) = (-6, true);
-const KEY_B_MINOR_FLAT: (i8, bool) = (-5, true);
-const KEY_F_MINOR: (i8, bool) = (-4, true);
-const KEY_C_MINOR: (i8, bool) = (-3, true);
-const KEY_G_MINOR: (i8, bool) = (-2, true);
-const KEY_D_MINOR: (i8, bool) = (-1, true);
-const KEY_A_MINOR: (i8, bool) = (0, true);
-const KEY_E_MINOR: (i8, bool) = (1, true);
-const KEY_B_MINOR: (i8, bool) = (2, true);
-const KEY_F_MINOR_SHARP: (i8, bool) = (3, true);
-const KEY_C_MINOR_SHARP: (i8, bool) = (4, true);
-const KEY_G_MINOR_SHARP: (i8, bool) = (5, true);
-const KEY_D_MINOR_SHARP: (i8, bool) = (6, true);
-const KEY_A_MINOR_SHARP: (i8, bool) = (7, true);
-const KEY_E_MINOR_SHARP: (i8, bool) = (8, true);*/
-
-pub const KEY_SIGNATURES: [&'static str; 34] = ["F♭ major", "C♭ major", "G♭ major", "D♭ major", "A♭ major", "E♭ major", "B♭ major",
-            "F major", "C major", "G major", "D major", "A major", "E major", "B major",
-            "F# major", "C# major", "G# major",
-            "D♭ minor", "A♭ minor", "E♭ minor", "B♭ minor",
-            "F minor", "C minor", "G minor", "D minor", "A minor", "E minor", "B minor",
-            "F# minor", "C# minor", "G# minor", "D# minor", "A# minor", "E# minor"];
-
-#[derive(Clone)]
-pub struct KeySignature {
-    pub key: i8,
-    pub is_minor: bool,
-}
-impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
-impl KeySignature {
-    pub fn to_string(&self) -> String {
-        let index: usize = if self.is_minor {(23i8 + self.key) as usize} else {(8i8 + self.key) as usize};
-        return String::from(KEY_SIGNATURES[index]);
-    }
-}
-
-//MIDI channels
-pub const DEFAULT_PERCUSSION_CHANNEL: u8 = 9;
-/// A MIDI channel describes playing data for a track.
-#[derive(Copy, Clone)]
-pub struct MidiChannel {
-    pub channel: u8,
-    pub effect_channel: u8,
-    instrument: i32,
-    pub volume: i8,
-    pub balance: i8,
-    pub chorus: i8,
-    pub reverb: i8,
-    pub phaser: i8,
-    pub tremolo: i8,
-    pub bank: i32,
-}
-impl Default for MidiChannel {
-    fn default() -> Self { MidiChannel { channel: 0, effect_channel: 0, instrument: 0, volume: 104, balance: 64, chorus: 0, reverb: 0, phaser: 0, tremolo: 0, bank: 0, }}
-}
-impl MidiChannel {
-    pub fn is_percussion_channel(self) -> bool {
-        if (self.channel % 16) == DEFAULT_PERCUSSION_CHANNEL {true}
-        else {false}
-    }
-    pub fn set_instrument(mut self, instrument: i32) {
-        if instrument == -1 && self.is_percussion_channel() { self.instrument = 0; }
-        else {self.instrument = instrument;}
-    }
-
-    pub fn get_instrument(self) -> i32 {return self.instrument;}
-    pub fn get_instrument_name(&self) -> String {return String::from(CHANNEL_DEFAULT_NAMES[self.instrument as usize]);} //TODO: FIXME: does not seems OK
-
-    /// Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
-    ///`port1/channel1`, `port1/channel2`, ..., `port1/channel16`, `port2/channel1`, ..., `port4/channel16`.
-    ///
-    /// Each channel has the following form:
-    ///
-    /// * **Instrument**: `int`
-    /// * **Volume**: `byte`
-    /// * **Balance**: `byte`
-    /// * **Chorus**: `byte`
-    /// * **Reverb**: `byte`
-    /// * **Phaser**: `byte`
-    /// * **Tremolo**: `byte`
-    /// * **blank1**: `byte` => Backward compatibility with version 3.0
-    /// * **blank2**: `byte` => Backward compatibility with version 3.0
-    pub fn read(data: &Vec<u8>, seek: &mut usize, channel: u8) -> MidiChannel {
-        let instrument = read_int(data, seek);
-        let mut c = MidiChannel::default();
-        c.channel = channel; c.effect_channel = channel;
-        c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);
-        c.chorus = read_signed_byte(data, seek); c.reverb = read_signed_byte(data, seek); c.phaser = read_signed_byte(data, seek); c.tremolo = read_signed_byte(data, seek);
-        c.set_instrument(instrument);
-        //println!("Channel: {}\t Volume: {}\tBalance: {}\tInstrument={}, {}, {}", c.channel, c.volume, c.balance, instrument, c.get_instrument(), c.get_instrument_name());
-        *seek += 2;
-        return c;
-    }
 }
 
 /// A marker annotation for beats.
@@ -884,18 +646,3 @@ pub struct Beat {
 /// Octave signs
 #[derive(Clone)]
 pub enum Octave { None, Ottava, Quindicesima, Ottavabassa, Quindicesimabassa }
-
-/// All transition types for grace notes
-#[derive(Clone)]
-pub enum GraceEffectTransition { None, Slide, Bend, Hammer }
-pub struct GraceEffect {
-    pub duration: u8,
-    pub fret: i8,
-    pub is_dead: bool,
-    pub is_on_beat: bool,
-    pub transition: GraceEffectTransition,
-    pub velocity: i32,
-}
-impl Default for GraceEffect {
-    fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::None, velocity: 0}} //TODO: velocity
-}
