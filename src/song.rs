@@ -188,8 +188,8 @@ impl Song {
         if (flag & 0x01 )== 0x01 {mh.time_signature.numerator = read_signed_byte(data, seek);}
         else if number < self.measure_headers.len() {mh.time_signature.numerator = self.measure_headers[number-1].time_signature.numerator;}
         //Denominator of the (key) signature
-        if (flag & 0x02) == 0x02 {mh.time_signature.denominator = read_signed_byte(data, seek);}
-        else if number < self.measure_headers.len() {mh.time_signature.denominator = self.measure_headers[number-1].time_signature.denominator;}
+        if (flag & 0x02) == 0x02 {mh.time_signature.denominator = Duration::read(data, seek, flag);}
+        else if number < self.measure_headers.len() {mh.time_signature.denominator = self.measure_headers[number-1].time_signature.denominator.clone();}
 
         mh.repeat_open = (flag & 0x04) == 0x04; //Beginning of repeat
         if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);} //End of repeat
@@ -364,11 +364,11 @@ impl Default for Clipboard {
 pub struct Lyrics {
     pub track_choice: u8,
     pub max_line_count: u8,
-    pub lyrics1: BTreeMap<i32, String>,
-    pub lyrics2: BTreeMap<i32, String>,
-    pub lyrics3: BTreeMap<i32, String>,
-    pub lyrics4: BTreeMap<i32, String>,
-    pub lyrics5: BTreeMap<i32, String>,
+    pub lyrics1: BTreeMap<u16, String>,
+    pub lyrics2: BTreeMap<u16, String>,
+    pub lyrics3: BTreeMap<u16, String>,
+    pub lyrics4: BTreeMap<u16, String>,
+    pub lyrics5: BTreeMap<u16, String>,
 }
 impl Default for Lyrics {
     fn default() -> Self { Lyrics { track_choice: 0, max_line_count: 5, lyrics1: BTreeMap::new(), lyrics2: BTreeMap::new(), lyrics3: BTreeMap::new(), lyrics4: BTreeMap::new(), lyrics5: BTreeMap::new(), }}
@@ -382,11 +382,11 @@ impl Lyrics {
         let mut lyrics = Lyrics::default();
         lyrics.track_choice = read_int(data, seek) as u8;
         println!("Lyrics for track #{}", lyrics.track_choice);
-        lyrics.lyrics1.insert(read_int(data, seek), read_int_size_string(data, seek));
-        lyrics.lyrics2.insert(read_int(data, seek), read_int_size_string(data, seek));
-        lyrics.lyrics3.insert(read_int(data, seek), read_int_size_string(data, seek));
-        lyrics.lyrics4.insert(read_int(data, seek), read_int_size_string(data, seek));
-        lyrics.lyrics5.insert(read_int(data, seek), read_int_size_string(data, seek));
+        lyrics.lyrics1.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
+        lyrics.lyrics2.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
+        lyrics.lyrics3.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
+        lyrics.lyrics4.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
+        lyrics.lyrics5.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
         return lyrics;
     }
 }
@@ -413,16 +413,16 @@ pub struct MeasureHeader {
 impl Default for MeasureHeader {
     fn default() -> Self { MeasureHeader {
         number: 1,
-        start: 0,
+        start: DURATION_QUARTER_TIME,
         tempo: 0,
         repeat_open: false,
         repeat_alternative: 0,
-        repeat_close: 0,
+        repeat_close: -1,
         triplet_feel: TripletFeel::NONE,
         key_signature: KeySignature::default(),
         double_bar: false,
         marker: Marker::default(),
-        time_signature: TimeSignature {numerator: 4, denominator: 0, beams: vec![2, 2, 2, 2]}, //TODO: denominator
+        time_signature: TimeSignature {numerator: 4, denominator: Duration::default(), beams: vec![2, 2, 2, 2]}, //TODO: denominator
     }}
 }
 impl MeasureHeader {

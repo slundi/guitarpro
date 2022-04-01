@@ -1,3 +1,5 @@
+use fraction::ToPrimitive;
+
 /// A single point within the BendEffect
 #[derive(Clone)]
 pub struct BendPoint {
@@ -6,6 +8,13 @@ pub struct BendPoint {
     pub vibrato: bool,
 }
 impl Default for BendPoint { fn default() -> Self { BendPoint { position: 0, value: 0, vibrato: false }}}
+impl BendPoint {
+    /// Gets the exact time when the point need to be played (MIDI)
+    /// * `duration`: the full duration of the effect
+    fn get_time(&self, duration: u8) -> u16{
+        return (f32::from(duration) * f32::from(self.position) / f32::from(BEND_EFFECT_MAX_POSITION)).to_i16().expect("Cannot get bend point time") as u16;
+    }
+}
 
 /// All Bend presets
 #[derive(Clone)]
@@ -40,6 +49,7 @@ pub enum BendType {
     ReleaseDown
 }
 
+pub const BEND_EFFECT_MAX_POSITION: u8 =12;
 /// This effect is used to describe string bends and tremolo bars
 #[derive(Clone)]
 pub struct BendEffect {
@@ -53,19 +63,46 @@ pub struct BendEffect {
     /// The max value of the bend points (y axis)
     pub max_value: u8,
 }
-impl Default for BendEffect { fn default() -> Self { BendEffect { kind: BendType::None, value: 0, points: Vec::with_capacity(12), semi_tone_length: 1, max_position: 12, max_value: 12 /* semi_tone_length * 12 */ }}}
+impl Default for BendEffect { fn default() -> Self { BendEffect { kind: BendType::None, value: 0, points: Vec::with_capacity(12), semi_tone_length: 1, max_position: BEND_EFFECT_MAX_POSITION, max_value: 12 /* semi_tone_length * 12 */ }}}
 
-/// All transition types for grace notes
+/// All transition types for grace notes.
 #[derive(Clone)]
-pub enum GraceEffectTransition { None, Slide, Bend, Hammer }
+pub enum GraceEffectTransition {
+    ///No transition
+    None,
+    ///Slide from the grace note to the real one.
+    Slide,
+    ///Perform a bend from the grace note to the real one.
+    Bend,
+    ///Perform a hammer on.
+    Hammer
+}
+
+//A collection of velocities / dynamics
+pub const MIN_VELOCITY: u16 = 15;
+pub const VELOCITY_INCREMENT: u16 = 16;
+pub const PIANO_PIANISSIMO: u16 = MIN_VELOCITY * VELOCITY_INCREMENT;
+pub const PIANO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 2;
+pub const MEZZO_PIANO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 3;
+pub const MEZZO_FORTE: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 4;
+pub const FORTE: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 5;
+pub const FORTISSIMO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 6;
+pub const FORTE_FORTISSIMO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 7;
+pub const DEFAULT_VELOCITY: u16 = FORTE;
+
+/// A grace note effect
+#[derive(Clone)]
 pub struct GraceEffect {
     pub duration: u8,
     pub fret: i8,
     pub is_dead: bool,
     pub is_on_beat: bool,
     pub transition: GraceEffectTransition,
-    pub velocity: i32,
+    pub velocity: u16,
 }
-impl Default for GraceEffect {
-    fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::None, velocity: 0}} //TODO: velocity
+impl Default for GraceEffect { fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::None, velocity: DEFAULT_VELOCITY }}}
+impl GraceEffect {
+    pub fn duration_time(self) -> u16 {
+        return (f32::from(crate::key_signature::DURATION_QUARTER_TIME as i16) / 16f32 * f32::from(self.duration)).to_i16().expect("Cannot get bend point time") as u16;
+    }
 }

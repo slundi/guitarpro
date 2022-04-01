@@ -78,25 +78,25 @@ pub enum Fingering {
 /// A chord annotation for beats
 #[derive(Clone)]
 pub struct Chord {
-    length: u8,
-    sharp: Option<bool>,
-    root: Option<PitchClass>,
-    kind: Option<ChordType>,
-    extension: Option<ChordExtension>,
-    bass: Option<PitchClass>,
-    tonality: Option<ChordAlteration>,
-    add: Option<bool>,
-    name: String,
-    fifth: Option<ChordAlteration>,
-    ninth: Option<ChordAlteration>,
-    eleventh: Option<ChordAlteration>,
-    first_fret: Option<u8>,
-    strings: Vec<u8>,
-    barres: Vec<Barre>,
-    omissions: Vec<bool>,
-    fingerings: Vec<Fingering>,
-    show: Option<bool>,
-    new_format: Option<bool>,
+    pub length: u8,
+    pub sharp: Option<bool>,
+    pub root: Option<PitchClass>,
+    pub kind: Option<ChordType>,
+    pub extension: Option<ChordExtension>,
+    pub bass: Option<PitchClass>,
+    pub tonality: Option<ChordAlteration>,
+    pub add: Option<bool>,
+    pub name: String,
+    pub fifth: Option<ChordAlteration>,
+    pub ninth: Option<ChordAlteration>,
+    pub eleventh: Option<ChordAlteration>,
+    pub first_fret: Option<u8>,
+    pub strings: Vec<u8>,
+    pub barres: Vec<Barre>,
+    pub omissions: Vec<bool>,
+    pub fingerings: Vec<Fingering>,
+    pub show: Option<bool>,
+    pub new_format: Option<bool>,
 
     //TODO: def __attrs_post_init__(self): self.strings = <-1>, * self.length
     //TODO: @property def notes(self): return <string for string in self.strings if string >= 0>,
@@ -109,6 +109,9 @@ impl Default for Chord {
         first_fret: None, strings:Vec::new(), barres:Vec::new(), omissions:Vec::new(), fingerings:Vec::new(),
         show:None, new_format:None,
     }}
+}
+impl Chord {
+    //TODO: @property def notes(self): return [string for string in self.strings if string >= 0]
 }
 
 /// A single barre
@@ -126,19 +129,20 @@ pub const SHARP_NOTES: [&str; 12] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", 
 pub const FLAT_NOTES:  [&str; 12] = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 
 #[derive(Clone)]
-struct PitchClass {
-    note: String,
-    just: i8,
+pub struct PitchClass {
+    pub note: String,
+    pub just: i8,
     /// flat (-1), none (0) or sharp (1).
-    accidental: i8,
-    value: i8,
-    sharp: bool,
+    pub accidental: i8,
+    pub value: i8,
+    pub sharp: bool,
 }
 impl PitchClass {
 
     pub fn from(just: i8, accidental: Option<i8>, sharp: Option<bool>) -> PitchClass {
         let mut p = PitchClass {just:just, accidental:0, value:-1, sharp: true, note:String::with_capacity(2) };
         p.value = p.just % 12;
+        println!("VALUE: {}", p.value);
         let mut pitch = 0i8;
         if accidental.is_none() {
             p.note=String::from(SHARP_NOTES[p.value as usize]); //try: note = SHARP_NOTES[p.value]; except KeyError: note = FLAT_NOTES[p.value];
@@ -150,6 +154,7 @@ impl PitchClass {
             pitch = p.value;
             p.accidental = accidental.unwrap();
         }
+        println!("NOTE: {}", p.note);
         p.just = pitch % 12;
         p.value = p.just + p.accidental;
         if sharp.is_none() { p.sharp = p.accidental >= 0; }

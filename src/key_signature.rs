@@ -11,11 +11,15 @@ pub const DURATION_TWENTY_FOURTH: u8 = 24;
 pub const DURATION_THIRTY_SECOND: u8 = 32;
 pub const DURATION_SIXTY_FOURTH: u8 = 64;
 
+/// A time signature
 #[derive(Clone)]
 pub struct TimeSignature {
     pub numerator: i8,
-    pub denominator: i8,
+    pub denominator: Duration,
     pub beams: Vec<i32>,
+}
+impl Default for TimeSignature {
+    fn default() -> Self { TimeSignature { numerator: 4, denominator:Duration::default(), beams: vec![2,2,2,2]}}
 }
 
 #[derive(Clone)]
@@ -66,6 +70,7 @@ impl Duration {
         if result.denom().expect("Cannot get fraction denominator") == &1 {1}
         else {result.to_u8().expect("Cannot get fraction result")}
     }
+    //@classmethod def fromFraction(cls, frac): return cls(frac.denominator, frac.numerator)
 }
 impl Default for Duration {
     fn default() -> Self { Duration {
@@ -92,7 +97,7 @@ impl Tuplet {
     }
 }*/
 
-/*const KEY_F_MAJOR_FLAT: (i8, bool) = (-8, false);
+/* Enum ?: const KEY_F_MAJOR_FLAT: (i8, bool) = (-8, false);
 const KEY_C_MAJOR_FLAT: (i8, bool) = (-7, false);
 const KEY_G_MAJOR_FLAT: (i8, bool) = (-6, false);
 const KEY_D_MAJOR_FLAT: (i8, bool) = (-5, false);
