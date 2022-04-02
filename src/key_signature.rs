@@ -44,21 +44,23 @@ impl Duration {
     /// * *1*: eighth note
     /// * *2*: sixteenth note
     /// * *3*: thirty-second note
+    /// 
+    /// If flag at *0x20* is true, the tuplet is read
     pub fn read(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
         let mut d = Duration::default();
         d.value = 1 << (read_signed_byte(data, seek) + 2);
         d.dotted = (flags & 0x01) == 0x01;
         if (flags & 0x20) == 0x20 {
             let i_tuplet = read_int(data, seek);
-            if i_tuplet == 3 {}
-            else if i_tuplet == 5 {}
-            else if i_tuplet == 6 {}
-            else if i_tuplet == 7 {}
-            else if i_tuplet == 9 {}
-            else if i_tuplet == 10 {}
-            else if i_tuplet == 11 {}
-            else if i_tuplet == 12 {}
-            else if i_tuplet == 13 {}
+            if i_tuplet == 3       {d.tuplet_enters = 3;  d.tuplet_times = 2;}
+            else if i_tuplet == 5  {d.tuplet_enters = 5;  d.tuplet_times = 4;}
+            else if i_tuplet == 6  {d.tuplet_enters = 6;  d.tuplet_times = 4;}
+            else if i_tuplet == 7  {d.tuplet_enters = 7;  d.tuplet_times = 4;}
+            else if i_tuplet == 9  {d.tuplet_enters = 9;  d.tuplet_times = 8;}
+            else if i_tuplet == 10 {d.tuplet_enters = 10; d.tuplet_times = 8;}
+            else if i_tuplet == 11 {d.tuplet_enters = 11; d.tuplet_times = 8;}
+            else if i_tuplet == 12 {d.tuplet_enters = 12; d.tuplet_times = 8;}
+            else if i_tuplet == 13 {d.tuplet_enters = 13; d.tuplet_times = 8;}
         }
         return d;
     }
