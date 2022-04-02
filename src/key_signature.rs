@@ -22,7 +22,7 @@ impl Default for TimeSignature {
     fn default() -> Self { TimeSignature { numerator: 4, denominator:Duration::default(), beams: vec![2,2,2,2]}}
 }
 
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub struct Duration {
     pub value:u8,
     pub dotted: bool,

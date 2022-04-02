@@ -64,7 +64,7 @@ pub enum ChordExtension {
 
 //TODO: move fingering to note?
 /// Left and right hand fingering used in tabs and chord diagram editor.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Fingering {
     /// Open or muted.
     Open, //-1?
@@ -256,7 +256,7 @@ pub struct Barre {
 pub const SHARP_NOTES: [&str; 12] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 pub const FLAT_NOTES:  [&str; 12] = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PitchClass {
     pub note: String,
     pub just: i8,

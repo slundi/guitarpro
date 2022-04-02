@@ -1,10 +1,10 @@
 use fraction::ToPrimitive;
 use std::convert::Into;
 
-use crate::io::*;
+use crate::{io::*, chord::*, key_signature::*};
 
 /// A single point within the BendEffect
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub struct BendPoint {
     pub position: u8,
     pub value: u8,
@@ -20,7 +20,7 @@ impl BendPoint {
 }
 
 /// All Bend presets
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum BendType {
     /// No Preset.
     None,
@@ -57,7 +57,7 @@ pub const BEND_EFFECT_MAX_POSITION: u8 =12;
 pub const GP_BEND_SEMITONE: f32 = 25.0;
 pub const GP_BEND_POSITION: f32 = 60.0;
 /// This effect is used to describe string bends and tremolo bars
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct BendEffect {
     pub kind: BendType,
     pub value: i32,
@@ -111,7 +111,7 @@ impl BendEffect {
 }
 
 /// All transition types for grace notes.
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum GraceEffectTransition {
     ///No transition
     None,
@@ -140,7 +140,7 @@ fn unpack_velocity(v: u16) -> u16 {
 }
 
 /// A grace note effect
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct GraceEffect {
     pub duration: u8,
     pub fret: i8,
@@ -180,3 +180,37 @@ impl GraceEffect {
         return g;
     }
 }
+
+#[derive(Clone,PartialEq)]
+pub enum HarmonicType {
+    Natural, //1
+    Artificial,
+    Tapped,
+    Pinch,
+    Semi, //5
+}
+
+/// A harmonic note effect
+#[derive(Clone,PartialEq)]
+pub struct HarmonicEffect {
+    pub kind: HarmonicType,
+    //artificial harmonic
+    pub pitch: Option<PitchClass>,
+    pub octave:Option<i8>,
+    //tapped harmonic
+    pub fret: Option<i8>,
+}
+impl Default for HarmonicEffect { fn default() -> Self {HarmonicEffect { kind: HarmonicType::Natural, pitch: None, octave: None, fret: None}}}
+
+/// A tremolo picking effect.
+#[derive(Clone,PartialEq)]
+pub struct TremoloPickingEffect {duration: Duration,}
+impl Default for TremoloPickingEffect { fn default() -> Self {TremoloPickingEffect { duration: Duration::default() }}}
+
+/// A trill effect.
+#[derive(Clone,PartialEq)]
+pub struct TrillEffect {
+    fret: i8,
+    duration: Duration,
+}
+impl Default for TrillEffect { fn default() -> Self {TrillEffect { fret:0, duration: Duration::default() }}}
