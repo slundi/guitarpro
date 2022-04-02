@@ -53,6 +53,9 @@ pub enum BendType {
 }
 
 pub const BEND_EFFECT_MAX_POSITION: u8 =12;
+
+pub const GP_BEND_SEMITONE: f32 = 25.0;
+pub const GP_BEND_POSITION: f32 = 60.0;
 /// This effect is used to describe string bends and tremolo bars
 #[derive(Clone)]
 pub struct BendEffect {
@@ -60,13 +63,52 @@ pub struct BendEffect {
     pub value: i32,
     pub points: Vec<BendPoint>,
     /// The note offset per bend point offset
-    pub semi_tone_length: u8,
+    pub semitone_length: u8,
     /// The max position of the bend points (x axis)
     pub max_position: u8,
     /// The max value of the bend points (y axis)
     pub max_value: u8,
 }
-impl Default for BendEffect { fn default() -> Self { BendEffect { kind: BendType::None, value: 0, points: Vec::with_capacity(12), semi_tone_length: 1, max_position: BEND_EFFECT_MAX_POSITION, max_value: 12 /* semi_tone_length * 12 */ }}}
+impl Default for BendEffect { fn default() -> Self { BendEffect { kind: BendType::None, value: 0, points: Vec::with_capacity(12), semitone_length: 1, max_position: BEND_EFFECT_MAX_POSITION, max_value: 12 /* semi_tone_length * 12 */ }}}
+impl BendEffect {
+    /// Read a bend. It is encoded as:
+    /// - Bend type: `signed-byte`. See BendType.
+    /// - Bend value: `int`.
+    /// - Number of bend points: `int`.
+    /// - List of points. Each point consists of:
+    ///   * Position: `int`. Shows where point is set along *x*-axis.
+    ///   * Value: `int`. Shows where point is set along *y*-axis.
+    ///   * Vibrato: `bool`.
+    pub fn read(data: &Vec<u8>, seek: &mut usize) -> Option<BendEffect> {
+        let mut be = BendEffect::default();
+        be.kind = match read_signed_byte(data, seek) {
+            0 => BendType::None,
+            1 => BendType::Bend,
+            2 => BendType::BendRelease,
+            3 => BendType::BendReleaseBend,
+            4 => BendType::Prebend,
+            5 => BendType::PrebendRelease,
+            6 => BendType::Dip,
+            7 => BendType::Dive,
+            8 => BendType::ReleaseUp,
+            9 => BendType::InvertedDip,
+            10 => BendType::Return,
+            11 => BendType::ReleaseDown,
+            _ => panic!("Cannot read bend type"),
+        };
+        be.value = read_int(data, seek);
+        let count: u8 = read_int(data, seek).try_into().unwrap();
+        for _ in 0..count {
+            let mut bp = BendPoint::default();
+            bp.position = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(BEND_EFFECT_MAX_POSITION) / GP_BEND_POSITION).round().to_u8().unwrap();
+            bp.value = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(be.semitone_length) / GP_BEND_SEMITONE).round().to_u8().unwrap();
+            bp.vibrato = read_bool(data, seek);
+            be.points.push(bp);
+        }
+        if count > 0 {return Some(be);}
+        else {return None;}
+    }
+}
 
 /// All transition types for grace notes.
 #[derive(Clone)]
@@ -92,6 +134,10 @@ pub const FORTE: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 5;
 pub const FORTISSIMO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 6;
 pub const FORTE_FORTISSIMO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 7;
 pub const DEFAULT_VELOCITY: u16 = FORTE;
+/// Convert Guitar Pro dynamic value to raw MIDI velocity
+fn unpack_velocity(v: u16) -> u16 {
+    return MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT;
+}
 
 /// A grace note effect
 #[derive(Clone)]
@@ -121,7 +167,7 @@ impl GraceEffect {
     pub fn read(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
         let mut g = GraceEffect::default();
         g.fret = read_signed_byte(data, seek);
-        g.velocity = GraceEffect::unpack_velocity(read_byte(data, seek).into());
+        g.velocity = unpack_velocity(read_byte(data, seek).into());
         g.duration = 1 << (7 - read_byte(data, seek));
         g.is_dead = g.fret == -1;
         g.transition = match read_signed_byte(data, seek) {
@@ -129,12 +175,8 @@ impl GraceEffect {
             1 => GraceEffectTransition::Slide,
             2 => GraceEffectTransition::Bend,
             3 => GraceEffectTransition::Hammer,
-            _ => panic!("Cannot get transition for the grace effect")
+            _ => panic!("Cannot get transition for the grace effect"),
         };
         return g;
-    }
-    /// Convert Guitar Pro dynamic value to raw MIDI velocity
-    fn unpack_velocity(v: u16) -> u16 {
-        return MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT;
     }
 }

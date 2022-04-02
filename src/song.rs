@@ -21,9 +21,6 @@ pub const VERSION_4_0X: u8 = 40;
 pub const VERSION_5_00: u8 = 50;
 pub const VERSION_5_10: u8 = 51;
 
-const _GP_BEND_SEMITONE: f32 = 25.0;
-const _GP_BEND_POSITION: f32 = 60.0;
-
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
 #[derive(Clone)]
 pub struct Song {
