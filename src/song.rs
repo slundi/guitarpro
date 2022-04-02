@@ -1,3 +1,5 @@
+use fraction::ToPrimitive;
+
 use crate::io::*;
 use crate::key_signature::*;
 use crate::effects::*;
@@ -146,22 +148,22 @@ impl Song {
         if self.version.number == VERSION_5_00 || self.version.number == VERSION_5_10 {
             //self.lyrics = 
             Lyrics::read(data, &mut seek);
-        /*song.masterEffect = self.readRSEMasterEffect()
-        song.pageSetup = self.readPageSetup()
-        song.tempoName = self.readIntByteSizeString()
-        song.tempo = self.readInt()
-        song.hideTempo = self.readBool() if self.versionTuple > (5, 0, 0) else False
-        song.key = gp.KeySignature((self.readSignedByte(), 0))
-        self.readInt()  # octave
-        channels = self.readMidiChannels()
-        directions = self.readDirections()
-        song.masterEffect.reverb = self.readInt()
-        measureCount = self.readInt()
-        trackCount = self.readInt()
-        with self.annotateErrors('reading'):
-            self.readMeasureHeaders(song, measureCount, directions)
-            self.readTracks(song, trackCount, channels)
-            self.readMeasures(song) */
+            /*song.masterEffect = self.readRSEMasterEffect()
+            song.pageSetup = self.readPageSetup()
+            song.tempoName = self.readIntByteSizeString()
+            song.tempo = self.readInt()
+            song.hideTempo = self.readBool() if self.versionTuple > (5, 0, 0) else False
+            song.key = gp.KeySignature((self.readSignedByte(), 0))
+            self.readInt()  # octave
+            channels = self.readMidiChannels()
+            directions = self.readDirections()
+            song.masterEffect.reverb = self.readInt()
+            measureCount = self.readInt()
+            trackCount = self.readInt()
+            with self.annotateErrors('reading'):
+                self.readMeasureHeaders(song, measureCount, directions)
+                self.readTracks(song, trackCount, channels)
+                self.readMeasures(song) */
         }
     }
 
@@ -237,18 +239,17 @@ impl Song {
         track.twelve_stringed_guitar_track = (flags & 0x02) == 0x02; //12 stringed guitar track
         track.banjo_track = (flags & 0x04) == 0x04; //Banjo track
 
-        track.name = read_byte_size_string(data, seek); //FIXME: read 40 chars
+        track.name = read_byte_size_string(data, seek);
         *seek += 40 - track.name.len();
         println!("Track: {}", track.name);
-        let string_count = read_int(data, seek) as u8;
+        let string_count = read_int(data, seek).to_u8().unwrap();
         track.strings.clear();
-        for i in 0u8..7u8 {
-            let i_tuning = read_int(data, seek) as u8;
-            if string_count > i {
-                track.strings.push((i + 1 as u8, i_tuning));
-            }
+        for i in 0i8..7i8 {
+            let i_tuning = read_int(data, seek).to_i8().unwrap();
+            //println!("tuning: {}", i_tuning);
+            if string_count.to_i8().unwrap() > i { track.strings.push((i + 1, i_tuning)); }
         }
-        track.port = read_int(data, seek) as u8;
+        track.port = read_int(data, seek).to_u8().unwrap();
         // Read MIDI channel. MIDI channel in Guitar Pro is represented by two integers. First
         // is zero-based number of channel, second is zero-based number of channel used for effects.
         let index = read_int(data, seek) -1 ;
@@ -256,11 +257,11 @@ impl Song {
         if 0 <= index && (index as usize) < self.channels.len() {
             track.channel = self.channels[index as usize].clone();
             if track.channel.get_instrument() < 0 {track.channel.set_instrument(0);}
-            if !track.channel.is_percussion_channel() {track.channel.effect_channel = effect_channel as u8;}
+            if !track.channel.is_percussion_channel() {track.channel.effect_channel = effect_channel.to_u8().unwrap();}
         }
         //
         if track.channel.channel == 9 {track.percussion_track = true;}
-        track.fret_count = read_int(data, seek) as u8;
+        track.fret_count = read_int(data, seek).to_u8().unwrap();
         track.offset = read_int(data, seek);
         track.color = read_color(data, seek);
         //println!("\tInstrument: {} \t Strings: {} {} ({:?})", track.channel.get_instrument_name(), string_count, track.strings.len(), track.strings);
@@ -270,9 +271,9 @@ impl Song {
     fn read_repeat_alternative(&mut self, data: &Vec<u8>, seek: &mut usize) -> i8 {
         let value = read_byte(data, seek);
         let mut existing_alternative = 0i8;
-        for h in self.measure_headers.clone() {
-            if h.repeat_open {break;}
-            existing_alternative |= h.repeat_alternative;
+        for i in self.measure_headers.len()-1 .. 0 {
+            if self.measure_headers[i].repeat_open {break;}
+            existing_alternative |= self.measure_headers[i].repeat_alternative;
         }
         return (1 << value) - 1 ^ existing_alternative;
     }
@@ -295,7 +296,7 @@ impl Song {
                         for b in 0..beats {
                             //self._currentBeatNumber = beat + 1
                             //start += self.readBeat(start, voice)
-                            let flags = read_byte(data, seek);
+                            //let flags = read_byte(data, seek);
                             //beat = self.getBeat(voice, start)
                         }
                     }
@@ -459,7 +460,7 @@ pub struct Track {
     pub visible: bool,
 	pub name: String,
     /// A guitar string with a special tuning.
-	pub strings: Vec<(u8, u8)>,
+	pub strings: Vec<(i8, i8)>,
 	pub color: i32,
     pub percussion_track: bool,
     pub twelve_stringed_guitar_track: bool,

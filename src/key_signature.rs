@@ -24,13 +24,20 @@ impl Default for TimeSignature {
 
 #[derive(Clone,PartialEq)]
 pub struct Duration {
-    pub value:u8,
+    pub value:u16,
     pub dotted: bool,
     pub double_dotted:bool,
     /// The time resulting with a 64th note and a 3/2 tuplet
     pub min_time: u8,
     //Tuplet division type
     pub tuplet_enters:u8, pub tuplet_times:u8
+}
+impl Default for Duration {
+    fn default() -> Self { Duration {
+        value: DURATION_QUARTER as u16, dotted: false, double_dotted: false,
+        tuplet_enters:1, tuplet_times:1,
+        min_time: 0
+    }}
 }
 impl Duration {
     //fn convert_time(&self, time: u64) -> u64 { return time * self.division_times as u64 / self.division_enters as u64; }
@@ -48,7 +55,10 @@ impl Duration {
     /// If flag at *0x20* is true, the tuplet is read
     pub fn read(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
         let mut d = Duration::default();
-        d.value = 1 << (read_signed_byte(data, seek) + 2);
+        let b = read_signed_byte(data, seek);
+        println!("B: {}", b);
+        //d.value = 1 << (read_signed_byte(data, seek) + 2);
+        d.value = 1 << (b + 2);
         d.dotted = (flags & 0x01) == 0x01;
         if (flags & 0x20) == 0x20 {
             let i_tuplet = read_int(data, seek);
@@ -90,13 +100,6 @@ impl Duration {
         return index
     }
     //@classmethod def fromFraction(cls, frac): return cls(frac.denominator, frac.numerator)
-}
-impl Default for Duration {
-    fn default() -> Self { Duration {
-        value: DURATION_QUARTER, dotted: false, double_dotted: false,
-        tuplet_enters:1, tuplet_times:1,
-        min_time: 0
-    }}
 }
 
 /*/// A *n:m* tuplet.
