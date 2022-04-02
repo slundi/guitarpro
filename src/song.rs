@@ -2,6 +2,7 @@ use crate::io::*;
 use crate::key_signature::*;
 use crate::effects::*;
 use crate::midi::*;
+use crate::rse::*;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -27,47 +28,57 @@ const _GP_BEND_POSITION: f32 = 60.0;
 #[derive(Clone)]
 pub struct Song {
     pub version: Version,
+    pub clipboard: Option<Clipboard>,
+
     pub name: String,
     pub subtitle: String, //Guitar Pro
 	pub artist: String,
 	pub album: String,
     pub words: String, //GP
-	pub author: String,
+	pub author: String, //music by
 	pub date: String,
 	pub copyright: String,
+    /// Tab writer
 	pub writer: String,
 	pub transcriber: String,
     pub instructions: String,
 	pub comments: String,
+    pub notice: Vec<String>,
 
 	pub tracks: Vec<Track>,
 	pub measure_headers: Vec<MeasureHeader>,
 	pub channels: Vec<MidiChannel>,
     pub lyrics: Lyrics,
     pub tempo: i16,
+    pub hide_tempo: bool,
+    pub tempo_name:String,
     pub key: KeySignature,
 
     pub triplet_feel: TripletFeel,
     pub current_measure_number: Option<u16>,
     pub current_track: Option<Track>,
+    pub master_effect: RseMasterEffect,
 }
 
 impl Default for Song {
 	fn default() -> Self { Song {
-        version: Version {data: String::with_capacity(30), clipboard: false, number: 0},
+        version: Version {data: String::with_capacity(30), clipboard: false, number: 0}, clipboard: None,
 		name:String::new(), subtitle: String::new(), artist:String::new(), album: String::new(),
         words: String::new(), author:String::new(), date:String::new(),
         copyright:String::new(), writer:String::new(), transcriber:String::new(), comments:String::new(),
+        notice:Vec::new(),
         instructions: String::new(),
 		tracks:Vec::new(),
 		measure_headers:Vec::new(),
 		channels:Vec::with_capacity(64),
         lyrics: Lyrics::default(),
-        tempo: 0,
+        tempo: 120, hide_tempo: false, tempo_name:String::from("Moderate"),
         key: KeySignature::default(),
 
         triplet_feel: TripletFeel::NONE,
         current_measure_number: None, current_track: None,
+
+        master_effect: RseMasterEffect::default(),
 	}}
 }
 
@@ -97,12 +108,13 @@ impl Song {
         self.artist      = read_int_size_string(data, seek);
         self.album       = read_int_size_string(data, seek);
         self.words       = read_int_size_string(data, seek); //music
+        self.author      = self.words.clone(); //GP3
         self.copyright   = read_int_size_string(data, seek);
         self.writer      = read_int_size_string(data, seek); //tabbed by
         self.instructions= read_int_size_string(data, seek); //instructions
         //notices
-        let nc = read_int(data, seek) as usize;
-        if nc >0 { for i in 0..nc {  println!("  {}\t\t{}",i, read_int_size_string(data, seek)); }}
+        let nc = read_int(data, seek) as usize; //notes count
+        if nc >0 { for i in 0..nc { self.notice.push(read_int_size_string(data, seek)); println!("  {}\t\t{}",i, self.notice[self.notice.len()-1]); }}
     }
 
     pub fn read_data(&mut self, data: &Vec<u8>) {
@@ -339,7 +351,14 @@ impl Song {
     }
 }
 
-struct Clipboard {
+/// A navigation sign like *Coda* (𝄌: U+1D10C) or *Segno* (𝄋 or 𝄉: U+1D10B or U+1D109).
+#[derive(Clone)]
+pub enum DirectionSign {
+    Coda, Segno,
+}
+
+#[derive(Clone)]
+pub struct Clipboard {
     pub start_measure: i32,
     pub stop_measure: i32,
     pub start_track: i32,
@@ -426,7 +445,8 @@ impl Default for MeasureHeader {
     }}
 }
 impl MeasureHeader {
-    pub fn length(&self) -> i64 {0 /*TODO: return (self.time_signature.numerator as i64) * (self.time_signature.denominator.time as i64);*/}
+    pub fn length(&self) -> i64 {return (self.time_signature.numerator as i64) * (self.time_signature.denominator.time() as i64);}
+    pub fn end(&self) -> i64 {return self.start + self.length();}
 }
 
 pub struct _BeatData {
@@ -490,6 +510,7 @@ pub struct Track {
     pub fret_count: u8,
     pub indicate_tuning: bool,
     pub use_rse: bool,
+    pub rse: TrackRse,
 }
 impl Default for Track {
     fn default() -> Self { Track {
@@ -504,8 +525,7 @@ impl Default for Track {
         color: 0xff0000,
         port: 1,
         indicate_tuning: false,
-        use_rse: false,
-        
+        use_rse: false, rse: TrackRse::default()
     }}
 }
 

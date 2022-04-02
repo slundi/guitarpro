@@ -63,12 +63,29 @@ impl Duration {
         return d;
     }
 
-    pub fn is_supported(self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times)); }
+    pub fn is_supported(&self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times)); }
 
-    pub fn convert_time(self) -> u8 {
-        let result = fraction::Fraction::new(self.tuplet_enters, self.tuplet_times);
+    pub fn convert_time(&self, time: u8) -> u8 {
+        let result = fraction::Fraction::new(time * self.tuplet_enters, self.tuplet_times);
         if result.denom().expect("Cannot get fraction denominator") == &1 {1}
         else {result.to_u8().expect("Cannot get fraction result")}
+    }
+
+    pub fn time(&self) -> u8 {
+        let mut result = (f64::from(DURATION_QUARTER_TIME as i32) * 4f64 / f64::from(self.value)).trunc();
+        if self.dotted { result += (result/2f64).trunc(); }
+        return self.convert_time(result as u8);
+    }
+
+    pub fn index(&self) -> u8 {
+        let mut index = 0u8;
+        let mut value = self.value;
+        loop {
+            value = value >> 1;
+            if value > 0 {index += 1;}
+            else {break;}
+        }
+        return index
     }
     //@classmethod def fromFraction(cls, frac): return cls(frac.denominator, frac.numerator)
 }
