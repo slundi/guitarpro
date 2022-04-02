@@ -8,3 +8,4 @@ mod key_signature;
 mod midi;
 mod mix_table;
 mod chord;
+mod page;

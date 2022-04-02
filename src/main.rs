@@ -13,6 +13,7 @@ mod key_signature;
 mod midi;
 mod mix_table;
 mod chord;
+mod page;
 
 const GUITAR_FILE_MAX_SIZE:usize = 16777216; //16 MB, it should be enough
 
