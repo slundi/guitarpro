@@ -11,3 +11,4 @@ mod chord;
 mod page;
 mod rse;
 mod note;
+mod lyric;
