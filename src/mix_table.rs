@@ -1,3 +1,5 @@
+use crate::rse::*;
+
 /// A mix table item describes a mix parameter, e.g. volume or reverb
 #[derive(Clone)]
 pub struct MixTableItem {
@@ -28,7 +30,7 @@ impl WahEffect {
 #[derive(Clone)]
 pub struct MixTableChange {
     pub instrument: Option<MixTableItem>,
-    //TODO: pub rse: RSEInstrument = attr.Factory(RSEInstrument)
+    pub rse: RseInstrument,
     pub volume: Option<MixTableItem>,
     pub balance: Option<MixTableItem>,
     pub chorus: Option<MixTableItem>,
@@ -41,8 +43,8 @@ pub struct MixTableChange {
     pub wah: Option<WahEffect>,
     pub use_rse: bool,
 }
-impl Default for MixTableChange { fn default() -> Self { MixTableChange { instrument:None, /*rse:,*/ volume:None, balance:None, chorus:None, reverb:None, phaser:None, tremolo:None,
-        tempo_name:String::new(), tempo:None, hide_tempo:true, wah:None, use_rse:false
+impl Default for MixTableChange { fn default() -> Self { MixTableChange { instrument:None, rse:RseInstrument::default(), volume:None, balance:None, chorus:None, reverb:None, phaser:None, tremolo:None,
+        tempo_name:String::new(), tempo:None, hide_tempo:true, wah:None, use_rse:false, 
 }}}
 impl MixTableChange {
     pub fn is_just_wah(&self) -> bool {
