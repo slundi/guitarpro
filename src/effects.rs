@@ -1,4 +1,7 @@
 use fraction::ToPrimitive;
+use std::convert::Into;
+
+use crate::io::*;
 
 /// A single point within the BendEffect
 #[derive(Clone)]
@@ -104,5 +107,34 @@ impl Default for GraceEffect { fn default() -> Self { GraceEffect {duration: 1, 
 impl GraceEffect {
     pub fn duration_time(self) -> u16 {
         return (f32::from(crate::key_signature::DURATION_QUARTER_TIME as i16) / 16f32 * f32::from(self.duration)).to_i16().expect("Cannot get bend point time") as u16;
+    }
+
+    /// Read grace note effect.
+    /// 
+    /// - Fret: `signed-byte`. Number of fret.
+    /// - Dynamic: `byte`. Dynamic of a grace note.
+    /// - Transition: `byte`. See GraceEffectTransition`.
+    /// - Duration: `byte`. Values are:
+    ///   - *1*: Thirty-second note.
+    ///   - *2*: Twenty-fourth note.
+    ///   - *3*: Sixteenth note.
+    pub fn read(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
+        let mut g = GraceEffect::default();
+        g.fret = read_signed_byte(data, seek);
+        g.velocity = GraceEffect::unpack_velocity(read_byte(data, seek).into());
+        g.duration = 1 << (7 - read_byte(data, seek));
+        g.is_dead = g.fret == -1;
+        g.transition = match read_signed_byte(data, seek) {
+            0 => GraceEffectTransition::None,
+            1 => GraceEffectTransition::Slide,
+            2 => GraceEffectTransition::Bend,
+            3 => GraceEffectTransition::Hammer,
+            _ => panic!("Cannot get transition for the grace effect")
+        };
+        return g;
+    }
+    /// Convert Guitar Pro dynamic value to raw MIDI velocity
+    fn unpack_velocity(v: u16) -> u16 {
+        return MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT;
     }
 }
