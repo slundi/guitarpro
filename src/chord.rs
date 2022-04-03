@@ -5,7 +5,7 @@ use fraction::ToPrimitive;
 use crate::io::*;
 
 /// Type of the chord.
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum ChordType {
     /// Major chord.
     Major,
@@ -40,7 +40,7 @@ pub enum ChordType {
 }
 
 /// Tonality of the chord
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum ChordAlteration {
     /// Perfect.
     Perfect,
@@ -51,7 +51,7 @@ pub enum ChordAlteration {
 }
 
 /// Extension type of the chord
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum ChordExtension {
     None,
     /// Ninth chord.
@@ -64,7 +64,7 @@ pub enum ChordExtension {
 
 //TODO: move fingering to note?
 /// Left and right hand fingering used in tabs and chord diagram editor.
-#[derive(Clone, PartialEq)]
+#[derive(Clone,PartialEq)]
 pub enum Fingering {
     /// Open or muted.
     Open, //-1?
@@ -80,7 +80,7 @@ pub enum Fingering {
     Little,
 }
 /// A chord annotation for beats
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub struct Chord {
     pub length: u8,
     pub sharp: Option<bool>,
@@ -243,7 +243,7 @@ impl Chord {
 }
 
 /// A single barre
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub struct Barre {
     pub fret: i8,
     /// First string from the bottom of the barre

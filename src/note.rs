@@ -1,5 +1,31 @@
 use crate::{effects::*, chord::*, io::*};
 
+#[derive(Clone, PartialEq)]
+pub struct Note {
+    //TODO: pub beat: Beat,
+    value: u16,
+    velocity: u16,
+    string: u8,
+    effect: NoteEffect,
+    duration_percent: f32,
+    swap_accidentals: bool,
+    kind: NoteType,
+}
+impl Default for Note {fn default() -> Self {Note {
+    //beat: Beat::default(),
+    value: 0,
+    velocity: DEFAULT_VELOCITY,
+    string: 0,
+    effect: NoteEffect::default(),
+    duration_percent:1.0,
+    swap_accidentals: false,
+    kind: NoteType::Rest,
+}}}
+impl Note {
+    /*pub fn real_value(&self) {
+        return self.value + self.beat.voice.measure.track.strings[self.string -1].value;
+    }*/
+}
 
 /// Contains all effects which can be applied to one note.
 #[derive(Clone, PartialEq)]
@@ -101,7 +127,7 @@ pub enum SlideType {
 }
 
 /// An enumeration of all supported slide types.
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum NoteType {
     Rest, //0
     Normal, Tie, Dead,

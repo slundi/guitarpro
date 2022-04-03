@@ -289,12 +289,13 @@ impl Song {
                 m.header= self.measure_headers[h].clone(); //self._currentMeasureNumber = measure.number
                 { //Read a measure
                     let start = self.measure_headers[h].start;
-                    //let voice = &m.voices[0];
-                    //current_voice_number = 1
+                    let voice = Voice::default(); //&m.voices[0];
+                    let mut current_voice_number = 1;
+                    let mut current_beat_number = 1;
                     { //read_voice
-                        let beats = read_int(data, seek) as usize;
+                        let beats = read_int(data, seek).to_usize().unwrap();
                         for b in 0..beats {
-                            //self._currentBeatNumber = beat + 1
+                            current_beat_number = b + 1
                             //start += self.readBeat(start, voice)
                             //let flags = read_byte(data, seek);
                             //beat = self.getBeat(voice, start)
@@ -603,19 +604,21 @@ pub struct Measure {
     pub track: Track,
     pub header: MeasureHeader,
     pub clef: MeasureClef,
+    /// Max voice count is 2
     pub voices: Vec<Voice>, 
     pub line_break: LineBreak,
 }
-impl Default for Measure {fn default() -> Self { Measure {track: Track::default(), header: MeasureHeader::default(), clef: MeasureClef::Treble, voices: Vec::new(), line_break: LineBreak::None }}}
+impl Default for Measure {fn default() -> Self { Measure {track: Track::default(), header: MeasureHeader::default(), clef: MeasureClef::Treble, voices: Vec::with_capacity(2), line_break: LineBreak::None }}}
 
 /// A voice contains multiple beats
 #[derive(Clone)]
 pub struct Voice {
-    pub measure: Measure, //circular depth?
+    //pub measure: Measure, //circular depth?
+    pub measure_index: i16,
     pub beats: Vec<Beat>,
     pub directions: VoiceDirection,
 }
-impl Default for Voice {fn default() -> Self { Voice { measure: Measure::default(), beats: Vec::new(), directions: VoiceDirection::None }}}
+impl Default for Voice {fn default() -> Self { Voice { measure_index: 0, /*measure: Measure::default(),*/ beats: Vec::new(), directions: VoiceDirection::None }}}
 
 #[derive(Clone)]
 pub struct Beat {

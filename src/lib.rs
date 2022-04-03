@@ -12,3 +12,4 @@ mod page;
 mod rse;
 mod note;
 mod lyric;
+mod beat;

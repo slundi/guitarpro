@@ -17,6 +17,7 @@ mod page;
 mod rse;
 mod note;
 mod lyric;
+mod beat;
 
 const GUITAR_FILE_MAX_SIZE:usize = 16777216; //16 MB, it should be enough
 
