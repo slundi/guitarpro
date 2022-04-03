@@ -7,7 +7,7 @@ use crate::{io::*, chord::*, key_signature::*};
 #[derive(Clone,PartialEq)]
 pub struct BendPoint {
     pub position: u8,
-    pub value: u8,
+    pub value: i8,
     pub vibrato: bool,
 }
 impl Default for BendPoint { fn default() -> Self { BendPoint { position: 0, value: 0, vibrato: false }}}
@@ -60,7 +60,7 @@ pub const GP_BEND_POSITION: f32 = 60.0;
 #[derive(Clone, PartialEq)]
 pub struct BendEffect {
     pub kind: BendType,
-    pub value: i32,
+    pub value: i16,
     pub points: Vec<BendPoint>,
     /// The note offset per bend point offset
     pub semitone_length: u8,
@@ -96,12 +96,12 @@ impl BendEffect {
             11 => BendType::ReleaseDown,
             _ => panic!("Cannot read bend type"),
         };
-        be.value = read_int(data, seek);
+        be.value = read_int(data, seek).to_i16().unwrap();
         let count: u8 = read_int(data, seek).try_into().unwrap();
         for _ in 0..count {
             let mut bp = BendPoint::default();
             bp.position = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(BEND_EFFECT_MAX_POSITION) / GP_BEND_POSITION).round().to_u8().unwrap();
-            bp.value = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(be.semitone_length) / GP_BEND_SEMITONE).round().to_u8().unwrap();
+            bp.value = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(be.semitone_length) / GP_BEND_SEMITONE).round().to_i8().unwrap();
             bp.vibrato = read_bool(data, seek);
             be.points.push(bp);
         }

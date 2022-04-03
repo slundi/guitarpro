@@ -10,6 +10,7 @@ pub const DURATION_SIXTEENTH: u8 = 16;
 pub const DURATION_TWENTY_FOURTH: u8 = 24;
 pub const DURATION_THIRTY_SECOND: u8 = 32;
 pub const DURATION_SIXTY_FOURTH: u8 = 64;
+pub const DURATION_HUNDRED_TWENTY_EIGHTH: u8 = 128;
 
 /// A time signature
 #[derive(Clone)]
