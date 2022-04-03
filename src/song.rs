@@ -587,15 +587,15 @@ pub enum MeasureClef { Treble, Bass, Tenor, Alto }
 #[derive(Clone)]
 pub enum LineBreak { None, Break, Protect }
 /// Voice directions indicating the direction of beams
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum VoiceDirection { None, Up, Down }
 /// All beat stroke directions
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum BeatStrokeDirection { None, Up, Down }
 #[derive(Clone)]
 pub enum BeatStatus { Empty, Normal, Rest }
 /// Characteristic of articulation
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }
 
 /// "A measure contains multiple voices of beats
@@ -624,7 +624,3 @@ impl Default for Voice {fn default() -> Self { Voice { measure_index: 0, /*measu
 pub struct Beat {
 
 }
-
-/// Octave signs
-#[derive(Clone)]
-pub enum Octave { None, Ottava, Quindicesima, Ottavabassa, Quindicesimabassa }

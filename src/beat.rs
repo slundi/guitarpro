@@ -1,4 +1,4 @@
-use crate::{gp::*, mix_table::*, effects::*, chord::*};
+use crate::{gp::*, mix_table::*, effects::*, chord::*, key_signature::*, note::*};
 
 
 #[derive(Clone,PartialEq)]
@@ -6,6 +6,46 @@ pub enum BeatStatus {Empty, Normal, Rest}
 
 #[derive(Clone,PartialEq)]
 pub enum TupletBracket {None, Start, End}
+
+/// Octave signs
+#[derive(Clone,PartialEq)]
+pub enum Octave { None, Ottava, Quindicesima, Ottavabassa, Quindicesimabassa }
+
+/// A beat contains multiple notes
+#[derive(Clone,PartialEq)]
+pub struct Beat {
+    //TODO: pub voice: Voice,
+    pub notes: Vec<Note>,
+    pub duration: Duration,
+    pub text: String,
+    pub start: Option<u16>,
+    pub effect: BeatEffect,
+    pub octave: Octave,
+    pub display: BeatDisplay,
+    pub status: BeatStatus,
+}
+impl Default for Beat { fn default() -> Self { Beat {
+    //voice
+    notes: Vec::with_capacity(12),
+    duration: Duration::default(),
+    text: String::new(),
+    start: None,
+    effect: BeatEffect::default(),
+    octave: Octave::None,
+    display: BeatDisplay::default(),
+    status: BeatStatus::Empty,
+}}}
+impl Beat {
+    //pub fn start_in_measure(&self) -> u16 {return self.start - self.voice.measure.start;}
+    pub fn has_vibrato(&self) -> bool {
+        for i in 0..self.notes.len() {if self.notes[i].effect.vibrato {return true}}
+        return false;
+    }
+    pub fn has_harmonic(&self) {
+        for i in 0..self.notes.len() {if self.notes[i].effect.is_harmonic() {return true;}}
+        return false
+    }
+}
 
 /// Parameters of beat display
 #[derive(Clone,PartialEq)]

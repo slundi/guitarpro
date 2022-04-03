@@ -3,13 +3,13 @@ use crate::{effects::*, chord::*, io::*};
 #[derive(Clone, PartialEq)]
 pub struct Note {
     //TODO: pub beat: Beat,
-    value: u16,
-    velocity: u16,
-    string: u8,
-    effect: NoteEffect,
-    duration_percent: f32,
-    swap_accidentals: bool,
-    kind: NoteType,
+    pub value: u16,
+    pub velocity: u16,
+    pub string: u8,
+    pub effect: NoteEffect,
+    pub duration_percent: f32,
+    pub swap_accidentals: bool,
+    pub kind: NoteType,
 }
 impl Default for Note {fn default() -> Self {Note {
     //beat: Beat::default(),
@@ -30,22 +30,22 @@ impl Note {
 /// Contains all effects which can be applied to one note.
 #[derive(Clone, PartialEq)]
 pub struct NoteEffect {
-    accentuated_note: bool,
-    bend: Option<BendEffect>,
-    ghost_note: bool,
-    grace: Option<GraceEffect>,
-    hammer: bool,
-    harmonic: Option<HarmonicEffect>,
-    heavy_accentuated_note: bool,
-    left_hand_finger: Fingering,
-    let_ring: bool,
-    palm_mute: bool,
-    right_hand_finger: Fingering,
-    slides: Vec<SlideType>,
-    staccato: bool,
-    tremolo_picking: Option<TremoloPickingEffect>,
-    trill: Option<TrillEffect>,
-    vibrato: bool,
+    pub accentuated_note: bool,
+    pub bend: Option<BendEffect>,
+    pub ghost_note: bool,
+    pub grace: Option<GraceEffect>,
+    pub hammer: bool,
+    pub harmonic: Option<HarmonicEffect>,
+    pub heavy_accentuated_note: bool,
+    pub left_hand_finger: Fingering,
+    pub let_ring: bool,
+    pub palm_mute: bool,
+    pub right_hand_finger: Fingering,
+    pub slides: Vec<SlideType>,
+    pub staccato: bool,
+    pub tremolo_picking: Option<TremoloPickingEffect>,
+    pub trill: Option<TrillEffect>,
+    pub vibrato: bool,
 }
 impl Default for NoteEffect {
     fn default() -> Self {NoteEffect {
