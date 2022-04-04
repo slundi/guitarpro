@@ -1,6 +1,6 @@
 use fraction::ToPrimitive;
 
-use crate::{io::*, gp::*, rse::*};
+use crate::{io::*, gp::*, rse::*, measure::*};
 
 /// Settings of the track.
 #[derive(Clone)]
@@ -52,6 +52,7 @@ pub struct Track {
     pub indicate_tuning: bool,
     pub use_rse: bool,
     pub rse: TrackRse,
+    pub measures: Vec<Measure>,
 }
 impl Default for Track {
     fn default() -> Self { Track {
@@ -66,7 +67,8 @@ impl Default for Track {
         color: 0xff0000,
         port: 1,
         indicate_tuning: false,
-        use_rse: false, rse: TrackRse::default()
+        use_rse: false, rse: TrackRse::default(),
+        measures: Vec::new(),
     }}
 }
 /// Read a  track. The first byte is the track's flags. It presides the track's attributes:

@@ -1,11 +1,9 @@
-use fraction::ToPrimitive;
 
 use crate::io::*;
 use crate::headers::*;
 use crate::measure::*;
 use crate::track::*;
 use crate::key_signature::*;
-use crate::beat::*;
 use crate::lyric::*;
 use crate::midi::*;
 use crate::rse::*;
@@ -42,9 +40,13 @@ pub struct Song {
     pub key: KeySignature,
 
     pub triplet_feel: TripletFeel,
-    pub current_measure_number: Option<u16>,
-    pub current_track: Option<Track>,
     pub master_effect: RseMasterEffect,
+
+    //Used to read the file
+    pub current_measure_number: Option<usize>,
+    pub current_track: Option<usize>,
+    pub current_voice_number: Option<usize>,
+    pub current_beat_number: Option<usize>,
 }
 
 impl Default for Song {
@@ -63,7 +65,7 @@ impl Default for Song {
         key: KeySignature::default(),
 
         triplet_feel: TripletFeel::NONE,
-        current_measure_number: None, current_track: None,
+        current_measure_number: None, current_track: None, current_voice_number: None, current_beat_number: None,
 
         master_effect: RseMasterEffect::default(),
 	}}
@@ -108,7 +110,7 @@ impl Song {
             //self.current_measure_number = Some(0);
             // read tracks //TODO: FIXME
             for i in 0..track_count {read_track(data, &mut seek, self, i);}
-            self.read_measures(data, &mut seek);
+            read_measures(data, &mut seek, self);
             if self.version.number == VERSION_4_0X {} //annotate error reading
         }
         //read GP5 information
@@ -132,39 +134,6 @@ impl Song {
                 self.readTracks(song, trackCount, channels)
                 self.readMeasures(song) */
         }
-    }
-
-    fn read_measures(&mut self, data: &Vec<u8>, seek: &mut usize) {
-        let mut start = DURATION_QUARTER_TIME;
-        for h in 0..self.measure_headers.len() {
-            self.measure_headers[h].start = start;
-            for t in 0..self.tracks.len() {
-                self.current_track = Some(self.tracks[t].clone());
-                let mut m = Measure::default();
-                m.track_index = t; //measure = gp.Measure(track, header)
-                m.header_index= h; //self._currentMeasureNumber = measure.number
-                { //Read a measure
-                    let start = self.measure_headers[h].start;
-                    let voice = Voice::default(); //&m.voices[0];
-                    let mut current_voice_number = 1;
-                    let mut current_beat_number = 1;
-                    { //read_voice
-                        let beats = read_int(data, seek).to_usize().unwrap();
-                        for b in 0..beats {
-                            current_beat_number = b + 1
-                            //start += self.readBeat(start, voice)
-                            //let flags = read_byte(data, seek);
-                            //beat = self.getBeat(voice, start)
-                        }
-                    }
-                    //current_voice_number = None
-                }
-                //track.measures.append(measure)
-            }
-            start += self.measure_headers[h].length();
-        }
-        self.current_track = None;
-        self.current_measure_number = None;
     }
     /*fn read_measure(&mut self, data: &Vec<u8>, seek: &mut usize) -> Measure {
         //let mut m = Measure::new();

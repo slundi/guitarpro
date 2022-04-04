@@ -57,7 +57,7 @@ impl MixTableChange {
 /// Read mix table change. List of values is read first. See `read_values()`.
 /// 
 /// List of values is followed by the list of durations for parameters that have changed. See `read_durations()`.
-pub fn read(data: &Vec<u8>, seek: &mut usize) -> MixTableChange {
+pub fn read_mix_table_change(data: &Vec<u8>, seek: &mut usize) -> MixTableChange {
     let mut tc = MixTableChange::default();
     read_mix_table_change_values(data, seek, &mut tc);
     read_mix_table_change_durations(data, seek, &mut tc);

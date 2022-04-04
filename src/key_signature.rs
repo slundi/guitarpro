@@ -35,7 +35,7 @@ pub struct Duration {
 }
 impl Default for Duration {
     fn default() -> Self { Duration {
-        value: DURATION_QUARTER as u16, dotted: false, double_dotted: false,
+        value: DURATION_QUARTER.to_u16().unwrap(), dotted: false, double_dotted: false,
         tuplet_enters:1, tuplet_times:1,
         min_time: 0
     }}
@@ -82,10 +82,10 @@ impl Duration {
 /// If flag at *0x20* is true, the tuplet is read
 pub fn read_duration(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
     let mut d = Duration::default();
-    let b = read_signed_byte(data, seek);
+    //let b = read_signed_byte(data, seek);
     println!("B: {}", b);
-    //d.value = 1 << (read_signed_byte(data, seek) + 2);
-    d.value = 1 << (b + 2);
+    d.value = 1 << (read_signed_byte(data, seek) + 2); //TODO: FIXME: overflow
+    //d.value = 1 << (b + 2);
     d.dotted = (flags & 0x01) == 0x01;
     if (flags & 0x20) == 0x20 {
         let i_tuplet = read_int(data, seek);
