@@ -155,18 +155,30 @@ impl GraceEffect {
 }
 /// Read grace note effect.
 /// 
-/// - Fret: `signed-byte`. Number of fret.
-/// - Dynamic: `byte`. Dynamic of a grace note.
-/// - Transition: `byte`. See GraceEffectTransition`.
-/// - Duration: `byte`. Values are:
-///   - *1*: Thirty-second note.
-///   - *2*: Twenty-fourth note.
-///   - *3*: Sixteenth note.
+/// - Fret: `signed-byte`. The fret number the grace note is made from.
+/// - Dynamic: `byte`. The grace note dynamic is coded like this (default value is 6):
+///   * 1: ppp
+///   * 2: pp
+///   * 3: p
+///   * 4: mp
+///   * 5: mf
+///   * 6: f
+///   * 7: ff
+///   * 8: fff
+/// - Transition: `byte`. This variable determines the transition type used to make the grace note: `0: None`, `1: Slide`, `2: Bend`, `3: Hammer` (defined in `GraceEffectTransition`).
+/// - Duration: `byte`. Determines the grace note duration, coded this way: `3: Sixteenth note`, `2: Twenty-fourth note`, `1: Thirty-second note`.
 pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
     let mut g = GraceEffect::default();
     g.fret = read_signed_byte(data, seek);
     g.velocity = unpack_velocity(read_byte(data, seek).into());
-    g.duration = 1 << (7 - read_byte(data, seek));
+    //g.duration = 1 << (7 - read_byte(data, seek));
+    //g.duration = 1 << (7 - read_byte(data, seek));
+    g.duration = match read_byte(data, seek) {
+        1 => DURATION_THIRTY_SECOND,
+        2 => DURATION_TWENTY_FOURTH, //TODO: FIXME: ?
+        3 => DURATION_SIXTEENTH,
+        _ => panic!("Cannot get grace note effect duration"),
+    };
     g.is_dead = g.fret == -1;
     g.transition = match read_signed_byte(data, seek) {
         0 => GraceEffectTransition::None,

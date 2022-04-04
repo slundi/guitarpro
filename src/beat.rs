@@ -235,3 +235,14 @@ pub fn read_tremolo_bar(data: &Vec<u8>, seek: &mut usize) -> BendEffect {
     be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION, value: 0, ..Default::default() });
     return be;
 }
+
+/// A voice contains multiple beats
+#[derive(Clone)]
+pub struct Voice {
+    //pub measure: Measure, //circular depth?
+    pub measure_index: i16,
+    pub beats: Vec<Beat>,
+    pub directions: VoiceDirection,
+}
+impl Default for Voice {fn default() -> Self { Voice { measure_index: 0, /*measure: Measure::default(),*/ beats: Vec::new(), directions: VoiceDirection::None }}}
+

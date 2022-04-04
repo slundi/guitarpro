@@ -67,30 +67,32 @@ impl MidiChannel {
 
     pub fn get_instrument(self) -> i32 {return self.instrument;}
     pub fn get_instrument_name(&self) -> String {return String::from(CHANNEL_DEFAULT_NAMES[self.instrument as usize]);} //TODO: FIXME: does not seems OK
+}
 
-    /// Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
-    ///`port1/channel1`, `port1/channel2`, ..., `port1/channel16`, `port2/channel1`, ..., `port4/channel16`.
-    ///
-    /// Each channel has the following form:
-    ///
-    /// * **Instrument**: `int`
-    /// * **Volume**: `byte`
-    /// * **Balance**: `byte`
-    /// * **Chorus**: `byte`
-    /// * **Reverb**: `byte`
-    /// * **Phaser**: `byte`
-    /// * **Tremolo**: `byte`
-    /// * **blank1**: `byte` => Backward compatibility with version 3.0
-    /// * **blank2**: `byte` => Backward compatibility with version 3.0
-    pub fn read(data: &Vec<u8>, seek: &mut usize, channel: u8) -> MidiChannel {
-        let instrument = read_int(data, seek);
-        let mut c = MidiChannel::default();
-        c.channel = channel; c.effect_channel = channel;
-        c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);
-        c.chorus = read_signed_byte(data, seek); c.reverb = read_signed_byte(data, seek); c.phaser = read_signed_byte(data, seek); c.tremolo = read_signed_byte(data, seek);
-        c.set_instrument(instrument);
-        //println!("Channel: {}\t Volume: {}\tBalance: {}\tInstrument={}, {}, {}", c.channel, c.volume, c.balance, instrument, c.get_instrument(), c.get_instrument_name());
-        *seek += 2; //Backward compatibility with version 3.0
-        return c;
-    }
+/// Read all the MIDI channels
+pub fn read_midi_channels(data: &Vec<u8>, seek: &mut usize, channels: &mut Vec<MidiChannel>) { for i in 0u8..64u8 { channels.push(read_midi_channel(data, seek, i)); } }
+/// Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
+///`port1/channel1`, `port1/channel2`, ..., `port1/channel16`, `port2/channel1`, ..., `port4/channel16`.
+///
+/// Each channel has the following form:
+///
+/// * **Instrument**: `int`
+/// * **Volume**: `byte`
+/// * **Balance**: `byte`
+/// * **Chorus**: `byte`
+/// * **Reverb**: `byte`
+/// * **Phaser**: `byte`
+/// * **Tremolo**: `byte`
+/// * **blank1**: `byte` => Backward compatibility with version 3.0
+/// * **blank2**: `byte` => Backward compatibility with version 3.0
+pub fn read_midi_channel(data: &Vec<u8>, seek: &mut usize, channel: u8) -> MidiChannel {
+    let instrument = read_int(data, seek);
+    let mut c = MidiChannel::default();
+    c.channel = channel; c.effect_channel = channel;
+    c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);
+    c.chorus = read_signed_byte(data, seek); c.reverb = read_signed_byte(data, seek); c.phaser = read_signed_byte(data, seek); c.tremolo = read_signed_byte(data, seek);
+    c.set_instrument(instrument);
+    //println!("Channel: {}\t Volume: {}\tBalance: {}\tInstrument={}, {}, {}", c.channel, c.volume, c.balance, instrument, c.get_instrument(), c.get_instrument_name());
+    *seek += 2; //Backward compatibility with version 3.0
+    return c;
 }

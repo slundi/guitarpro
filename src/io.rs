@@ -106,9 +106,9 @@ pub fn read_byte_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
 /// * `data` - array of bytes
 /// * `seek` - cursor that will be incremented
 /// * returns version
-pub fn read_version(data: &Vec<u8>, seek: &mut usize) -> crate::gp::Version {
+pub fn read_version_string(data: &Vec<u8>, seek: &mut usize) -> crate::headers::Version {
     let n = data[0] as usize;
-    let mut v = crate::gp::Version {data: String::with_capacity(30), number: 0, clipboard: false};
+    let mut v = crate::headers::Version {data: String::with_capacity(30), number: 0, clipboard: false};
     for i in 1..n+1 {
         let c = data[i];
         if i == 0 {break;} //NULL symbol so we exit
@@ -118,14 +118,14 @@ pub fn read_version(data: &Vec<u8>, seek: &mut usize) -> crate::gp::Version {
     *seek += 31;
     //get the version
     let cap = RE_VERSION.captures(&v.data).expect("Cannot extrat version code");
-    if      &cap[1] == "3" {v.number = crate::gp::VERSION_3_00;}
+    if      &cap[1] == "3" {v.number = crate::headers::VERSION_3_00;}
     else if &cap[1] == "4" {
         v.clipboard = v.data.starts_with("CLIPBOARD");
-        v.number = crate::gp::VERSION_4_0X;
+        v.number = crate::headers::VERSION_4_0X;
     }
     else if &cap[1] == "5" {
         v.clipboard = v.data.starts_with("CLIPBOARD");
-        v.number = crate::gp::VERSION_5_00;
+        v.number = crate::headers::VERSION_5_00;
     } //TODO: check subversions?
     return v;
 }
