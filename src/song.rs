@@ -232,10 +232,6 @@ pub const _MIN_STRINGS: i32 = 1;
 pub const _MAX_OFFSET: i32 = 24;
 pub const _MIN_OFFSET: i32 = -24;
 
-/// Values of auto-accentuation on the beat found in track RSE settings
-#[derive(Clone)]
-pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
-
 /*
 this.number = 0;
 this.offset = 0;

@@ -5,17 +5,17 @@ use crate::{io::*, gp::*, rse::*};
 /// Settings of the track.
 #[derive(Clone)]
 pub struct TrackSettings {
-    tablature: bool,
-    notation: bool,
-    diagram_are_below: bool,
-    show_rythm: bool,
-    force_horizontal: bool,
-    force_channels: bool,
-    diagram_list: bool,
-    diagram_in_score: bool,
-    auto_let_ring: bool,
-    auto_brush: bool,
-    extend_rythmic: bool,
+    pub tablature: bool,
+    pub notation: bool,
+    pub diagram_are_below: bool,
+    pub show_rythm: bool,
+    pub force_horizontal: bool,
+    pub force_channels: bool,
+    pub diagram_list: bool,
+    pub diagram_in_score: bool,
+    pub auto_let_ring: bool,
+    pub auto_brush: bool,
+    pub extend_rythmic: bool,
 }
 impl Default for TrackSettings { fn default() -> Self { TrackSettings {
     tablature: true,

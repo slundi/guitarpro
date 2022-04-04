@@ -1,4 +1,6 @@
-use crate::gp::Accentuation;
+/// Values of auto-accentuation on the beat found in track RSE settings
+#[derive(Clone)]
+pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
 
 /// Equalizer found in master effect and track effect.
 /// 
