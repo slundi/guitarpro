@@ -5,6 +5,7 @@ extern crate lazy_static;
 mod io;
 mod headers;
 mod track;
+mod measure;
 mod effects;
 mod key_signature;
 mod midi;

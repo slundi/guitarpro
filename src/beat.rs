@@ -119,6 +119,13 @@ impl BeatStroke {
     }
 }
 
+/// All beat stroke directions
+#[derive(Clone,PartialEq)]
+pub enum BeatStrokeDirection { None, Up, Down }
+/// Characteristic of articulation
+#[derive(Clone,PartialEq)]
+pub enum SlapEffect { None, Tapping, Slapping, Popping }
+
 /// This class contains all beat effects
 #[derive(Clone,PartialEq)]
 pub struct BeatEffects {
@@ -235,6 +242,10 @@ pub fn read_tremolo_bar(data: &Vec<u8>, seek: &mut usize) -> BendEffect {
     be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION, value: 0, ..Default::default() });
     return be;
 }
+
+/// Voice directions indicating the direction of beams
+#[derive(Clone,PartialEq)]
+pub enum VoiceDirection { None, Up, Down }
 
 /// A voice contains multiple beats
 #[derive(Clone)]

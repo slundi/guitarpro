@@ -10,6 +10,7 @@ use std::io::Read;
 mod io;
 mod headers;
 mod track;
+mod measure;
 mod effects;
 mod key_signature;
 mod midi;

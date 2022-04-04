@@ -2,6 +2,7 @@ use fraction::ToPrimitive;
 
 use crate::io::*;
 use crate::headers::*;
+use crate::measure::*;
 use crate::track::*;
 use crate::key_signature::*;
 use crate::beat::*;
@@ -190,30 +191,12 @@ fn read_meta(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
 #[derive(Clone)]
 pub enum DirectionSign { Coda, Segno, }
 
-/// An enumeration of different triplet feels.
-#[derive(Clone)]
-pub enum TripletFeel { NONE, EIGHTH, SIXTEENTH }
-
-pub struct _BeatData {
-    current_start: i64,
-    voices: Vec<VoiceData>
-}
 /* INIT:
 this.currentStart = measure.getStart();
 this.voices = new TGVoiceData[TGBeat.MAX_VOICES];
 for(int i = 0 ; i < this.voices.length ; i ++ ) this.voices[i] = new TGVoiceData(measure);
 */
 
-pub struct VoiceData {
-    start: i64,
-    velocity: i32,
-    flags: i32,
-    //duration: Duration
-	duration_value: i32,
-	duration_dotted: bool,
-	duration_double_dotted: bool,
-	//duration_division_type: ?
-}
 
 /*impl Default for VoiceData {
     fn default() -> Self { VoiceData {
@@ -275,33 +258,3 @@ pub const DEFAULT_CHORUS: i8 = 0;
 pub const DEFAULT_REVERB: i8 = 0;
 pub const DEFAULT_PHASER: i8 = 0;
 pub const DEFAULT_TREMOLO: i8 = 0;*/
-
-/// An enumeration of available clefs
-#[derive(Clone)]
-pub enum MeasureClef { Treble, Bass, Tenor, Alto }
-/// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
-#[derive(Clone)]
-pub enum LineBreak { None, Break, Protect }
-/// Voice directions indicating the direction of beams
-#[derive(Clone,PartialEq)]
-pub enum VoiceDirection { None, Up, Down }
-/// All beat stroke directions
-#[derive(Clone,PartialEq)]
-pub enum BeatStrokeDirection { None, Up, Down }
-#[derive(Clone)]
-pub enum BeatStatus { Empty, Normal, Rest }
-/// Characteristic of articulation
-#[derive(Clone,PartialEq)]
-pub enum SlapEffect { None, Tapping, Slapping, Popping }
-
-/// "A measure contains multiple voices of beats
-#[derive(Clone)]
-pub struct Measure {
-    pub track_index: usize,
-    pub header_index: usize,
-    pub clef: MeasureClef,
-    /// Max voice count is 2
-    pub voices: Vec<Voice>, 
-    pub line_break: LineBreak,
-}
-impl Default for Measure {fn default() -> Self { Measure {track_index: 0, header_index: 0, clef: MeasureClef::Treble, voices: Vec::with_capacity(2), line_break: LineBreak::None }}}
