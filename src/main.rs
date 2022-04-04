@@ -9,6 +9,7 @@ use std::io::Read;
 #[path = "song.rs"] mod gp;
 mod io;
 mod headers;
+mod track;
 mod effects;
 mod key_signature;
 mod midi;
