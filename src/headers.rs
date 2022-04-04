@@ -1,3 +1,5 @@
+use fraction::ToPrimitive;
+
 use crate::{io::*, gp::*, key_signature::*};
 
 #[derive(Clone)]
@@ -149,4 +151,34 @@ impl Default for Marker {fn default() -> Self { Marker {title: "Section".to_owne
 fn read_marker(data: &Vec<u8>, seek: &mut usize, marker: &mut Marker) {
     marker.title = read_int_size_string(data, seek);
     marker.color = read_color(data, seek);
+}
+
+/// This class can store the information about a group of measures which are repeated.
+#[derive(Clone)]
+pub struct RepeatGroup {
+    /// List of measure header indexes.
+    pub measure_headers: Vec<usize>,
+    pub closings: Vec<usize>,
+    pub openings: Vec<usize>,
+    pub is_closed: bool,
+}
+impl Default for RepeatGroup {fn default() -> Self { RepeatGroup {
+    measure_headers: Vec::new(),
+    closings: Vec::new(),
+    openings: Vec::new(),
+    is_closed: false,
+}}}
+impl RepeatGroup {
+    pub fn add_measure_header(&mut self, measure_header: &MeasureHeader) {
+        let index = measure_header.number.to_usize().unwrap();
+        if self.openings.len() == 0 {self.openings.push(index);} //if not len(self.openings): self.openings.append(h)
+        self.measure_headers.push(index);
+        if measure_header.repeat_close > 0 {
+            self.closings.push(index);
+            self.is_closed = true;
+        } else { //A new item after the header was closed? -> repeat alternative, reopens the group
+            self.is_closed = false;
+            self.openings.push(index);
+        }
+    }
 }
