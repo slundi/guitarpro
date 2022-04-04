@@ -66,29 +66,25 @@ impl Default for Song {
         master_effect: RseMasterEffect::default(),
 	}}
 }
-
 impl Song {
-    /// Read meta information (name, artist, ...)
-    fn read_meta(&mut self, data: &Vec<u8>, seek: &mut usize) {
-        // read GP3 informations
-        self.name        = read_int_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
-        self.subtitle    = read_int_size_string(data, seek);
-        self.artist      = read_int_size_string(data, seek);
-        self.album       = read_int_size_string(data, seek);
-        self.words       = read_int_size_string(data, seek); //music
-        self.author      = self.words.clone(); //GP3
-        self.copyright   = read_int_size_string(data, seek);
-        self.writer      = read_int_size_string(data, seek); //tabbed by
-        self.instructions= read_int_size_string(data, seek); //instructions
-        //notices
-        let nc = read_int(data, seek) as usize; //notes count
-        if nc >0 { for i in 0..nc { self.notice.push(read_int_size_string(data, seek)); println!("  {}\t\t{}",i, self.notice[self.notice.len()-1]); }}
-    }
-
+    /// Read the song.
+    /// 
+    /// **GP3**: A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
+    /// - Version: `byte-size-string` of size 30.
+    /// - Score information. See `readInfo`.
+    /// - Triplet feel: `bool`. If value is true, then triplet feel is set to eigth.
+    /// - Tempo: `int`.
+    /// - Key: `int`. Key signature of the song.
+    /// - MIDI channels. See `readMidiChannels`.
+    /// - Number of measures: `int`.
+    /// - Number of tracks: `int`.
+    /// - Measure headers. See `readMeasureHeaders`.
+    /// - Tracks. See `read_tracks()`.
+    /// - Measures. See `read_measures()`.
     pub fn read_data(&mut self, data: &Vec<u8>) {
         let mut seek: usize = 0;
         read_version(data, &mut seek, self);
-        self.read_meta(data, &mut seek);
+        read_meta(data, &mut seek, self);
         
         if self.version.number < VERSION_5_00 {
             self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
@@ -225,6 +221,22 @@ impl Song {
     /*fn read_measure(&mut self, data: &Vec<u8>, seek: &mut usize) -> Measure {
         //let mut m = Measure::new();
     }*/
+}
+/// Read meta information (name, artist, ...)
+fn read_meta(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
+    // read GP3 informations
+    song.name        = read_int_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
+    song.subtitle    = read_int_size_string(data, seek);
+    song.artist      = read_int_size_string(data, seek);
+    song.album       = read_int_size_string(data, seek);
+    song.words       = read_int_size_string(data, seek); //music
+    song.author      = song.words.clone(); //GP3
+    song.copyright   = read_int_size_string(data, seek);
+    song.writer      = read_int_size_string(data, seek); //tabbed by
+    song.instructions= read_int_size_string(data, seek); //instructions
+    //notices
+    let nc = read_int(data, seek) as usize; //notes count
+    if nc >0 { for i in 0..nc { song.notice.push(read_int_size_string(data, seek)); println!("  {}\t\t{}",i, song.notice[song.notice.len()-1]); }}
 }
 
 /// A navigation sign like *Coda* (𝄌: U+1D10C) or *Segno* (𝄋 or 𝄉: U+1D10B or U+1D109).
