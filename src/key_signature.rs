@@ -43,39 +43,6 @@ impl Default for Duration {
 impl Duration {
     //fn convert_time(&self, time: u64) -> u64 { return time * self.division_times as u64 / self.division_enters as u64; }
 
-    // /Read beat duration.
-    /// Duration is composed of byte signifying duration and an integer that maps to `Tuplet`. The byte maps to following values:
-    /// 
-    /// * *-2*: whole note
-    /// * *-1*: half note
-    /// * *0*: quarter note
-    /// * *1*: eighth note
-    /// * *2*: sixteenth note
-    /// * *3*: thirty-second note
-    /// 
-    /// If flag at *0x20* is true, the tuplet is read
-    pub fn read(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
-        let mut d = Duration::default();
-        let b = read_signed_byte(data, seek);
-        println!("B: {}", b);
-        //d.value = 1 << (read_signed_byte(data, seek) + 2);
-        d.value = 1 << (b + 2);
-        d.dotted = (flags & 0x01) == 0x01;
-        if (flags & 0x20) == 0x20 {
-            let i_tuplet = read_int(data, seek);
-            if i_tuplet == 3       {d.tuplet_enters = 3;  d.tuplet_times = 2;}
-            else if i_tuplet == 5  {d.tuplet_enters = 5;  d.tuplet_times = 4;}
-            else if i_tuplet == 6  {d.tuplet_enters = 6;  d.tuplet_times = 4;}
-            else if i_tuplet == 7  {d.tuplet_enters = 7;  d.tuplet_times = 4;}
-            else if i_tuplet == 9  {d.tuplet_enters = 9;  d.tuplet_times = 8;}
-            else if i_tuplet == 10 {d.tuplet_enters = 10; d.tuplet_times = 8;}
-            else if i_tuplet == 11 {d.tuplet_enters = 11; d.tuplet_times = 8;}
-            else if i_tuplet == 12 {d.tuplet_enters = 12; d.tuplet_times = 8;}
-            else if i_tuplet == 13 {d.tuplet_enters = 13; d.tuplet_times = 8;}
-        }
-        return d;
-    }
-
     pub fn is_supported(&self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times)); }
 
     pub fn convert_time(&self, time: u8) -> u8 {
@@ -101,6 +68,38 @@ impl Duration {
         return index
     }
     //@classmethod def fromFraction(cls, frac): return cls(frac.denominator, frac.numerator)
+}
+/// Read beat duration.
+/// Duration is composed of byte signifying duration and an integer that maps to `Tuplet`. The byte maps to following values:
+/// 
+/// * *-2*: whole note
+/// * *-1*: half note
+/// * *0*: quarter note
+/// * *1*: eighth note
+/// * *2*: sixteenth note
+/// * *3*: thirty-second note
+/// 
+/// If flag at *0x20* is true, the tuplet is read
+pub fn read_duration(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
+    let mut d = Duration::default();
+    let b = read_signed_byte(data, seek);
+    println!("B: {}", b);
+    //d.value = 1 << (read_signed_byte(data, seek) + 2);
+    d.value = 1 << (b + 2);
+    d.dotted = (flags & 0x01) == 0x01;
+    if (flags & 0x20) == 0x20 {
+        let i_tuplet = read_int(data, seek);
+        if i_tuplet == 3       {d.tuplet_enters = 3;  d.tuplet_times = 2;}
+        else if i_tuplet == 5  {d.tuplet_enters = 5;  d.tuplet_times = 4;}
+        else if i_tuplet == 6  {d.tuplet_enters = 6;  d.tuplet_times = 4;}
+        else if i_tuplet == 7  {d.tuplet_enters = 7;  d.tuplet_times = 4;}
+        else if i_tuplet == 9  {d.tuplet_enters = 9;  d.tuplet_times = 8;}
+        else if i_tuplet == 10 {d.tuplet_enters = 10; d.tuplet_times = 8;}
+        else if i_tuplet == 11 {d.tuplet_enters = 11; d.tuplet_times = 8;}
+        else if i_tuplet == 12 {d.tuplet_enters = 12; d.tuplet_times = 8;}
+        else if i_tuplet == 13 {d.tuplet_enters = 13; d.tuplet_times = 8;}
+    }
+    return d;
 }
 
 /*/// A *n:m* tuplet.

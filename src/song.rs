@@ -199,7 +199,7 @@ impl Song {
         if (flag & 0x01 )== 0x01 {mh.time_signature.numerator = read_signed_byte(data, seek);}
         else if number < self.measure_headers.len() {mh.time_signature.numerator = self.measure_headers[number-1].time_signature.numerator;}
         //Denominator of the (key) signature
-        if (flag & 0x02) == 0x02 {mh.time_signature.denominator = Duration::read(data, seek, flag);}
+        if (flag & 0x02) == 0x02 {mh.time_signature.denominator = read_duration(data, seek, flag);}
         else if number < self.measure_headers.len() {mh.time_signature.denominator = self.measure_headers[number-1].time_signature.denominator.clone();}
 
         mh.repeat_open = (flag & 0x04) == 0x04; //Beginning of repeat

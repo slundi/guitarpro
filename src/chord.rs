@@ -116,130 +116,130 @@ impl Default for Chord {
 }
 impl Chord {
     //TODO: @property def notes(self): return [string for string in self.strings if string >= 0]
-    /// Read chord diagram. First byte is chord header. If it's set to 0, then following chord is written in 
-    /// default (GP3) format. If chord header is set to 1, then chord diagram in encoded in more advanced (GP4) format.
-    pub fn read(data: &Vec<u8>, seek: &mut usize, string_count: u8) -> Chord {
-        let mut c = Chord {length: string_count, ..Default::default()};
-        for _ in 0..string_count {c.strings.push(-1);}
-        c.new_format = Some(read_bool(data, seek));
-        if c.new_format == Some(true) {c.read_new(data, seek);}
-        else {c.read_new(data, seek);}
-        return c;
-    }
-    /// Read chord diagram encoded in GP3 format. Chord diagram is read as follows:
-    /// - Name: `int-byte-size-string`. Name of the chord, e.g. *Em*.
-    /// - First fret: `int`. The fret from which the chord is displayed in chord editor.
-    /// - List of frets: 6 `ints`. Frets are listed in order: fret on the string 1, fret on the string 2, ..., fret on the
-    /// string 6. If string is untouched then the values of fret is *-1*.
-    fn read_old(&mut self, data: &Vec<u8>, seek: &mut usize) {
-        self.name = read_int_size_string(data, seek);
-        self.first_fret = Some(read_int(data, seek).to_u8().unwrap());
-        if self.first_fret.is_some() {
-            for i in 0u8..6u8 {
-                let fret = read_int(data, seek).to_i8().unwrap();
-                if i < self.strings.len().to_u8().unwrap() {self.strings.push(fret);} //self.strings[i] = fret;
-            }
-        }
-    }
-    /// Read new-style (GP4) chord diagram. New-style chord diagram is read as follows:
-    /// - Sharp: `bool`. If true, display all semitones as sharps, otherwise display as flats.
-    /// - Blank space, 3 `Bytes <byte>`.
-    /// - Root: `int`. Values are:
-    ///   * -1 for customized chords
-    ///   *  0: C
-    ///   *  1: C#
-    ///   * ...
-    /// - Type: `int`. Determines the chord type as followed. See `ChordType` for mapping.
-    /// - Chord extension: `int`. See `ChordExtension` for mapping.
-    /// - Bass note: `int`. Lowest note of chord as in *C/Am*.
-    /// - Tonality: `int`. See `ChordAlteration` for mapping.
-    /// - Add: `bool`. Determines if an "add" (added note) is present in the chord.
-    /// - Name: `byte-size-string`. Max length is 22.
-    /// - Fifth alteration: `int`. Maps to `ChordAlteration`.
-    /// - Ninth alteration: `int`. Maps to `ChordAlteration`.
-    /// - Eleventh alteration: `int`. Maps to `ChordAlteration`.
-    /// - List of frets: 6 `Ints <int>`. Fret values are saved as in default format.
-    /// - Count of barres: `int`. Maximum count is 2.
-    /// - Barre frets: 2 `Ints <int>`.
-    /// - Barre start strings: 2 `Ints <int>`.
-    /// - Barre end string: 2 `Ints <int>`.
-    /// - Omissions: 7 `Bools <bool>`. If the value is true then note is played in chord.
-    /// - Blank space, 1 `byte`.
-    fn read_new(&mut self, data: &Vec<u8>, seek: &mut usize) {
-        self.sharp = Some(read_bool(data, seek));
-        *seek += 3;
-        self.root = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, self.sharp));
-        self.kind = Some(match read_int(data, seek) {
-            0  => ChordType::Major,
-            1  => ChordType::Seventh,
-            2  => ChordType::MajorSeventh,
-            3  => ChordType::Sixth,
-            4  => ChordType::Minor,
-            5  => ChordType::MinorSeventh,
-            6  => ChordType::MinorMajor,
-            7  => ChordType::MinorSixth,
-            8  => ChordType::SuspendedSecond,
-            9  => ChordType::SuspendedFourth,
-            10 => ChordType::SeventhSuspendedSecond,
-            11 => ChordType::SeventhSuspendedFourth,
-            12 => ChordType::Diminished,
-            13 => ChordType::Augmented,
-            14 => ChordType::Power,
-            _  => panic!("Cannot read chord type (new format)"),
-        });
-        self.extension = Some(match read_int(data, seek) {
-            0 => ChordExtension::None,
-            1 => ChordExtension::Ninth,
-            2 => ChordExtension::Eleventh,
-            3 => ChordExtension::Thirteenth,
-            _ => panic!("Cannot read chord type (new format)"),
-        });
-        self.bass = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, self.sharp));
-        self.tonality = Some(match read_int(data, seek) {
-            0 => ChordAlteration::Perfect,
-            1 => ChordAlteration::Diminished,
-            2 => ChordAlteration::Augmented,
-            _ => panic!("Cannot read chord fifth (new format)"),
-        });
-        self.add = Some(read_bool(data, seek));
-        self.name = read_byte_size_string(data, seek);
-        *seek += 22 - self.name.len();
-        self.fifth = Some(match read_int(data, seek) {
-            0 => ChordAlteration::Perfect,
-            1 => ChordAlteration::Diminished,
-            2 => ChordAlteration::Augmented,
-            _ => panic!("Cannot read chord fifth (new format)"),
-        });
-        self.ninth = Some(match read_int(data, seek) {
-            0 => ChordAlteration::Perfect,
-            1 => ChordAlteration::Diminished,
-            2 => ChordAlteration::Augmented,
-            _ => panic!("Cannot read chord fifth (new format)"),
-        });
-        self.eleventh = Some(match read_int(data, seek) {
-            0 => ChordAlteration::Perfect,
-            1 => ChordAlteration::Diminished,
-            2 => ChordAlteration::Augmented,
-            _ => panic!("Cannot read chord fifth (new format)"),
-        });
-        self.first_fret = Some(read_int(data, seek).to_u8().unwrap());
+}
+/// Read chord diagram. First byte is chord header. If it's set to 0, then following chord is written in 
+/// default (GP3) format. If chord header is set to 1, then chord diagram in encoded in more advanced (GP4) format.
+pub fn read_chord(data: &Vec<u8>, seek: &mut usize, string_count: u8) -> Chord {
+    let mut c = Chord {length: string_count, ..Default::default()};
+    for _ in 0..string_count {c.strings.push(-1);}
+    c.new_format = Some(read_bool(data, seek));
+    if c.new_format == Some(true) {read_new_format_chord(data, seek, &mut c);}
+    else {read_old_format_chord(data, seek, &mut c);}
+    return c;
+}
+/// Read chord diagram encoded in GP3 format. Chord diagram is read as follows:
+/// - Name: `int-byte-size-string`. Name of the chord, e.g. *Em*.
+/// - First fret: `int`. The fret from which the chord is displayed in chord editor.
+/// - List of frets: 6 `ints`. Frets are listed in order: fret on the string 1, fret on the string 2, ..., fret on the
+/// string 6. If string is untouched then the values of fret is *-1*.
+fn read_old_format_chord(data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
+    chord.name = read_int_size_string(data, seek);
+    chord.first_fret = Some(read_int(data, seek).to_u8().unwrap());
+    if chord.first_fret.is_some() {
         for i in 0u8..6u8 {
             let fret = read_int(data, seek).to_i8().unwrap();
-            if i < self.strings.len().to_u8().unwrap() {self.strings.push(fret);} //self.strings[i] = fret;
+            if i < chord.strings.len().to_u8().unwrap() {chord.strings.push(fret);} //chord.strings[i] = fret;
         }
-        //barre
-        let barre_count = read_int(data, seek).to_usize().unwrap();
-        let mut barre_frets:  Vec<i32> = Vec::with_capacity(2);
-        let mut barre_starts: Vec<i32> = Vec::with_capacity(2);
-        let mut barre_ends:   Vec<i32> = Vec::with_capacity(2);
-        for _ in 0u8..2u8 {barre_frets.push(read_int(data, seek));}
-        for _ in 0u8..2u8 {barre_starts.push(read_int(data, seek));}
-        for _ in 0u8..2u8 {barre_ends.push(read_int(data, seek));}
-        for i in 0..barre_count {self.barres.push(Barre{fret:barre_frets[i].to_i8().unwrap(), start:barre_starts[i].to_i8().unwrap(), end:barre_ends[i].to_i8().unwrap()});}
-
-        for _ in 0u8..7u8 {self.omissions.push(read_bool(data, seek));}
-        *seek += 1;
     }
+}
+/// Read new-style (GP4) chord diagram. New-style chord diagram is read as follows:
+/// - Sharp: `bool`. If true, display all semitones as sharps, otherwise display as flats.
+/// - Blank space, 3 `Bytes <byte>`.
+/// - Root: `int`. Values are:
+///   * -1 for customized chords
+///   *  0: C
+///   *  1: C#
+///   * ...
+/// - Type: `int`. Determines the chord type as followed. See `ChordType` for mapping.
+/// - Chord extension: `int`. See `ChordExtension` for mapping.
+/// - Bass note: `int`. Lowest note of chord as in *C/Am*.
+/// - Tonality: `int`. See `ChordAlteration` for mapping.
+/// - Add: `bool`. Determines if an "add" (added note) is present in the chord.
+/// - Name: `byte-size-string`. Max length is 22.
+/// - Fifth alteration: `int`. Maps to `ChordAlteration`.
+/// - Ninth alteration: `int`. Maps to `ChordAlteration`.
+/// - Eleventh alteration: `int`. Maps to `ChordAlteration`.
+/// - List of frets: 6 `Ints <int>`. Fret values are saved as in default format.
+/// - Count of barres: `int`. Maximum count is 2.
+/// - Barre frets: 2 `Ints <int>`.
+/// - Barre start strings: 2 `Ints <int>`.
+/// - Barre end string: 2 `Ints <int>`.
+/// - Omissions: 7 `Bools <bool>`. If the value is true then note is played in chord.
+/// - Blank space, 1 `byte`.
+fn read_new_format_chord(data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
+    chord.sharp = Some(read_bool(data, seek));
+    *seek += 3;
+    chord.root = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, chord.sharp));
+    chord.kind = Some(match read_int(data, seek) {
+        0  => ChordType::Major,
+        1  => ChordType::Seventh,
+        2  => ChordType::MajorSeventh,
+        3  => ChordType::Sixth,
+        4  => ChordType::Minor,
+        5  => ChordType::MinorSeventh,
+        6  => ChordType::MinorMajor,
+        7  => ChordType::MinorSixth,
+        8  => ChordType::SuspendedSecond,
+        9  => ChordType::SuspendedFourth,
+        10 => ChordType::SeventhSuspendedSecond,
+        11 => ChordType::SeventhSuspendedFourth,
+        12 => ChordType::Diminished,
+        13 => ChordType::Augmented,
+        14 => ChordType::Power,
+        _  => panic!("Cannot read chord type (new format)"),
+    });
+    chord.extension = Some(match read_int(data, seek) {
+        0 => ChordExtension::None,
+        1 => ChordExtension::Ninth,
+        2 => ChordExtension::Eleventh,
+        3 => ChordExtension::Thirteenth,
+        _ => panic!("Cannot read chord type (new format)"),
+    });
+    chord.bass = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, chord.sharp));
+    chord.tonality = Some(match read_int(data, seek) {
+        0 => ChordAlteration::Perfect,
+        1 => ChordAlteration::Diminished,
+        2 => ChordAlteration::Augmented,
+        _ => panic!("Cannot read chord fifth (new format)"),
+    });
+    chord.add = Some(read_bool(data, seek));
+    chord.name = read_byte_size_string(data, seek);
+    *seek += 22 - chord.name.len();
+    chord.fifth = Some(match read_int(data, seek) {
+        0 => ChordAlteration::Perfect,
+        1 => ChordAlteration::Diminished,
+        2 => ChordAlteration::Augmented,
+        _ => panic!("Cannot read chord fifth (new format)"),
+    });
+    chord.ninth = Some(match read_int(data, seek) {
+        0 => ChordAlteration::Perfect,
+        1 => ChordAlteration::Diminished,
+        2 => ChordAlteration::Augmented,
+        _ => panic!("Cannot read chord fifth (new format)"),
+    });
+    chord.eleventh = Some(match read_int(data, seek) {
+        0 => ChordAlteration::Perfect,
+        1 => ChordAlteration::Diminished,
+        2 => ChordAlteration::Augmented,
+        _ => panic!("Cannot read chord fifth (new format)"),
+    });
+    chord.first_fret = Some(read_int(data, seek).to_u8().unwrap());
+    for i in 0u8..6u8 {
+        let fret = read_int(data, seek).to_i8().unwrap();
+        if i < chord.strings.len().to_u8().unwrap() {chord.strings.push(fret);} //chord.strings[i] = fret;
+    }
+    //barre
+    let barre_count = read_int(data, seek).to_usize().unwrap();
+    let mut barre_frets:  Vec<i32> = Vec::with_capacity(2);
+    let mut barre_starts: Vec<i32> = Vec::with_capacity(2);
+    let mut barre_ends:   Vec<i32> = Vec::with_capacity(2);
+    for _ in 0u8..2u8 {barre_frets.push(read_int(data, seek));}
+    for _ in 0u8..2u8 {barre_starts.push(read_int(data, seek));}
+    for _ in 0u8..2u8 {barre_ends.push(read_int(data, seek));}
+    for i in 0..barre_count {chord.barres.push(Barre{fret:barre_frets[i].to_i8().unwrap(), start:barre_starts[i].to_i8().unwrap(), end:barre_ends[i].to_i8().unwrap()});}
+
+    for _ in 0u8..7u8 {chord.omissions.push(read_bool(data, seek));}
+    *seek += 1;
 }
 
 /// A single barre

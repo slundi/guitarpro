@@ -106,8 +106,8 @@ pub fn read_note_effect(data: &Vec<u8>, seek: &mut usize) -> NoteEffect {
     let flags = read_byte(data, seek);
     ne.hammer = (flags & 0x02) == 0x02;
     ne.let_ring = (flags & 0x08) == 0x08;
-    if (flags & 0x01) == 0x01 {ne.bend = BendEffect::read(data, seek);}
-    if (flags & 0x10) == 0x10 {ne.grace = Some(GraceEffect::read(data, seek));}
+    if (flags & 0x01) == 0x01 {ne.bend = read_bend_effect(data, seek);}
+    if (flags & 0x10) == 0x10 {ne.grace = Some(read_grace_effect(data, seek));}
     if (flags & 0x04) == 0x04 {ne.slides.push(SlideType::ShiftSlideTo);}
     return ne;
 }

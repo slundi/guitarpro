@@ -47,47 +47,47 @@ impl Beat {
         for i in 0..self.notes.len() {if self.notes[i].effect.is_harmonic() {return true;}}
         return false;
     }
-    /// Read beat. The first byte is the beat flags. It lists the data present in the current beat:
-    /// - *0x01*: dotted notes- *0x02*: presence of a chord diagram
-    /// - *0x04*: presence of a text
-    /// - *0x08*: presence of effects
-    /// - *0x10*: presence of a mix table change event
-    /// - *0x20*: the beat is a n-tuplet
-    /// - *0x40*: status: True if the beat is empty of if it is a rest
-    /// - *0x80*: *blank*
-    /// 
-    /// Flags are followed by:
-    /// - Status: `byte`. If flag at *0x40* is true, read one byte. If value of the byte is *0x00* then beat is empty, if value is *0x02* then the beat is rest.
-    /// - Beat duration: `byte`. See `Duration::read()`.
-    /// - Chord diagram. See `Chord::read()`.
-    /// - Text: `int-byte-size-string`.
-    /// - Beat effects. See `BeatEffects::read()`.
-    /// - Mix table change effect. See `MixTableChange::read()`.
-    pub fn read(data: &Vec<u8>, seek: &mut usize) -> u8 { //start,voice
-        let flags = read_byte(data, seek);
-        //let beat = get_beat(voice,start);
-        /*if (flags & 0x40) == 0x40 {
-            beat.status = match read_byte(data, seek) {
-                0 => BeatStatus::Empty,
-                1 => BeatStatus::Normal,
-                2 => BeatStatus::Rest,
-                _ => panic!("Cannot get beat status"),
-            };
-        } //else { beat.status = BeatStatus::Normal;}
-        let duration = Duration::read(data, seek, flags);
-        if (flags & 0x02) == 0x02 {beat.effect.chord = Chord::read(voice.measure.track.strings.len());}
-        if (flags & 0x04) == 0x04 {beat.text = read_byte_size_string(data, seek);}
-        if (flags & 0x08) == 0x08 {
-            let chord = beat.effect.chord.clone();
-            beat.effect = BeatEffects::read(data, seek);
-            beat.effect.chord = chord;
-        }
-        if (flags & 0x10) == 0x10 {
-            let mtc = MixTableChange::read(data, seek, voice.measure);
-            beet.effect.mix_table_change = mtc;
-        }
-        if beat.status == BeatStatus::Empty {return 0;} else {return duration.time();}*/0
+}
+/// Read beat. The first byte is the beat flags. It lists the data present in the current beat:
+/// - *0x01*: dotted notes- *0x02*: presence of a chord diagram
+/// - *0x04*: presence of a text
+/// - *0x08*: presence of effects
+/// - *0x10*: presence of a mix table change event
+/// - *0x20*: the beat is a n-tuplet
+/// - *0x40*: status: True if the beat is empty of if it is a rest
+/// - *0x80*: *blank*
+/// 
+/// Flags are followed by:
+/// - Status: `byte`. If flag at *0x40* is true, read one byte. If value of the byte is *0x00* then beat is empty, if value is *0x02* then the beat is rest.
+/// - Beat duration: `byte`. See `Duration::read()`.
+/// - Chord diagram. See `Chord::read()`.
+/// - Text: `int-byte-size-string`.
+/// - Beat effects. See `BeatEffects::read()`.
+/// - Mix table change effect. See `MixTableChange::read()`.
+pub fn read_beat(data: &Vec<u8>, seek: &mut usize) -> u8 { //start,voice
+    let flags = read_byte(data, seek);
+    //let beat = get_beat(voice,start);
+    /*if (flags & 0x40) == 0x40 {
+        beat.status = match read_byte(data, seek) {
+            0 => BeatStatus::Empty,
+            1 => BeatStatus::Normal,
+            2 => BeatStatus::Rest,
+            _ => panic!("Cannot get beat status"),
+        };
+    } //else { beat.status = BeatStatus::Normal;}
+    let duration = Duration::read(data, seek, flags);
+    if (flags & 0x02) == 0x02 {beat.effect.chord = Chord::read(voice.measure.track.strings.len());}
+    if (flags & 0x04) == 0x04 {beat.text = read_byte_size_string(data, seek);}
+    if (flags & 0x08) == 0x08 {
+        let chord = beat.effect.chord.clone();
+        beat.effect = BeatEffects::read(data, seek);
+        beat.effect.chord = chord;
     }
+    if (flags & 0x10) == 0x10 {
+        let mtc = MixTableChange::read(data, seek, voice.measure);
+        beet.effect.mix_table_change = mtc;
+    }
+    if beat.status == BeatStatus::Empty {return 0;} else {return duration.time();}*/0
 }
 
 /// Parameters of beat display
@@ -173,7 +173,7 @@ impl BeatEffects {
 /// - *2*: slap
 /// - *3*: pop
 /// - Beat stroke direction. See `BeatStroke::read()`
-pub fn read(data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
+pub fn read_beat_effects(data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
     let mut be = BeatEffects::default();
     let flags = read_byte(data, seek);
     note_effect.vibrato = (flags & 0x01) == 0x01 || note_effect.vibrato;
@@ -188,7 +188,7 @@ pub fn read(data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> B
             _ => panic!("Cannot read slap effect for the beat effects"),
         };
         if be.slap_effect == SlapEffect::None {be.tremolo_bar = Some(read_tremolo_bar(data, seek));} else {read_int(data, seek);}
-        if (flags & 0x40) == 0x40 {be.stroke = read_stroke(data, seek);}
+        if (flags & 0x40) == 0x40 {be.stroke = read_beat_stroke(data, seek);}
         //In GP3 harmonics apply to the whole beat, not the individual notes. Here we set the noteEffect for all the notes in the beat.
         if (flags & 0x04) == 0x04 {note_effect.harmonic = Some(HarmonicEffect::default());}
         if (flags & 0x08) == 0x08 {note_effect.harmonic = Some(HarmonicEffect {kind: HarmonicType::Artificial, ..Default::default()});}
@@ -197,7 +197,7 @@ pub fn read(data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> B
 }
 /// Read beat stroke. Beat stroke consists of two :ref:`Bytes <byte>` which correspond to stroke up
 /// and stroke down speed. See `BeatStrokeDirection` for value mapping.
-pub fn read_stroke(data: &Vec<u8>, seek: &mut usize) -> BeatStroke {
+pub fn read_beat_stroke(data: &Vec<u8>, seek: &mut usize) -> BeatStroke {
     let mut bs = BeatStroke::default();
     let down = read_signed_byte(data, seek);
     let up = read_signed_byte(data, seek);

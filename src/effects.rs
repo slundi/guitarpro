@@ -70,44 +70,42 @@ pub struct BendEffect {
     pub max_value: u8,
 }
 impl Default for BendEffect { fn default() -> Self { BendEffect { kind: BendType::None, value: 0, points: Vec::with_capacity(12), semitone_length: 1, max_position: BEND_EFFECT_MAX_POSITION, max_value: 12 /* semi_tone_length * 12 */ }}}
-impl BendEffect {
-    /// Read a bend. It is encoded as:
-    /// - Bend type: `signed-byte`. See BendType.
-    /// - Bend value: `int`.
-    /// - Number of bend points: `int`.
-    /// - List of points. Each point consists of:
-    ///   * Position: `int`. Shows where point is set along *x*-axis.
-    ///   * Value: `int`. Shows where point is set along *y*-axis.
-    ///   * Vibrato: `bool`.
-    pub fn read(data: &Vec<u8>, seek: &mut usize) -> Option<BendEffect> {
-        let mut be = BendEffect::default();
-        be.kind = match read_signed_byte(data, seek) {
-            0 => BendType::None,
-            1 => BendType::Bend,
-            2 => BendType::BendRelease,
-            3 => BendType::BendReleaseBend,
-            4 => BendType::Prebend,
-            5 => BendType::PrebendRelease,
-            6 => BendType::Dip,
-            7 => BendType::Dive,
-            8 => BendType::ReleaseUp,
-            9 => BendType::InvertedDip,
-            10 => BendType::Return,
-            11 => BendType::ReleaseDown,
-            _ => panic!("Cannot read bend type"),
-        };
-        be.value = read_int(data, seek).to_i16().unwrap();
-        let count: u8 = read_int(data, seek).try_into().unwrap();
-        for _ in 0..count {
-            let mut bp = BendPoint::default();
-            bp.position = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(BEND_EFFECT_MAX_POSITION) / GP_BEND_POSITION).round().to_u8().unwrap();
-            bp.value = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(be.semitone_length) / GP_BEND_SEMITONE).round().to_i8().unwrap();
-            bp.vibrato = read_bool(data, seek);
-            be.points.push(bp);
-        }
-        if count > 0 {return Some(be);}
-        else {return None;}
+/// Read a bend. It is encoded as:
+/// - Bend type: `signed-byte`. See BendType.
+/// - Bend value: `int`.
+/// - Number of bend points: `int`.
+/// - List of points. Each point consists of:
+///   * Position: `int`. Shows where point is set along *x*-axis.
+///   * Value: `int`. Shows where point is set along *y*-axis.
+///   * Vibrato: `bool`.
+pub fn read_bend_effect(data: &Vec<u8>, seek: &mut usize) -> Option<BendEffect> {
+    let mut be = BendEffect::default();
+    be.kind = match read_signed_byte(data, seek) {
+        0 => BendType::None,
+        1 => BendType::Bend,
+        2 => BendType::BendRelease,
+        3 => BendType::BendReleaseBend,
+        4 => BendType::Prebend,
+        5 => BendType::PrebendRelease,
+        6 => BendType::Dip,
+        7 => BendType::Dive,
+        8 => BendType::ReleaseUp,
+        9 => BendType::InvertedDip,
+        10 => BendType::Return,
+        11 => BendType::ReleaseDown,
+        _ => panic!("Cannot read bend type"),
+    };
+    be.value = read_int(data, seek).to_i16().unwrap();
+    let count: u8 = read_int(data, seek).try_into().unwrap();
+    for _ in 0..count {
+        let mut bp = BendPoint::default();
+        bp.position = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(BEND_EFFECT_MAX_POSITION) / GP_BEND_POSITION).round().to_u8().unwrap();
+        bp.value = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(be.semitone_length) / GP_BEND_SEMITONE).round().to_i8().unwrap();
+        bp.vibrato = read_bool(data, seek);
+        be.points.push(bp);
     }
+    if count > 0 {return Some(be);}
+    else {return None;}
 }
 
 /// All transition types for grace notes.
@@ -154,31 +152,30 @@ impl GraceEffect {
     pub fn duration_time(self) -> u16 {
         return (f32::from(crate::key_signature::DURATION_QUARTER_TIME as i16) / 16f32 * f32::from(self.duration)).to_i16().expect("Cannot get bend point time") as u16;
     }
-
-    /// Read grace note effect.
-    /// 
-    /// - Fret: `signed-byte`. Number of fret.
-    /// - Dynamic: `byte`. Dynamic of a grace note.
-    /// - Transition: `byte`. See GraceEffectTransition`.
-    /// - Duration: `byte`. Values are:
-    ///   - *1*: Thirty-second note.
-    ///   - *2*: Twenty-fourth note.
-    ///   - *3*: Sixteenth note.
-    pub fn read(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
-        let mut g = GraceEffect::default();
-        g.fret = read_signed_byte(data, seek);
-        g.velocity = unpack_velocity(read_byte(data, seek).into());
-        g.duration = 1 << (7 - read_byte(data, seek));
-        g.is_dead = g.fret == -1;
-        g.transition = match read_signed_byte(data, seek) {
-            0 => GraceEffectTransition::None,
-            1 => GraceEffectTransition::Slide,
-            2 => GraceEffectTransition::Bend,
-            3 => GraceEffectTransition::Hammer,
-            _ => panic!("Cannot get transition for the grace effect"),
-        };
-        return g;
-    }
+}
+/// Read grace note effect.
+/// 
+/// - Fret: `signed-byte`. Number of fret.
+/// - Dynamic: `byte`. Dynamic of a grace note.
+/// - Transition: `byte`. See GraceEffectTransition`.
+/// - Duration: `byte`. Values are:
+///   - *1*: Thirty-second note.
+///   - *2*: Twenty-fourth note.
+///   - *3*: Sixteenth note.
+pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
+    let mut g = GraceEffect::default();
+    g.fret = read_signed_byte(data, seek);
+    g.velocity = unpack_velocity(read_byte(data, seek).into());
+    g.duration = 1 << (7 - read_byte(data, seek));
+    g.is_dead = g.fret == -1;
+    g.transition = match read_signed_byte(data, seek) {
+        0 => GraceEffectTransition::None,
+        1 => GraceEffectTransition::Slide,
+        2 => GraceEffectTransition::Bend,
+        3 => GraceEffectTransition::Hammer,
+        _ => panic!("Cannot get transition for the grace effect"),
+    };
+    return g;
 }
 
 #[derive(Clone,PartialEq)]
