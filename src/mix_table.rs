@@ -53,63 +53,63 @@ impl MixTableChange {
     pub fn is_just_wah(&self) -> bool {
         return self.instrument.is_none() &&  self.volume.is_none() && self.balance.is_none() && self.chorus.is_none() && self.reverb.is_none() && self.phaser.is_none() && self.tremolo.is_none() && self.tempo.is_none() && self.wah.is_none();
     }
-    /// Read mix table change. List of values is read first. See `read_values()`.
-    /// 
-    /// List of values is followed by the list of durations for parameters that have changed. See `read_durations()`.
-    pub fn read(data: &Vec<u8>, seek: &mut usize) -> MixTableChange {
-        let mut tc = MixTableChange::default();
-        tc.read_values(data, seek);
-        tc.read_durations(data, seek);
-        return tc;
-    }
-    /// Read mix table change values. Mix table change values consist of 7 `signed-byte` and an `int`, which correspond to:
-    /// - instrument
-    /// - volume 
-    /// - balance
-    /// - chorus
-    /// - reverb
-    /// - phaser
-    /// - tremolo
-    /// - tempo
-    /// 
-    /// If signed byte is *-1* then corresponding parameter hasn't changed.
-    fn read_values(&mut self, data: &Vec<u8>, seek: &mut usize) {
-        //instrument
-        let b = read_signed_byte(data, seek);
-        if b >= 0 {self.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-        //volume
-        let b = read_signed_byte(data, seek);
-        if b >= 0 {self.volume = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-        //balance
-        let b = read_signed_byte(data, seek);
-        if b >= 0 {self.balance = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-        //chorus
-        let b = read_signed_byte(data, seek);
-        if b >= 0 {self.chorus = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-        //reverb
-        let b = read_signed_byte(data, seek);
-        if b >= 0 {self.reverb = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-        //phaser
-        let b = read_signed_byte(data, seek);
-        if b >= 0 {self.phaser = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-        //tremolo
-        let b = read_signed_byte(data, seek);
-        if b >= 0 {self.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-        //tempo
-        let b = read_signed_byte(data, seek);
-        if b >= 0 {self.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-    }
-    /// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
-    fn read_durations(&mut self, data: &Vec<u8>, seek: &mut usize) {
-        if self.volume.is_some()  {self.volume.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-        if self.balance.is_some() {self.balance.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
-        if self.chorus.is_some()  {self.chorus.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-        if self.reverb.is_some()  {self.reverb.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-        if self.phaser.is_some()  {self.phaser.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-        if self.tremolo.is_some() {self.tremolo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
-        if self.tempo.is_some()   {
-            self.tempo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();
-            self.hide_tempo = false;
-        }
+}
+/// Read mix table change. List of values is read first. See `read_values()`.
+/// 
+/// List of values is followed by the list of durations for parameters that have changed. See `read_durations()`.
+pub fn read(data: &Vec<u8>, seek: &mut usize) -> MixTableChange {
+    let mut tc = MixTableChange::default();
+    read_mix_table_change_values(data, seek, &mut tc);
+    read_mix_table_change_durations(data, seek, &mut tc);
+    return tc;
+}
+/// Read mix table change values. Mix table change values consist of 7 `signed-byte` and an `int`, which correspond to:
+/// - instrument
+/// - volume 
+/// - balance
+/// - chorus
+/// - reverb
+/// - phaser
+/// - tremolo
+/// - tempo
+/// 
+/// If signed byte is *-1* then corresponding parameter hasn't changed.
+fn read_mix_table_change_values(data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) {
+    //instrument
+    let b = read_signed_byte(data, seek);
+    if b >= 0 {mte.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+    //volume
+    let b = read_signed_byte(data, seek);
+    if b >= 0 {mte.volume = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+    //balance
+    let b = read_signed_byte(data, seek);
+    if b >= 0 {mte.balance = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+    //chorus
+    let b = read_signed_byte(data, seek);
+    if b >= 0 {mte.chorus = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+    //reverb
+    let b = read_signed_byte(data, seek);
+    if b >= 0 {mte.reverb = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+    //phaser
+    let b = read_signed_byte(data, seek);
+    if b >= 0 {mte.phaser = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+    //tremolo
+    let b = read_signed_byte(data, seek);
+    if b >= 0 {mte.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+    //tempo
+    let b = read_signed_byte(data, seek);
+    if b >= 0 {mte.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+}
+/// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
+fn read_mix_table_change_durations(data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) {
+    if mte.volume.is_some()  {mte.volume.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+    if mte.balance.is_some() {mte.balance.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
+    if mte.chorus.is_some()  {mte.chorus.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+    if mte.reverb.is_some()  {mte.reverb.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+    if mte.phaser.is_some()  {mte.phaser.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+    if mte.tremolo.is_some() {mte.tremolo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
+    if mte.tempo.is_some()   {
+        mte.tempo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();
+        mte.hide_tempo = false;
     }
 }

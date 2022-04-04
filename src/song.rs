@@ -147,7 +147,7 @@ impl Song {
         //read GP5 information
         if self.version.number == VERSION_5_00 || self.version.number == VERSION_5_10 {
             //self.lyrics = 
-            Lyrics::read(data, &mut seek);
+            read_lyrics(data, &mut seek);
             /*song.masterEffect = self.readRSEMasterEffect()
             song.pageSetup = self.readPageSetup()
             song.tempoName = self.readIntByteSizeString()
@@ -252,15 +252,15 @@ impl Song {
         track.port = read_int(data, seek).to_u8().unwrap();
         // Read MIDI channel. MIDI channel in Guitar Pro is represented by two integers. First
         // is zero-based number of channel, second is zero-based number of channel used for effects.
-        let index = read_int(data, seek) -1 ;
+        let index = (read_int(data, seek) -1).to_usize().unwrap();
         let effect_channel = read_int(data, seek) -1;
-        if 0 <= index && (index as usize) < self.channels.len() {
-            track.channel = self.channels[index as usize].clone();
-            if track.channel.get_instrument() < 0 {track.channel.set_instrument(0);}
-            if !track.channel.is_percussion_channel() {track.channel.effect_channel = effect_channel.to_u8().unwrap();}
+        if index < self.channels.len() {
+            track.channel_index = index;
+            if self.channels[index].get_instrument() < 0 {self.channels[index].set_instrument(0);}
+            if !self.channels[index].is_percussion_channel() {self.channels[index].effect_channel = effect_channel.to_u8().unwrap();}
         }
         //
-        if track.channel.channel == 9 {track.percussion_track = true;}
+        if self.channels[index].channel == 9 {track.percussion_track = true;}
         track.fret_count = read_int(data, seek).to_u8().unwrap();
         track.offset = read_int(data, seek);
         track.color = read_color(data, seek);
@@ -285,8 +285,8 @@ impl Song {
             for t in 0..self.tracks.len() {
                 self.current_track = Some(self.tracks[t].clone());
                 let mut m = Measure::default();
-                m.track = self.tracks[t].clone();          //measure = gp.Measure(track, header)
-                m.header= self.measure_headers[h].clone(); //self._currentMeasureNumber = measure.number
+                m.track_index = t; //measure = gp.Measure(track, header)
+                m.header_index= h; //self._currentMeasureNumber = measure.number
                 { //Read a measure
                     let start = self.measure_headers[h].start;
                     let voice = Voice::default(); //&m.voices[0];
@@ -455,7 +455,7 @@ pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
 pub struct Track {
     pub number: i32,
 	pub offset: i32,
-	pub channel: MidiChannel, //pub channel_id: i32,
+	pub channel_index: usize, //pub channel_id: i32,
 	pub solo: bool,
 	pub mute: bool,
     pub visible: bool,
@@ -476,7 +476,7 @@ impl Default for Track {
     fn default() -> Self { Track {
         number: 1,
         offset: 0,
-        channel: MidiChannel::default(), //channel_id: 25,
+        channel_index: 0, //channel_id: 25,
         solo: false, mute: false, visible: true,
         name: String::from("Track 1"),
         strings: vec![(1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)],
@@ -601,14 +601,14 @@ pub enum SlapEffect { None, Tapping, Slapping, Popping }
 /// "A measure contains multiple voices of beats
 #[derive(Clone)]
 pub struct Measure {
-    pub track: Track,
-    pub header: MeasureHeader,
+    pub track_index: usize,
+    pub header_index: usize,
     pub clef: MeasureClef,
     /// Max voice count is 2
     pub voices: Vec<Voice>, 
     pub line_break: LineBreak,
 }
-impl Default for Measure {fn default() -> Self { Measure {track: Track::default(), header: MeasureHeader::default(), clef: MeasureClef::Treble, voices: Vec::with_capacity(2), line_break: LineBreak::None }}}
+impl Default for Measure {fn default() -> Self { Measure {track_index: 0, header_index: 0, clef: MeasureClef::Treble, voices: Vec::with_capacity(2), line_break: LineBreak::None }}}
 
 /// A voice contains multiple beats
 #[derive(Clone)]

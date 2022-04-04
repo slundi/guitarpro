@@ -91,27 +91,25 @@ impl NoteEffect {
     }
     pub fn is_fingering(&self) -> bool {return self.left_hand_finger != Fingering::Open || self.right_hand_finger != Fingering::Open;}
 }
-impl NoteEffect {
-    /// Read note effects. First byte is note effects flags:
-    /// - *0x01*: bend presence
-    /// - *0x02*: hammer-on/pull-off
-    /// - *0x04*: slide
-    /// - *0x08*: let-ring
-    /// - *0x10*: grace note presence
-    /// 
-    /// Flags are followed by:
-    /// - Bend. See `readBend`.
-    /// - Grace note. See `readGrace`.
-    pub fn read(data: &Vec<u8>, seek: &mut usize) -> NoteEffect {
-        let mut ne = NoteEffect::default();
-        let flags = read_byte(data, seek);
-        ne.hammer = (flags & 0x02) == 0x02;
-        ne.let_ring = (flags & 0x08) == 0x08;
-        if (flags & 0x01) == 0x01 {ne.bend = BendEffect::read(data, seek);}
-        if (flags & 0x10) == 0x10 {ne.grace = Some(GraceEffect::read(data, seek));}
-        if (flags & 0x04) == 0x04 {ne.slides.push(SlideType::ShiftSlideTo);}
-        return ne;
-    }
+/// Read note effects. First byte is note effects flags:
+/// - *0x01*: bend presence
+/// - *0x02*: hammer-on/pull-off
+/// - *0x04*: slide
+/// - *0x08*: let-ring
+/// - *0x10*: grace note presence
+/// 
+/// Flags are followed by:
+/// - Bend. See `readBend`.
+/// - Grace note. See `readGrace`.
+pub fn read_note_effect(data: &Vec<u8>, seek: &mut usize) -> NoteEffect {
+    let mut ne = NoteEffect::default();
+    let flags = read_byte(data, seek);
+    ne.hammer = (flags & 0x02) == 0x02;
+    ne.let_ring = (flags & 0x08) == 0x08;
+    if (flags & 0x01) == 0x01 {ne.bend = BendEffect::read(data, seek);}
+    if (flags & 0x10) == 0x10 {ne.grace = Some(GraceEffect::read(data, seek));}
+    if (flags & 0x04) == 0x04 {ne.slides.push(SlideType::ShiftSlideTo);}
+    return ne;
 }
 
 /// An enumeration of all supported slide types.

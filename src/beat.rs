@@ -158,79 +158,80 @@ impl BeatEffects {
             self.tremolo_bar == d.tremolo_bar &&
             self.slap_effect == d.slap_effect;
     }
-    /// Read beat effects. The first byte is effects flags:
-    /// - *0x01*: vibrato- *0x02*: wide vibrato
-    /// - *0x04*: natural harmonic
-    /// - *0x08*: artificial harmonic
-    /// - *0x10*: fade in
-    /// - *0x20*: tremolo bar or slap effect
-    /// - *0x40*: beat stroke direction
-    /// - *0x80*: *blank*
-    /// - Tremolo bar or slap effect: `byte`. If it's 0 then tremolo bar should be read (see `TremoloBar::read()`). Else it's tapping and values of the byte map to:
-    /// - *1*: tap
-    /// - *2*: slap
-    /// - *3*: pop
-    /// - Beat stroke direction. See `BeatStroke::read()`
-    pub fn read(data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
-        let be = BeatEffects::default();
-        let flags = read_byte(data, seek);
-        note_effect.vibrato = (flags & 0x01) == 0x01 || note_effect.vibrato;
-        be.vibrato = (flags & 0x02) == 0x02 || be.vibrato;
-        be.fade_in = (flags & 0x10) == 0x10;
-        if (flags & 0x20) == 0x20 {
-            be.slap_effect = match read_byte(data, seek) {
-                0 => SlapEffect::None,
-                1 => SlapEffect::Tapping,
-                2 => SlapEffect::Slapping,
-                3 => SlapEffect::Popping,
-                _ => panic!("Cannot read slap effect for the beat effects"),
-            };
-            if be.slap_effect == SlapEffect::None {be.tremolo_bar = Some(BeatEffects::read_tremolo_bar(data, seek));} else {read_int(data, seek);}
-            if (flags & 0x40) == 0x40 {be.stroke = BeatEffects::read_stroke(data, seek);}
-            //In GP3 harmonics apply to the whole beat, not the individual notes. Here we set the noteEffect for all the notes in the beat.
-            if (flags & 0x04) == 0x04 {note_effect.harmonic = Some(HarmonicEffect::default());}
-            if (flags & 0x08) == 0x08 {note_effect.harmonic = Some(HarmonicEffect {kind: HarmonicType::Artificial, ..Default::default()});}
-        }
-        return be;
+}
+
+/// Read beat effects. The first byte is effects flags:
+/// - *0x01*: vibrato- *0x02*: wide vibrato
+/// - *0x04*: natural harmonic
+/// - *0x08*: artificial harmonic
+/// - *0x10*: fade in
+/// - *0x20*: tremolo bar or slap effect
+/// - *0x40*: beat stroke direction
+/// - *0x80*: *blank*
+/// - Tremolo bar or slap effect: `byte`. If it's 0 then tremolo bar should be read (see `TremoloBar::read()`). Else it's tapping and values of the byte map to:
+/// - *1*: tap
+/// - *2*: slap
+/// - *3*: pop
+/// - Beat stroke direction. See `BeatStroke::read()`
+pub fn read(data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
+    let mut be = BeatEffects::default();
+    let flags = read_byte(data, seek);
+    note_effect.vibrato = (flags & 0x01) == 0x01 || note_effect.vibrato;
+    be.vibrato = (flags & 0x02) == 0x02 || be.vibrato;
+    be.fade_in = (flags & 0x10) == 0x10;
+    if (flags & 0x20) == 0x20 {
+        be.slap_effect = match read_byte(data, seek) {
+            0 => SlapEffect::None,
+            1 => SlapEffect::Tapping,
+            2 => SlapEffect::Slapping,
+            3 => SlapEffect::Popping,
+            _ => panic!("Cannot read slap effect for the beat effects"),
+        };
+        if be.slap_effect == SlapEffect::None {be.tremolo_bar = Some(read_tremolo_bar(data, seek));} else {read_int(data, seek);}
+        if (flags & 0x40) == 0x40 {be.stroke = read_stroke(data, seek);}
+        //In GP3 harmonics apply to the whole beat, not the individual notes. Here we set the noteEffect for all the notes in the beat.
+        if (flags & 0x04) == 0x04 {note_effect.harmonic = Some(HarmonicEffect::default());}
+        if (flags & 0x08) == 0x08 {note_effect.harmonic = Some(HarmonicEffect {kind: HarmonicType::Artificial, ..Default::default()});}
     }
-    /// Read beat stroke. Beat stroke consists of two :ref:`Bytes <byte>` which correspond to stroke up
-    /// and stroke down speed. See `BeatStrokeDirection` for value mapping.
-    pub fn read_stroke(data: &Vec<u8>, seek: &mut usize) -> BeatStroke {
-        let bs = BeatStroke::default();
-        let down = read_signed_byte(data, seek);
-        let up = read_signed_byte(data, seek);
-        if up > 0 {
-            bs.direction = BeatStrokeDirection::Up;
-            bs.value = BeatEffects::stroke_value(up).to_u16().unwrap();
-        }
-        if down > 0 {
-            bs.direction = BeatStrokeDirection::Down;
-            bs.value = BeatEffects::stroke_value(down).to_u16().unwrap();
-        }
-        return bs;
+    return be;
+}
+/// Read beat stroke. Beat stroke consists of two :ref:`Bytes <byte>` which correspond to stroke up
+/// and stroke down speed. See `BeatStrokeDirection` for value mapping.
+pub fn read_stroke(data: &Vec<u8>, seek: &mut usize) -> BeatStroke {
+    let mut bs = BeatStroke::default();
+    let down = read_signed_byte(data, seek);
+    let up = read_signed_byte(data, seek);
+    if up > 0 {
+        bs.direction = BeatStrokeDirection::Up;
+        bs.value = stroke_value(up).to_u16().unwrap();
     }
-    pub fn stroke_value(value: i8) -> u8 {
-        match value {
-            1 => DURATION_HUNDRED_TWENTY_EIGHTH,
-            2 => DURATION_SIXTY_FOURTH,
-            3 => DURATION_THIRTY_SECOND,
-            4 => DURATION_SIXTEENTH,
-            5 => DURATION_EIGHTH,
-            6 => DURATION_QUARTER,
-            _ => DURATION_SIXTY_FOURTH,
-        }
+    if down > 0 {
+        bs.direction = BeatStrokeDirection::Down;
+        bs.value = stroke_value(down).to_u16().unwrap();
     }
-    /// Read tremolo bar beat effect. The only type of tremolo bar effect Guitar Pro 3 supports is `dip <BendType::Dip>`. The value of the
-    /// effect is encoded in :ref:`Int` and shows how deep tremolo bar is pressed.
-    pub fn read_tremolo_bar(data: &Vec<u8>, seek: &mut usize) -> BendEffect {
-        let be = BendEffect::default();
-        be.kind = BendType::Dip;
-        be.value = read_int(data, seek).to_i16().unwrap();
-        be.points.push(BendPoint{ position: 0, value: 0, ..Default::default() });
-        be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION / 2,
-                                     value: (-f32::from(be.value) / GP_BEND_SEMITONE).round().to_i8().unwrap(),
-                                  ..Default::default() });
-        be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION, value: 0, ..Default::default() });
-        return be;
+    return bs;
+}
+pub fn stroke_value(value: i8) -> u8 {
+    match value {
+        1 => DURATION_HUNDRED_TWENTY_EIGHTH,
+        2 => DURATION_SIXTY_FOURTH,
+        3 => DURATION_THIRTY_SECOND,
+        4 => DURATION_SIXTEENTH,
+        5 => DURATION_EIGHTH,
+        6 => DURATION_QUARTER,
+        _ => DURATION_SIXTY_FOURTH,
     }
+}
+/// Read tremolo bar beat effect. The only type of tremolo bar effect Guitar Pro 3 supports is `dip <BendType::Dip>`. The value of the
+/// effect is encoded in :ref:`Int` and shows how deep tremolo bar is pressed.
+pub fn read_tremolo_bar(data: &Vec<u8>, seek: &mut usize) -> BendEffect {
+    let mut be = BendEffect::default();
+    be.kind = BendType::Dip;
+    be.value = read_int(data, seek).to_i16().unwrap();
+    be.points.push(BendPoint{ position: 0, value: 0, ..Default::default() });
+    be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION / 2,
+                                    value: (-f32::from(be.value) / GP_BEND_SEMITONE).round().to_i8().unwrap(),
+                                ..Default::default() });
+    be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION, value: 0, ..Default::default() });
+    return be;
 }
