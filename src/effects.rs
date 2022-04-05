@@ -77,18 +77,19 @@ pub fn read_bend_effect(data: &Vec<u8>, seek: &mut usize) -> Option<BendEffect> 
 
 
 //A collection of velocities / dynamics
-pub const MIN_VELOCITY: u16 = 15;
-pub const VELOCITY_INCREMENT: u16 = 16;
-pub const PIANO_PIANISSIMO: u16 = MIN_VELOCITY * VELOCITY_INCREMENT;
-pub const PIANO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 2;
-pub const MEZZO_PIANO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 3;
-pub const MEZZO_FORTE: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 4;
-pub const FORTE: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 5;
-pub const FORTISSIMO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 6;
-pub const FORTE_FORTISSIMO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 7;
-pub const DEFAULT_VELOCITY: u16 = FORTE;
+pub const MIN_VELOCITY: i16 = 15;
+pub const VELOCITY_INCREMENT: i16 = 16;
+pub const PIANO_PIANISSIMO: i16 = MIN_VELOCITY * VELOCITY_INCREMENT;
+pub const PIANO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 2;
+pub const MEZZO_PIANO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 3;
+pub const MEZZO_FORTE: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 4;
+pub const FORTE: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 5;
+pub const FORTISSIMO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 6;
+pub const FORTE_FORTISSIMO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 7;
+pub const DEFAULT_VELOCITY: i16 = FORTE;
 /// Convert Guitar Pro dynamic value to raw MIDI velocity
-pub fn unpack_velocity(v: u16) -> u16 {
+pub fn unpack_velocity(v: i16) -> i16 {
+    println!("unpack_velocity({})", v);
     return MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT;
 }
 
@@ -100,12 +101,12 @@ pub struct GraceEffect {
     pub is_dead: bool,
     pub is_on_beat: bool,
     pub transition: GraceEffectTransition,
-    pub velocity: u16,
+    pub velocity: i16,
 }
 impl Default for GraceEffect { fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::None, velocity: DEFAULT_VELOCITY }}}
 impl GraceEffect {
-    pub fn duration_time(self) -> u16 {
-        return (f32::from(crate::key_signature::DURATION_QUARTER_TIME as i16) / 16f32 * f32::from(self.duration)).to_i16().expect("Cannot get bend point time") as u16;
+    pub fn duration_time(self) -> i16 {
+        return (f32::from(crate::key_signature::DURATION_QUARTER_TIME as i16) / 16f32 * f32::from(self.duration)).to_i16().expect("Cannot get bend point time").to_i16().unwrap();
     }
 }
 /// Read grace note effect.
@@ -123,6 +124,7 @@ impl GraceEffect {
 /// - Transition: `byte`. This variable determines the transition type used to make the grace note: `0: None`, `1: Slide`, `2: Bend`, `3: Hammer` (defined in `GraceEffectTransition`).
 /// - Duration: `byte`. Determines the grace note duration, coded this way: `3: Sixteenth note`, `2: Twenty-fourth note`, `1: Thirty-second note`.
 pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
+    println!("read_grace_effect()");
     let mut g = GraceEffect::default();
     g.fret = read_signed_byte(data, seek);
     g.velocity = unpack_velocity(read_byte(data, seek).into());

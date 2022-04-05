@@ -121,6 +121,6 @@ pub fn read_track(data: &Vec<u8>, seek: &mut usize, song: &mut Song, _number: us
     track.fret_count = read_int(data, seek).to_u8().unwrap();
     track.offset = read_int(data, seek);
     track.color = read_color(data, seek);
-    //println!("\tInstrument: {} \t Strings: {} {} ({:?})", track.channel.get_instrument_name(), string_count, track.strings.len(), track.strings);
+    println!("\tInstrument: {} \t Strings: {} {} ({:?})", song.channels[index].get_instrument_name(), string_count, track.strings.len(), track.strings);
     song.tracks.push(track);
 }

@@ -5,9 +5,8 @@ use crate::{effects::*, enums::*, io::*, track::*, beat::*, key_signature::*};
 
 #[derive(Clone, PartialEq)]
 pub struct Note {
-    //TODO: pub beat: Beat,
     pub value: i16,
-    pub velocity: u16,
+    pub velocity: i16,
     pub string: i8,
     pub effect: NoteEffect,
     pub duration_percent: f32,
@@ -15,7 +14,6 @@ pub struct Note {
     pub kind: NoteType,
 }
 impl Default for Note {fn default() -> Self {Note {
-    //beat: Beat::default(),
     value: 0,
     velocity: DEFAULT_VELOCITY,
     string: 0,
@@ -104,11 +102,12 @@ impl NoteEffect {
 /// - *0x20*: 2th string
 /// - *0x40*: 1th string
 /// - *0x80*: *blank*
-pub fn read_notes(data: &Vec<u8>, seek: &mut usize, track: &mut Track, beat: &mut Beat, duration: &Duration, note_effect: Option<NoteEffect>) {
+pub fn read_notes(data: &Vec<u8>, seek: &mut usize, track: &mut Track, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
+    println!("read_notes()");
     let flags = read_byte(data, seek);
     for i in 0..track.strings.len() {
         if (flags & 1 << (7 - track.strings[i].0.to_u8().unwrap())) > 0 {
-            let mut note = Note{..Default::default()};
+            let mut note = Note{effect: note_effect.clone(), ..Default::default()};
             read_note(data, seek, &mut note, track.strings[i], track);
             beat.notes.push(note);
         }
@@ -134,6 +133,7 @@ pub fn read_notes(data: &Vec<u8>, seek: &mut usize, track: &mut Track, beat: &mu
 /// - Fingering: 2 `SignedBytes <signed-byte>`. See `Fingering`.
 /// - Note effects. See `read_note_effects()`.
 fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (i8,i8), track: &mut Track) {
+    println!("read_note()");
     let flags = read_byte(data, seek);
     note.string = guitar_string.0;
     note.effect.ghost_note = (flags & 0x04) == 0x04;
@@ -151,7 +151,7 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
     }
     if (flags & 0x10) == 0x10 {
         let v = read_signed_byte(data, seek);
-        note.velocity = crate::effects::unpack_velocity(v.to_u16().unwrap());
+        note.velocity = crate::effects::unpack_velocity(v.to_i16().unwrap());
     }
     if (flags & 0x20) == 0x20 {
         let fret = read_signed_byte(data, seek);

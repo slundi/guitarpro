@@ -101,6 +101,7 @@ impl MeasureHeader {
 /// 2) a string containing the marker's name. Finally the marker's color is written.
 /// * **Tonality of the measure**: `byte`. This value encodes a key (signature) change on the current piece. It is encoded as: `0: C`, `1: G (#)`, `2: D (##)`, `-1: F (b)`, ...
 pub fn read_measure_header(data: &Vec<u8>, seek: &mut usize, song: &mut Song, number: usize) {
+    println!("read_measure_header()");
     //println!("N={}\tmeasure_headers={}", number, song.measure_headers.len());
     let flag = read_byte(data, seek);
     let mut mh = MeasureHeader::default();
@@ -128,6 +129,7 @@ pub fn read_measure_header(data: &Vec<u8>, seek: &mut usize, song: &mut Song, nu
 }
 
 fn read_repeat_alternative(data: &Vec<u8>, seek: &mut usize, measure_headers: &mut Vec<MeasureHeader>) -> i8 {
+    println!("read_repeat_alternative()");
     let value = read_byte(data, seek);
     let mut existing_alternative = 0i8;
     for i in measure_headers.len()-1 .. 0 {

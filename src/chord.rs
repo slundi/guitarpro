@@ -25,7 +25,6 @@ pub struct Chord {
     pub show: Option<bool>,
     pub new_format: Option<bool>,
 
-    //TODO: def __attrs_post_init__(self): self.strings = <-1>, * self.length
     //TODO: @property def notes(self): return <string for string in self.strings if string >= 0>,
 }
 impl Default for Chord {
@@ -43,7 +42,7 @@ impl Chord {
 /// Read chord diagram. First byte is chord header. If it's set to 0, then following chord is written in 
 /// default (GP3) format. If chord header is set to 1, then chord diagram in encoded in more advanced (GP4) format.
 pub fn read_chord(data: &Vec<u8>, seek: &mut usize, string_count: u8) -> Chord {
-    let mut c = Chord {length: string_count, ..Default::default()};
+    let mut c = Chord {length: string_count, strings: vec![-1; string_count.into()], ..Default::default()};
     for _ in 0..string_count {c.strings.push(-1);}
     c.new_format = Some(read_bool(data, seek));
     if c.new_format == Some(true) {read_new_format_chord(data, seek, &mut c);}

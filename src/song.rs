@@ -109,7 +109,6 @@ impl Song {
                 read_measure_header(data, &mut seek, self, i);
             }
             //self.current_measure_number = Some(0);
-            // read tracks //TODO: FIXME
             for i in 0..track_count {read_track(data, &mut seek, self, i);}
             read_measures(data, &mut seek, self);
             if self.version.number == VERSION_4_0X {} //annotate error reading
