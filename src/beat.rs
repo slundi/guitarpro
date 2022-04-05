@@ -5,7 +5,6 @@ use crate::{mix_table::*, effects::*, chord::*, key_signature::*, note::*, io::*
 /// A beat contains multiple notes
 #[derive(Clone,PartialEq)]
 pub struct Beat {
-    //TODO: pub voice: Voice,
     pub notes: Vec<Note>,
     pub duration: Duration,
     pub text: String,
@@ -83,7 +82,7 @@ pub fn read_beat(data: &Vec<u8>, seek: &mut usize, voice: &mut Voice, start: &i6
         let mtc = read_mix_table_change(data, seek);
         voice.beats[b].effect.mix_table_change = Some(mtc);
     }
-    read_notes(data, seek, track, &mut voice.beats[b], &duration, Some(note_effect));
+    read_notes(data, seek, track, &mut voice.beats[b], &duration, note_effect);
     if voice.beats[b].status == BeatStatus::Empty {return 0;} else {return duration.time().to_i64().unwrap();}
 }
 

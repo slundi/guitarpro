@@ -1,4 +1,4 @@
-# Guitar IO
+# Guitarpro
 
 Rust library and command line interface (CLI) for guitar tab files.
 
