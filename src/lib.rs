@@ -3,6 +3,7 @@ extern crate lazy_static;
 
 #[path = "song.rs"] mod gp;
 mod io;
+mod enums;
 mod headers;
 mod track;
 mod measure;

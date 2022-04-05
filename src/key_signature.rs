@@ -23,6 +23,8 @@ impl Default for TimeSignature {
     fn default() -> Self { TimeSignature { numerator: 4, denominator:Duration::default(), beams: vec![2,2,2,2]}}
 }
 
+const SUPPORTED_TUPLETS: [(u8, u8); 10] = [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)];
+
 #[derive(Clone,PartialEq)]
 pub struct Duration {
     pub value:u16,
@@ -81,11 +83,10 @@ impl Duration {
 /// 
 /// If flag at *0x20* is true, the tuplet is read
 pub fn read_duration(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
+    println!("read_duration()");
     let mut d = Duration::default();
-    //let b = read_signed_byte(data, seek);
-    println!("B: {}", b);
-    d.value = 1 << (read_signed_byte(data, seek) + 2); //TODO: FIXME: overflow
-    //d.value = 1 << (b + 2);
+    let b = read_signed_byte(data, seek); println!("B: {}", b); d.value = 1 << (b + 2);
+    //d.value = 1 << (read_signed_byte(data, seek) + 2); //TODO: FIXME: overflow
     d.dotted = (flags & 0x01) == 0x01;
     if (flags & 0x20) == 0x20 {
         let i_tuplet = read_int(data, seek);
@@ -108,7 +109,6 @@ struct Tuplet {
     enters: u8,
     times: u8,
 }*/
-const SUPPORTED_TUPLETS: [(u8, u8); 10] = [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)];
 /*impl Default for Tuplet { fn default() -> Self { Tuplet { enters: 1, times: 1 }}}
 impl Tuplet {
     fn is_supported(self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.enters, self.times)); }

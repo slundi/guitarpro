@@ -1,17 +1,6 @@
 use fraction::ToPrimitive;
 
-use crate::{gp::*, mix_table::*, effects::*, chord::*, key_signature::*, note::*, io::*};
-
-
-#[derive(Clone,PartialEq)]
-pub enum BeatStatus {Empty, Normal, Rest}
-
-#[derive(Clone,PartialEq)]
-pub enum TupletBracket {None, Start, End}
-
-/// Octave signs
-#[derive(Clone,PartialEq)]
-pub enum Octave { None, Ottava, Quindicesima, Ottavabassa, Quindicesimabassa }
+use crate::{mix_table::*, effects::*, chord::*, key_signature::*, note::*, io::*, track::*, enums::*};
 
 /// A beat contains multiple notes
 #[derive(Clone,PartialEq)]
@@ -20,7 +9,7 @@ pub struct Beat {
     pub notes: Vec<Note>,
     pub duration: Duration,
     pub text: String,
-    pub start: Option<u16>,
+    pub start: Option<i64>,
     pub effect: BeatEffects,
     pub octave: Octave,
     pub display: BeatDisplay,
@@ -64,30 +53,47 @@ impl Beat {
 /// - Text: `int-byte-size-string`.
 /// - Beat effects. See `BeatEffects::read()`.
 /// - Mix table change effect. See `MixTableChange::read()`.
-pub fn read_beat(data: &Vec<u8>, seek: &mut usize) -> u8 { //start,voice
+pub fn read_beat(data: &Vec<u8>, seek: &mut usize, voice: &mut Voice, start: &i64, track: &mut Track) -> i64 {
+    println!("read_beat()");
     let flags = read_byte(data, seek);
-    //let beat = get_beat(voice,start);
-    /*if (flags & 0x40) == 0x40 {
-        beat.status = match read_byte(data, seek) {
-            0 => BeatStatus::Empty,
-            1 => BeatStatus::Normal,
-            2 => BeatStatus::Rest,
-            _ => panic!("Cannot get beat status"),
-        };
-    } //else { beat.status = BeatStatus::Normal;}
-    let duration = Duration::read(data, seek, flags);
-    if (flags & 0x02) == 0x02 {beat.effect.chord = Chord::read(voice.measure.track.strings.len());}
-    if (flags & 0x04) == 0x04 {beat.text = read_byte_size_string(data, seek);}
+    //get a beat
+    let mut b = 0;
+    let mut new_beat = true;
+    for i in (0usize..voice.beats.len()).rev() {if voice.beats[i].start == Some(*start) {
+        b = i;
+        new_beat = false;
+        break;
+    }}
+    if new_beat {
+        voice.beats.push(Beat{start: Some(start.clone()), ..Default::default() });
+        b = voice.beats.len() - 1;
+    }
+    
+    if (flags & 0x40) == 0x40 { voice.beats[b].status = get_beat_status(read_byte(data, seek));} //else { beat.status = BeatStatus::Normal;}
+    let duration = read_duration(data, seek, flags);
+    let mut note_effect = NoteEffect::default();
+    if (flags & 0x02) == 0x02 {voice.beats[b].effect.chord = Some(read_chord(data, seek, track.strings.len().to_u8().unwrap()));}
+    if (flags & 0x04) == 0x04 {voice.beats[b].text = read_byte_size_string(data, seek);}
     if (flags & 0x08) == 0x08 {
-        let chord = beat.effect.chord.clone();
-        beat.effect = BeatEffects::read(data, seek);
-        beat.effect.chord = chord;
+        let chord = voice.beats[b].effect.chord.clone();
+        voice.beats[b].effect = read_beat_effects(data, seek, &mut note_effect);
+        voice.beats[b].effect.chord = chord;
     }
     if (flags & 0x10) == 0x10 {
-        let mtc = MixTableChange::read(data, seek, voice.measure);
-        beet.effect.mix_table_change = mtc;
+        let mtc = read_mix_table_change(data, seek);
+        voice.beats[b].effect.mix_table_change = Some(mtc);
     }
-    if beat.status == BeatStatus::Empty {return 0;} else {return duration.time();}*/0
+    read_notes(data, seek, track, &mut voice.beats[b], &duration, Some(note_effect));
+    if voice.beats[b].status == BeatStatus::Empty {return 0;} else {return duration.time().to_i64().unwrap();}
+}
+
+fn get_beat_status(value: u8) -> BeatStatus {
+    match value {
+        0 => BeatStatus::Empty,
+        1 => BeatStatus::Normal,
+        2 => BeatStatus::Rest,
+        _ => BeatStatus::Normal, //panic!("Cannot get beat status"),
+    }
 }
 
 /// Parameters of beat display
@@ -118,13 +124,6 @@ impl BeatStroke {
         return bs;
     }
 }
-
-/// All beat stroke directions
-#[derive(Clone,PartialEq)]
-pub enum BeatStrokeDirection { None, Up, Down }
-/// Characteristic of articulation
-#[derive(Clone,PartialEq)]
-pub enum SlapEffect { None, Tapping, Slapping, Popping }
 
 /// This class contains all beat effects
 #[derive(Clone,PartialEq)]
@@ -181,6 +180,7 @@ impl BeatEffects {
 /// - *3*: pop
 /// - Beat stroke direction. See `BeatStroke::read()`
 pub fn read_beat_effects(data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
+    println!("read_beat_effects()");
     let mut be = BeatEffects::default();
     let flags = read_byte(data, seek);
     note_effect.vibrato = (flags & 0x01) == 0x01 || note_effect.vibrato;
@@ -205,6 +205,7 @@ pub fn read_beat_effects(data: &Vec<u8>, seek: &mut usize, note_effect: &mut Not
 /// Read beat stroke. Beat stroke consists of two :ref:`Bytes <byte>` which correspond to stroke up
 /// and stroke down speed. See `BeatStrokeDirection` for value mapping.
 pub fn read_beat_stroke(data: &Vec<u8>, seek: &mut usize) -> BeatStroke {
+    println!("read_beat_stroke()");
     let mut bs = BeatStroke::default();
     let down = read_signed_byte(data, seek);
     let up = read_signed_byte(data, seek);
@@ -232,6 +233,7 @@ pub fn stroke_value(value: i8) -> u8 {
 /// Read tremolo bar beat effect. The only type of tremolo bar effect Guitar Pro 3 supports is `dip <BendType::Dip>`. The value of the
 /// effect is encoded in :ref:`Int` and shows how deep tremolo bar is pressed.
 pub fn read_tremolo_bar(data: &Vec<u8>, seek: &mut usize) -> BendEffect {
+    println!("read_tremolo_bar()");
     let mut be = BendEffect::default();
     be.kind = BendType::Dip;
     be.value = read_int(data, seek).to_i16().unwrap();
@@ -242,10 +244,6 @@ pub fn read_tremolo_bar(data: &Vec<u8>, seek: &mut usize) -> BendEffect {
     be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION, value: 0, ..Default::default() });
     return be;
 }
-
-/// Voice directions indicating the direction of beams
-#[derive(Clone,PartialEq)]
-pub enum VoiceDirection { None, Up, Down }
 
 /// A voice contains multiple beats
 #[derive(Clone)]

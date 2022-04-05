@@ -1,4 +1,5 @@
 
+use crate::enums::*;
 use crate::io::*;
 use crate::headers::*;
 use crate::measure::*;
@@ -155,10 +156,6 @@ fn read_meta(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
     let nc = read_int(data, seek) as usize; //notes count
     if nc >0 { for i in 0..nc { song.notice.push(read_int_size_string(data, seek)); println!("  {}\t\t{}",i, song.notice[song.notice.len()-1]); }}
 }
-
-/// A navigation sign like *Coda* (𝄌: U+1D10C) or *Segno* (𝄋 or 𝄉: U+1D10B or U+1D109).
-#[derive(Clone)]
-pub enum DirectionSign { Coda, Segno, }
 
 /* INIT:
 this.currentStart = measure.getStart();

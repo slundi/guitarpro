@@ -1,13 +1,6 @@
 use fraction::ToPrimitive;
 
-use crate::{beat::*, gp::*, key_signature::*, io::*};
-
-/// An enumeration of available clefs
-#[derive(Clone)]
-pub enum MeasureClef { Treble, Bass, Tenor, Alto }
-/// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
-#[derive(Clone)]
-pub enum LineBreak { None, Break, Protect }
+use crate::{beat::*, gp::*, key_signature::*, io::*, enums::*};
 
 /// A measure header contains metadata for measures over multiple tracks.
 #[derive(Clone)]
@@ -67,7 +60,7 @@ pub fn read_measures(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
             song.current_track = Some(t);
             let mut m = Measure{track_index:t, header_index:h, ..Default::default()};
             song.current_measure_number = Some(m.number);
-            read_measure(data, seek, song, &mut m, song.tracks[t].strings.len().to_u8().unwrap());
+            read_measure(data, seek, song, &mut m, t);
             song.tracks[t].measures.push(m);
         }
         start += song.measure_headers[h].length();
@@ -77,14 +70,14 @@ pub fn read_measures(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
 }
 
 /// Read measure. The measure is written as number of beats followed by sequence of beats.
-fn read_measure(data: &Vec<u8>, seek: &mut usize, song: &mut Song, measure: &mut Measure, string_count: u8) {
+fn read_measure(data: &Vec<u8>, seek: &mut usize, song: &mut Song, measure: &mut Measure, track_index: usize) {
     let mut start = measure.start;
     song.current_voice_number = Some(1);
     //read a voice
     let beats = read_int(data, seek).to_usize().unwrap();
     for i in 0..beats {
         song.current_beat_number = Some(i + 1);
-        start += read_beat(data, seek, &mut measure.voices[0], &start, string_count);
+        start += read_beat(data, seek, &mut measure.voices[0], &start, &mut song.tracks[track_index]);
     }
     song.current_beat_number = None;
     //end read a voice

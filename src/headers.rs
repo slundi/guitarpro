@@ -1,6 +1,6 @@
 use fraction::ToPrimitive;
 
-use crate::{io::*, gp::*, key_signature::*};
+use crate::{io::*, gp::*, key_signature::*, enums::*};
 
 #[derive(Clone)]
 pub struct Version {
@@ -47,10 +47,6 @@ pub struct Clipboard {
 impl Default for Clipboard {
 	fn default() -> Self { Clipboard {start_measure: 1, stop_measure: 1, start_track: 1, stop_track: 1, start_beat: 1, stop_beat: 1, sub_bar_copy: false} }
 }
-
-/// An enumeration of different triplet feels.
-#[derive(Clone)]
-pub enum TripletFeel { NONE, EIGHTH, SIXTEENTH }
 
 #[derive(Clone)]
 pub struct MeasureHeader {

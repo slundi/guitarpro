@@ -8,6 +8,7 @@ use std::fs;
 use std::io::Read;
 #[path = "song.rs"] mod gp;
 mod io;
+mod enums;
 mod headers;
 mod track;
 mod measure;

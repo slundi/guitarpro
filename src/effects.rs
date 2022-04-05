@@ -1,7 +1,7 @@
 use fraction::ToPrimitive;
 use std::convert::Into;
 
-use crate::{io::*, chord::*, key_signature::*};
+use crate::{io::*, chord::*, key_signature::*, enums::*};
 
 /// A single point within the BendEffect
 #[derive(Clone,PartialEq)]
@@ -17,39 +17,6 @@ impl BendPoint {
     fn get_time(&self, duration: u8) -> u16{
         return (f32::from(duration) * f32::from(self.position) / f32::from(BEND_EFFECT_MAX_POSITION)).to_i16().expect("Cannot get bend point time") as u16;
     }
-}
-
-/// All Bend presets
-#[derive(Clone,PartialEq)]
-pub enum BendType {
-    /// No Preset.
-    None,
-
-    //Bends
-    /// A simple bend.
-    Bend,
-    /// A bend and release afterwards.
-    BendRelease,
-    /// A bend, then release and rebend.
-    BendReleaseBend,
-    /// Prebend.
-    Prebend,
-    /// Prebend and then release.
-    PrebendRelease,
-
-    //Tremolo Bar
-    /// Dip the bar down and then back up.
-    Dip,
-    /// Dive the bar.
-    Dive,
-    /// Release the bar up.
-    ReleaseUp,
-    /// Dip the bar up and then back down.
-    InvertedDip,
-    /// Return the bar.
-    Return,
-    /// Release the bar down.
-    ReleaseDown
 }
 
 pub const BEND_EFFECT_MAX_POSITION: u8 =12;
@@ -108,18 +75,6 @@ pub fn read_bend_effect(data: &Vec<u8>, seek: &mut usize) -> Option<BendEffect> 
     else {return None;}
 }
 
-/// All transition types for grace notes.
-#[derive(Clone,PartialEq)]
-pub enum GraceEffectTransition {
-    ///No transition
-    None,
-    ///Slide from the grace note to the real one.
-    Slide,
-    ///Perform a bend from the grace note to the real one.
-    Bend,
-    ///Perform a hammer on.
-    Hammer
-}
 
 //A collection of velocities / dynamics
 pub const MIN_VELOCITY: u16 = 15;
@@ -133,7 +88,7 @@ pub const FORTISSIMO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 6;
 pub const FORTE_FORTISSIMO: u16 = MIN_VELOCITY + VELOCITY_INCREMENT * 7;
 pub const DEFAULT_VELOCITY: u16 = FORTE;
 /// Convert Guitar Pro dynamic value to raw MIDI velocity
-fn unpack_velocity(v: u16) -> u16 {
+pub fn unpack_velocity(v: u16) -> u16 {
     return MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT;
 }
 
@@ -188,15 +143,6 @@ pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
         _ => panic!("Cannot get transition for the grace effect"),
     };
     return g;
-}
-
-#[derive(Clone,PartialEq)]
-pub enum HarmonicType {
-    Natural, //1
-    Artificial,
-    Tapped,
-    Pinch,
-    Semi, //5
 }
 
 /// A harmonic note effect
