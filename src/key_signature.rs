@@ -15,7 +15,7 @@ pub const DURATION_HUNDRED_TWENTY_EIGHTH: u8 = 128;
 /// A time signature
 #[derive(Clone)]
 pub struct TimeSignature {
-    pub numerator: i8,
+    pub numerator: i64,
     pub denominator: Duration,
     pub beams: Vec<i32>,
 }
@@ -37,7 +37,7 @@ pub struct Duration {
 }
 impl Default for Duration {
     fn default() -> Self { Duration {
-        value: DURATION_QUARTER.to_u16().unwrap(), dotted: false, double_dotted: false,
+        value: DURATION_QUARTER_TIME.to_u16().unwrap(), dotted: false, double_dotted: false,
         tuplet_enters:1, tuplet_times:1,
         min_time: 0
     }}
@@ -47,16 +47,16 @@ impl Duration {
 
     pub fn is_supported(&self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times)); }
 
-    pub fn convert_time(&self, time: u8) -> u8 {
-        let result = fraction::Fraction::new(time * self.tuplet_enters, self.tuplet_times);
+    pub fn convert_time(&self, time: u32) -> u32 {
+        let result = fraction::Fraction::new(time * self.tuplet_enters.to_u32().unwrap(), self.tuplet_times.to_u32().unwrap());
         if result.denom().expect("Cannot get fraction denominator") == &1 {1}
-        else {result.to_u8().expect("Cannot get fraction result")}
+        else {result.to_u32().expect("Cannot get fraction result")}
     }
 
-    pub fn time(&self) -> u8 {
+    pub fn time(&self) -> u32 {
         let mut result = (f64::from(DURATION_QUARTER_TIME as i32) * 4f64 / f64::from(self.value)).trunc();
         if self.dotted { result += (result/2f64).trunc(); }
-        return self.convert_time(result as u8);
+        return self.convert_time(result.to_u32().unwrap());
     }
 
     pub fn index(&self) -> u8 {
@@ -85,8 +85,8 @@ impl Duration {
 pub fn read_duration(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
     println!("read_duration()");
     let mut d = Duration::default();
-    let b = read_signed_byte(data, seek); println!("B: {}", b); d.value = 1 << (b + 2);
-    //d.value = 1 << (read_signed_byte(data, seek) + 2); //TODO: FIXME: overflow
+    //let b = read_signed_byte(data, seek); println!("B: {}", b); d.value = 1 << (b + 2);
+    d.value = 1 << (read_signed_byte(data, seek) + 2);
     d.dotted = (flags & 0x01) == 0x01;
     if (flags & 0x20) == 0x20 {
         let i_tuplet = read_int(data, seek);

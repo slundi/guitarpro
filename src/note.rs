@@ -106,10 +106,10 @@ impl NoteEffect {
 /// - *0x40*: 1th string
 /// - *0x80*: *blank*
 pub fn read_notes(data: &Vec<u8>, seek: &mut usize, track: &mut Track, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
-    println!("read_notes()");
     let flags = read_byte(data, seek);
+    //println!("read_notes(), flags: {}", flags);
     for i in 0..track.strings.len() {
-        if (flags & 1 << (7 - track.strings[i].0.to_u8().unwrap())) > 0 {
+        if (flags & 1 << (7 - track.strings[i].0.to_i8().unwrap())) > 0 {
             let mut note = Note{effect: note_effect.clone(), ..Default::default()};
             read_note(data, seek, &mut note, track.strings[i], track);
             beat.notes.push(note);
@@ -136,11 +136,11 @@ pub fn read_notes(data: &Vec<u8>, seek: &mut usize, track: &mut Track, beat: &mu
 /// - Fingering: 2 `SignedBytes <signed-byte>`. See `Fingering`.
 /// - Note effects. See `read_note_effects()`.
 fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (i8,i8), track: &mut Track) {
-    println!("read_note()");
     let flags = read_byte(data, seek);
     note.string = guitar_string.0;
     note.effect.ghost_note = (flags & 0x04) == 0x04;
-    if (flags & 0x02) == 0x02 {note.kind = match read_byte(data, seek) {
+    //println!("read_note(), flags: {} \t string: {} \t ghost note: {}", flags, guitar_string.0, note.effect.ghost_note);
+    if (flags & 0x20) == 0x20 {note.kind = match read_byte(data, seek) {
         0 => NoteType::Rest,
         1 => NoteType::Normal,
         2 => NoteType::Tie,
@@ -148,7 +148,9 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
         _ => panic!("Cannot read note type"),
     }}
     if (flags & 0x01) == 0x01 {
-        read_signed_byte(data, seek);read_signed_byte(data, seek);
+        let duration = read_signed_byte(data, seek);
+        let tuplet = read_signed_byte(data, seek);
+        println!("read_note(), duration: {} \t tuplet: {}",duration, tuplet);
         //note.duration = read_signed_byte(data, seek);
         //note.tuplet = read_signed_byte(data, seek);
     }

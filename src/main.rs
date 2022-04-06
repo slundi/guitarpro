@@ -64,7 +64,7 @@ fn main() {
             println!("Transcriber: \"{}\"", song.transcriber);
             println!("Comments:    \"{}\"", song.comments);
             }
-        "GPX" => println!("Guitar pro file (new version)"), //new Guitar Pro files
+        "GPX" => println!("Guitar pro file (new version) is not supported yet"), //new Guitar Pro files
         _ => panic!("Unable to process a {} file (GP1 and GP2 files are not supported)", ext),
     }
 }

@@ -23,7 +23,7 @@ impl Default for Beat { fn default() -> Self { Beat {
     effect: BeatEffects::default(),
     octave: Octave::None,
     display: BeatDisplay::default(),
-    status: BeatStatus::Empty,
+    status: BeatStatus::Normal,
 }}}
 impl Beat {
     //pub fn start_in_measure(&self) -> u16 {return self.start - self.voice.measure.start;}
@@ -53,8 +53,8 @@ impl Beat {
 /// - Beat effects. See `BeatEffects::read()`.
 /// - Mix table change effect. See `MixTableChange::read()`.
 pub fn read_beat(data: &Vec<u8>, seek: &mut usize, voice: &mut Voice, start: &i64, track: &mut Track) -> i64 {
-    println!("read_beat()");
     let flags = read_byte(data, seek);
+    println!("read_beat(), flags: {}", flags);
     //get a beat
     let mut b = 0;
     let mut new_beat = true;
@@ -68,11 +68,11 @@ pub fn read_beat(data: &Vec<u8>, seek: &mut usize, voice: &mut Voice, start: &i6
         b = voice.beats.len() - 1;
     }
     
-    if (flags & 0x40) == 0x40 { voice.beats[b].status = get_beat_status(read_byte(data, seek));} //else { beat.status = BeatStatus::Normal;}
+    if (flags & 0x40) == 0x40 { voice.beats[b].status = get_beat_status(read_byte(data, seek));} //else { voice.beats[b].status = BeatStatus::Normal;}
     let duration = read_duration(data, seek, flags);
     let mut note_effect = NoteEffect::default();
     if (flags & 0x02) == 0x02 {voice.beats[b].effect.chord = Some(read_chord(data, seek, track.strings.len().to_u8().unwrap()));}
-    if (flags & 0x04) == 0x04 {voice.beats[b].text = read_byte_size_string(data, seek);}
+    if (flags & 0x04) == 0x04 {voice.beats[b].text = read_int_size_string(data, seek);}
     if (flags & 0x08) == 0x08 {
         let chord = voice.beats[b].effect.chord.clone();
         voice.beats[b].effect = read_beat_effects(data, seek, &mut note_effect);

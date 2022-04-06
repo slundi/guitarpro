@@ -79,7 +79,10 @@ impl Default for MeasureHeader {
     }}
 }
 impl MeasureHeader {
-    pub fn length(&self) -> i64 {return (self.time_signature.numerator as i64) * (self.time_signature.denominator.time() as i64);}
+    pub fn length(&self) -> i64 {
+        println!("MeasureHeader: {} {}", self.time_signature.numerator, self.time_signature.denominator.time());
+        return (self.time_signature.numerator as i64) * (self.time_signature.denominator.time() as i64);
+    }
     pub fn end(&self) -> i64 {return self.start + self.length();}
 }
 
