@@ -139,7 +139,7 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
     let flags = read_byte(data, seek);
     note.string = guitar_string.0;
     note.effect.ghost_note = (flags & 0x04) == 0x04;
-    //println!("read_note(), flags: {} \t string: {} \t ghost note: {}", flags, guitar_string.0, note.effect.ghost_note);
+    println!("read_note(), flags: {} \t string: {} \t ghost note: {}", flags, guitar_string.0, note.effect.ghost_note);
     if (flags & 0x20) == 0x20 {note.kind = match read_byte(data, seek) {
         0 => NoteType::Rest,
         1 => NoteType::Normal,
@@ -169,7 +169,7 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
         note.effect.right_hand_finger= get_fingering(read_signed_byte(data, seek));
     }
     if (flags & 0x08) == 0x08 {
-        read_note_effect(data, seek, note);
+        read_note_effects(data, seek, note);
         if note.effect.is_harmonic() && note.effect.harmonic.is_some() {
             let mut h = note.effect.harmonic.take().unwrap();
             if h.kind == HarmonicType::Tapped {h.fret = Some(note.value.to_i8().unwrap() + 12);}
@@ -188,9 +188,10 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
 /// Flags are followed by:
 /// - Bend. See `readBend`.
 /// - Grace note. See `readGrace`.
-fn read_note_effect(data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
+fn read_note_effects(data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
     //println!("read_note_effect()");
     let flags = read_byte(data, seek);
+    //println!("read_effect(), flags: {}", flags);
     note.effect.hammer = (flags & 0x02) == 0x02;
     note.effect.let_ring = (flags & 0x08) == 0x08;
     if (flags & 0x01) == 0x01 {note.effect.bend = read_bend_effect(data, seek);}

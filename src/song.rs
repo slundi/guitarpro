@@ -1,4 +1,6 @@
 
+use fraction::ToPrimitive;
+
 use crate::enums::*;
 use crate::io::*;
 use crate::headers::*;
@@ -94,17 +96,17 @@ pub fn read_data(data: &Vec<u8>, song: &mut Song) {
         song.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
         //println!("Triplet feel: {}", song.triplet_feel);
         if song.version.number == VERSION_4_0X {} //read lyrics
-        song.tempo = read_int(data, &mut seek) as i16;
-        song.key.key = read_int(data, &mut seek) as i8;
+        song.tempo = read_int(data, &mut seek).to_i16().unwrap();
+        song.key.key = read_int(data, &mut seek).to_i8().unwrap();
         println!("Tempo: {} bpm\t\tKey: {}", song.tempo, song.key.to_string());
         if song.version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
         read_midi_channels(data, &mut seek, &mut song.channels);
-        let measure_count = read_int(data, &mut seek) as usize;
-        let track_count = read_int(data, &mut seek) as usize;
+        let measure_count = read_int(data, &mut seek).to_usize().unwrap();
+        let track_count = read_int(data, &mut seek).to_usize().unwrap();
         println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
         for i in 1..measure_count + 1  {
-            //song.current_measure_number = Some(i as u16);
+            //song.current_measure_number = Some(i.to_i16().unwrap());
             read_measure_header(data, &mut seek, song, i);
         }
         //song.current_measure_number = Some(0);
@@ -147,7 +149,7 @@ fn read_meta(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
     song.writer      = read_int_size_string(data, seek); //tabbed by
     song.instructions= read_int_size_string(data, seek); //instructions
     //notices
-    let nc = read_int(data, seek) as usize; //notes count
+    let nc = read_int(data, seek).to_usize().unwrap(); //notes count
     if nc >0 { for i in 0..nc { song.notice.push(read_int_size_string(data, seek)); println!("  {}\t\t{}",i, song.notice[song.notice.len()-1]); }}
 }
 

@@ -37,7 +37,7 @@ pub struct KeySignature {
 impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
 impl KeySignature {
     pub fn to_string(&self) -> String {
-        let index: usize = if self.is_minor {(23i8 + self.key) as usize} else {(8i8 + self.key) as usize};
+        let index: usize = if self.is_minor {(23i8 + self.key).to_usize().unwrap()} else {(8i8 + self.key).to_usize().unwrap()};
         return String::from(KEY_SIGNATURES[index]);
     }
 }

@@ -1,3 +1,5 @@
+use fraction::ToPrimitive;
+
 use crate::io::*;
 
 //MIDI channels
@@ -66,7 +68,7 @@ impl MidiChannel {
     }
 
     pub fn get_instrument(self) -> i32 {return self.instrument;}
-    pub fn get_instrument_name(&self) -> String {return String::from(CHANNEL_DEFAULT_NAMES[self.instrument as usize]);} //TODO: FIXME: does not seems OK
+    pub fn get_instrument_name(&self) -> String {return String::from(CHANNEL_DEFAULT_NAMES[self.instrument.to_usize().unwrap()]);} //TODO: FIXME: does not seems OK
 }
 
 /// Read all the MIDI channels

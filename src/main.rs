@@ -2,6 +2,7 @@
 extern crate lazy_static;
 extern crate clap;
 use clap::Parser;
+use fraction::ToPrimitive;
 use std::path::Path;
 use std::ffi::OsStr;
 use std::fs;
@@ -39,7 +40,7 @@ fn main() {
     if !f.exists() || !f.is_file() {panic!("Unable to access file: {}", &args.input);}
     //check file format
     let ext = f.extension().and_then(OsStr::to_str).unwrap_or_else(||{panic!("Cannont get input file extension");}).to_uppercase();
-    let size: usize = fs::metadata(&args.input).unwrap_or_else(|_e|{panic!("Unable to get file size")}).len() as usize;
+    let size: usize = fs::metadata(&args.input).unwrap_or_else(|_e|{panic!("Unable to get file size")}).len().to_usize().unwrap();
     if size > GUITAR_FILE_MAX_SIZE {panic!("File is too big (bigger than 16 MB)");}
     let f = fs::OpenOptions::new().read(true).open(&args.input).unwrap_or_else(|_error| {
         /*if error.kind() == fs::ErrorKind::NotFound {panic!("File {} was not found", &file);}

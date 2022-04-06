@@ -128,14 +128,14 @@ pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
     let mut g = GraceEffect::default();
     g.fret = read_signed_byte(data, seek);
     g.velocity = unpack_velocity(read_byte(data, seek).into());
+    g.duration = 1 << (7 - read_byte(data, seek));
     //g.duration = 1 << (7 - read_byte(data, seek));
-    //g.duration = 1 << (7 - read_byte(data, seek));
-    g.duration = match read_byte(data, seek) {
+    /*g.duration = match read_byte(data, seek) {
         1 => DURATION_THIRTY_SECOND,
         2 => DURATION_TWENTY_FOURTH, //TODO: FIXME: ?
         3 => DURATION_SIXTEENTH,
         _ => panic!("Cannot get grace note effect duration"),
-    };
+    };*/
     g.is_dead = g.fret == -1;
     g.transition = match read_signed_byte(data, seek) {
         0 => GraceEffectTransition::None,

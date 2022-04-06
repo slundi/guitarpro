@@ -105,7 +105,7 @@ pub fn read_measure_header(data: &Vec<u8>, seek: &mut usize, song: &mut Song, nu
     let flag = read_byte(data, seek);
     //println!("read_measure_header(), flags: {}", flag);
     let mut mh = MeasureHeader::default();
-    mh.number = number as u16;
+    mh.number = number.to_u16().unwrap();
     mh.start  = 0;
     mh.triplet_feel = song.triplet_feel.clone();
     //we need a previous header for the next 2 flags
