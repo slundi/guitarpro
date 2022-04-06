@@ -103,12 +103,11 @@ pub fn read_track(data: &Vec<u8>, seek: &mut usize, song: &mut Song, _number: us
     track.strings.clear();
     for i in 0i8..7i8 {
         let i_tuning = read_int(data, seek).to_i8().unwrap();
-        //println!("tuning: {}", i_tuning);
         if string_count.to_i8().unwrap() > i { track.strings.push((i + 1, i_tuning)); }
     }
+    //println!("tuning: {:?}", track.strings);
     track.port = read_int(data, seek).to_u8().unwrap();
-    // Read MIDI channel. MIDI channel in Guitar Pro is represented by two integers. First
-    // is zero-based number of channel, second is zero-based number of channel used for effects.
+    // Read MIDI channel. MIDI channel in Guitar Pro is represented by two integers. First is zero-based number of channel, second is zero-based number of channel used for effects.
     let index = (read_int(data, seek) -1).to_usize().unwrap();
     let effect_channel = read_int(data, seek) -1;
     if index < song.channels.len() {
@@ -121,6 +120,6 @@ pub fn read_track(data: &Vec<u8>, seek: &mut usize, song: &mut Song, _number: us
     track.fret_count = read_int(data, seek).to_u8().unwrap();
     track.offset = read_int(data, seek);
     track.color = read_color(data, seek);
-    println!("\tInstrument: {} \t Strings: {} {} ({:?})", song.channels[index].get_instrument_name(), string_count, track.strings.len(), track.strings);
+    println!("\tInstrument: {} \t Strings: {}/{} ({:?})", song.channels[index].get_instrument_name(), string_count, track.strings.len(), track.strings);
     song.tracks.push(track);
 }

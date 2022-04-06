@@ -51,9 +51,9 @@ fn main() {
     f.take(u64::from_ne_bytes(size.to_ne_bytes())).read_to_end(&mut data).unwrap_or_else(|_error|{panic!("Unable to read file contents");});
     let mut song: gp::Song = gp::Song::default();
     match ext.as_str() {
-        "GP1" | "GP2" | "GP3" | "GP4" | "GP5" => {
+        "GP3" | "GP4" | "GP5" => {
             println!("Guitar pro file"); //old Guitar Pro files
-            song.read_data(&data);
+            gp::read_data(&data, &mut song);
             println!("Artist: \"{}\"", song.artist);
             println!("Title:  \"{}\"", song.name);
             println!("Album:  \"{}\"", song.album);
@@ -65,6 +65,6 @@ fn main() {
             println!("Comments:    \"{}\"", song.comments);
             }
         "GPX" => println!("Guitar pro file (new version)"), //new Guitar Pro files
-        _ => panic!("Unable to process a {} file", ext),
+        _ => panic!("Unable to process a {} file (GP1 and GP2 files are not supported)", ext),
     }
 }

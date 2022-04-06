@@ -71,73 +71,68 @@ impl Default for Song {
         master_effect: RseMasterEffect::default(),
 	}}
 }
-impl Song {
-    /// Read the song.
-    /// 
-    /// **GP3**: A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
-    /// - Version: `byte-size-string` of size 30.
-    /// - Score information. See `readInfo`.
-    /// - Triplet feel: `bool`. If value is true, then triplet feel is set to eigth.
-    /// - Tempo: `int`.
-    /// - Key: `int`. Key signature of the song.
-    /// - MIDI channels. See `readMidiChannels`.
-    /// - Number of measures: `int`.
-    /// - Number of tracks: `int`.
-    /// - Measure headers. See `readMeasureHeaders`.
-    /// - Tracks. See `read_tracks()`.
-    /// - Measures. See `read_measures()`.
-    pub fn read_data(&mut self, data: &Vec<u8>) {
-        let mut seek: usize = 0;
-        read_version(data, &mut seek, self);
-        read_meta(data, &mut seek, self);
-        
-        if self.version.number < VERSION_5_00 {
-            self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
-            //println!("Triplet feel: {}", self.triplet_feel);
-            if self.version.number == VERSION_4_0X {} //read lyrics
-            self.tempo = read_int(data, &mut seek) as i16;
-            self.key.key = read_int(data, &mut seek) as i8;
-            println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
-            if self.version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
-            read_midi_channels(data, &mut seek, &mut self.channels);
-            let measure_count = read_int(data, &mut seek) as usize;
-            let track_count = read_int(data, &mut seek) as usize;
-            println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
-            // Read measure headers. The *measures* are written one after another, their number have been specified previously.
-            for i in 1..measure_count + 1  {
-                //self.current_measure_number = Some(i as u16);
-                read_measure_header(data, &mut seek, self, i);
-            }
-            //self.current_measure_number = Some(0);
-            for i in 0..track_count {read_track(data, &mut seek, self, i);}
-            read_measures(data, &mut seek, self);
-            if self.version.number == VERSION_4_0X {} //annotate error reading
+/// Read the song.
+/// 
+/// **GP3**: A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
+/// - Version: `byte-size-string` of size 30.
+/// - Score information. See `readInfo`.
+/// - Triplet feel: `bool`. If value is true, then triplet feel is set to eigth.
+/// - Tempo: `int`.
+/// - Key: `int`. Key signature of the song.
+/// - MIDI channels. See `readMidiChannels`.
+/// - Number of measures: `int`.
+/// - Number of tracks: `int`.
+/// - Measure headers. See `readMeasureHeaders`.
+/// - Tracks. See `read_tracks()`.
+/// - Measures. See `read_measures()`.
+pub fn read_data(data: &Vec<u8>, song: &mut Song) {
+    let mut seek: usize = 0;
+    read_version(data, &mut seek, song);
+    read_meta(data, &mut seek, song);
+    
+    if song.version.number < VERSION_5_00 {
+        song.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
+        //println!("Triplet feel: {}", song.triplet_feel);
+        if song.version.number == VERSION_4_0X {} //read lyrics
+        song.tempo = read_int(data, &mut seek) as i16;
+        song.key.key = read_int(data, &mut seek) as i8;
+        println!("Tempo: {} bpm\t\tKey: {}", song.tempo, song.key.to_string());
+        if song.version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
+        read_midi_channels(data, &mut seek, &mut song.channels);
+        let measure_count = read_int(data, &mut seek) as usize;
+        let track_count = read_int(data, &mut seek) as usize;
+        println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
+        // Read measure headers. The *measures* are written one after another, their number have been specified previously.
+        for i in 1..measure_count + 1  {
+            //song.current_measure_number = Some(i as u16);
+            read_measure_header(data, &mut seek, song, i);
         }
-        //read GP5 information
-        if self.version.number == VERSION_5_00 || self.version.number == VERSION_5_10 {
-            //self.lyrics = 
-            read_lyrics(data, &mut seek);
-            /*song.masterEffect = self.readRSEMasterEffect()
-            song.pageSetup = self.readPageSetup()
-            song.tempoName = self.readIntByteSizeString()
-            song.tempo = self.readInt()
-            song.hideTempo = self.readBool() if self.versionTuple > (5, 0, 0) else False
-            song.key = gp.KeySignature((self.readSignedByte(), 0))
-            self.readInt()  # octave
-            channels = self.readMidiChannels()
-            directions = self.readDirections()
-            song.masterEffect.reverb = self.readInt()
-            measureCount = self.readInt()
-            trackCount = self.readInt()
-            with self.annotateErrors('reading'):
-                self.readMeasureHeaders(song, measureCount, directions)
-                self.readTracks(song, trackCount, channels)
-                self.readMeasures(song) */
-        }
+        //song.current_measure_number = Some(0);
+        for i in 0..track_count {read_track(data, &mut seek, song, i);}
+        read_measures(data, &mut seek, song);
+        if song.version.number == VERSION_4_0X {} //annotate error reading
     }
-    /*fn read_measure(&mut self, data: &Vec<u8>, seek: &mut usize) -> Measure {
-        //let mut m = Measure::new();
-    }*/
+    //read GP5 information
+    if song.version.number == VERSION_5_00 || song.version.number == VERSION_5_10 {
+        //song.lyrics = 
+        read_lyrics(data, &mut seek);
+        /*song.masterEffect = song.readRSEMasterEffect()
+        song.pageSetup = song.readPageSetup()
+        song.tempoName = song.readIntByteSizeString()
+        song.tempo = song.readInt()
+        song.hideTempo = song.readBool() if song.versionTuple > (5, 0, 0) else False
+        song.key = gp.KeySignature((song.readSignedByte(), 0))
+        song.readInt()  # octave
+        channels = song.readMidiChannels()
+        directions = song.readDirections()
+        song.masterEffect.reverb = song.readInt()
+        measureCount = song.readInt()
+        trackCount = song.readInt()
+        with song.annotateErrors('reading'):
+            song.readMeasureHeaders(song, measureCount, directions)
+            song.readTracks(song, trackCount, channels)
+            song.readMeasures(song) */
+    }
 }
 /// Read meta information (name, artist, ...)
 fn read_meta(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {

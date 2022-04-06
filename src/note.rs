@@ -23,9 +23,12 @@ impl Default for Note {fn default() -> Self {Note {
     kind: NoteType::Rest,
 }}}
 impl Note {
-    /*pub fn real_value(&self) {
-        return self.value + self.beat.voice.measure.track.strings[self.string -1].value;
-    }*/
+    pub fn real_value(&self, strings:Vec<(i8,i8)>) -> i8 {
+        if self.string > 0 {
+            return self.value.to_i8().unwrap() + strings[self.string.to_usize().unwrap() -1].1;
+        }
+        panic!("Cannot get real value for the note.");
+    }
 }
 
 /// Contains all effects which can be applied to one note.
