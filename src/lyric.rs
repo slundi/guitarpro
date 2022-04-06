@@ -42,7 +42,7 @@ impl Lyrics {
 pub fn read_lyrics(data: &Vec<u8>, seek: &mut usize) -> Lyrics {
     let mut lyrics = Lyrics::default();
     lyrics.track_choice = read_int(data, seek).to_u8().unwrap();
-    println!("Lyrics for track #{}", lyrics.track_choice);
+    //println!("Lyrics for track #{}", lyrics.track_choice);
     lyrics.line1.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
     lyrics.line2.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
     lyrics.line3.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));

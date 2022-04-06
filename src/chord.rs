@@ -203,7 +203,7 @@ impl PitchClass {
             pitch = p.value;
             p.accidental = accidental.unwrap();
         }
-        println!("VALUE: {} \t NOTE: {}", p.value, p.note);
+        //println!("VALUE: {} \t NOTE: {}", p.value, p.note);
         p.just = pitch % 12;
         p.value = p.just + p.accidental;
         if sharp.is_none() { p.sharp = p.accidental >= 0; }

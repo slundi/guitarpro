@@ -150,7 +150,7 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
     if (flags & 0x01) == 0x01 {
         let duration = read_signed_byte(data, seek);
         let tuplet = read_signed_byte(data, seek);
-        println!("read_note(), duration: {} \t tuplet: {}",duration, tuplet);
+        //println!("read_note(), duration: {} \t tuplet: {}",duration, tuplet);
         //note.duration = read_signed_byte(data, seek);
         //note.tuplet = read_signed_byte(data, seek);
     }
@@ -189,7 +189,7 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
 /// - Bend. See `readBend`.
 /// - Grace note. See `readGrace`.
 fn read_note_effect(data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
-    println!("read_note_effect()");
+    //println!("read_note_effect()");
     let flags = read_byte(data, seek);
     note.effect.hammer = (flags & 0x02) == 0x02;
     note.effect.let_ring = (flags & 0x08) == 0x08;
@@ -200,7 +200,7 @@ fn read_note_effect(data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
 
 /// Get note value of tied note
 fn get_tied_note_value(string_index: i8, track: &Track) -> i16 {
-    println!("get_tied_note_value()");
+    //println!("get_tied_note_value()");
     for m in (0usize..track.measures.len()).rev() {
         for v in (0usize..track.measures[m].voices.len()).rev() {
             for b in 0..track.measures[m].voices[v].beats.len() {

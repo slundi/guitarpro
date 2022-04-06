@@ -63,8 +63,8 @@ pub fn read_measures(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
             read_measure(data, seek, song, &mut m, t);
             song.tracks[t].measures.push(m);
         }
+        //println!("read_measures(), start: {} \t numerator: {} \t denominator: {} \t length: {}", start, song.measure_headers[h].time_signature.numerator, song.measure_headers[h].time_signature.denominator.value, song.measure_headers[h].length());
         start += song.measure_headers[h].length();
-        println!("read_measures(), start: {}", start);
     }
     song.current_track = None;
     song.current_measure_number = None;
@@ -75,11 +75,11 @@ fn read_measure(data: &Vec<u8>, seek: &mut usize, song: &mut Song, measure: &mut
     song.current_voice_number = Some(1);
     //read a voice 
     let beats = read_int(data, seek).to_usize().unwrap();
-    println!("read_measure() read_voice(), beat count: {}", beats);
+    //println!("read_measure() read_voice(), beat count: {}", beats);
     for i in 0..beats {
         song.current_beat_number = Some(i + 1);
         //println!("read_measure() read_voice(), start: {}", measure.start);
-        measure.start += read_beat(data, seek, &mut measure.voices[0], &measure.start, &mut song.tracks[track_index]);
+        measure.start += read_beat(data, seek, &mut measure.voices[0], measure.start, &mut song.tracks[track_index]);
         //println!("read_measure() read_voice(), start: {}", measure.start);
     }
     song.current_beat_number = None;

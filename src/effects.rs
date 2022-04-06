@@ -106,7 +106,7 @@ pub struct GraceEffect {
 impl Default for GraceEffect { fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::None, velocity: DEFAULT_VELOCITY }}}
 impl GraceEffect {
     pub fn duration_time(self) -> i16 {
-        return (f32::from(crate::key_signature::DURATION_QUARTER_TIME as i16) / 16f32 * f32::from(self.duration)).to_i16().expect("Cannot get bend point time").to_i16().unwrap();
+        return (f32::from(crate::key_signature::DURATION_QUARTER_TIME.to_i16().unwrap()) / 16f32 * f32::from(self.duration)).to_i16().expect("Cannot get bend point time").to_i16().unwrap();
     }
 }
 /// Read grace note effect.

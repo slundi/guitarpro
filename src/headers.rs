@@ -75,14 +75,11 @@ impl Default for MeasureHeader {
         key_signature: KeySignature::default(),
         double_bar: false,
         marker: Marker::default(),
-        time_signature: TimeSignature {numerator: 4, denominator: Duration::default(), beams: vec![2, 2, 2, 2]}, //TODO: denominator
+        time_signature: TimeSignature {numerator: 4, denominator: Duration::default(), beams: vec![2, 2, 2, 2]},
     }}
 }
 impl MeasureHeader {
-    pub fn length(&self) -> i64 {
-        println!("MeasureHeader: {} {}", self.time_signature.numerator, self.time_signature.denominator.time());
-        return (self.time_signature.numerator as i64) * (self.time_signature.denominator.time() as i64);
-    }
+    pub fn length(&self) -> i64 {return self.time_signature.numerator.to_i64().unwrap() * self.time_signature.denominator.time().to_i64().unwrap();}
     pub fn end(&self) -> i64 {return self.start + self.length();}
 }
 
@@ -104,9 +101,9 @@ impl MeasureHeader {
 /// 2) a string containing the marker's name. Finally the marker's color is written.
 /// * **Tonality of the measure**: `byte`. This value encodes a key (signature) change on the current piece. It is encoded as: `0: C`, `1: G (#)`, `2: D (##)`, `-1: F (b)`, ...
 pub fn read_measure_header(data: &Vec<u8>, seek: &mut usize, song: &mut Song, number: usize) {
-    println!("read_measure_header()");
     //println!("N={}\tmeasure_headers={}", number, song.measure_headers.len());
     let flag = read_byte(data, seek);
+    //println!("read_measure_header(), flags: {}", flag);
     let mut mh = MeasureHeader::default();
     mh.number = number as u16;
     mh.start  = 0;
@@ -116,7 +113,7 @@ pub fn read_measure_header(data: &Vec<u8>, seek: &mut usize, song: &mut Song, nu
     if (flag & 0x01 )== 0x01 {mh.time_signature.numerator = read_signed_byte(data, seek);}
     else if number < song.measure_headers.len() {mh.time_signature.numerator = song.measure_headers[number-1].time_signature.numerator;}
     //Denominator of the (key) signature
-    if (flag & 0x02) == 0x02 {mh.time_signature.denominator = read_duration(data, seek, flag);}
+    if (flag & 0x02) == 0x02 {mh.time_signature.denominator.value = read_signed_byte(data, seek).to_u16().unwrap();}
     else if number < song.measure_headers.len() {mh.time_signature.denominator = song.measure_headers[number-1].time_signature.denominator.clone();}
 
     mh.repeat_open = (flag & 0x04) == 0x04; //Beginning of repeat
@@ -132,7 +129,7 @@ pub fn read_measure_header(data: &Vec<u8>, seek: &mut usize, song: &mut Song, nu
 }
 
 fn read_repeat_alternative(data: &Vec<u8>, seek: &mut usize, measure_headers: &mut Vec<MeasureHeader>) -> i8 {
-    println!("read_repeat_alternative()");
+    //println!("read_repeat_alternative()");
     let value = read_byte(data, seek);
     let mut existing_alternative = 0i8;
     for i in measure_headers.len()-1 .. 0 {

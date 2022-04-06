@@ -15,13 +15,33 @@ pub const DURATION_HUNDRED_TWENTY_EIGHTH: u8 = 128;
 /// A time signature
 #[derive(Clone)]
 pub struct TimeSignature {
-    pub numerator: i64,
+    pub numerator: i8,
     pub denominator: Duration,
     pub beams: Vec<i32>,
 }
 impl Default for TimeSignature {
     fn default() -> Self { TimeSignature { numerator: 4, denominator:Duration::default(), beams: vec![2,2,2,2]}}
 }
+
+pub const KEY_SIGNATURES: [&'static str; 34] = ["F♭ major", "C♭ major", "G♭ major", "D♭ major", "A♭ major", "E♭ major", "B♭ major",
+            "F major", "C major", "G major", "D major", "A major", "E major", "B major",
+            "F# major", "C# major", "G# major",
+            "D♭ minor", "A♭ minor", "E♭ minor", "B♭ minor",
+            "F minor", "C minor", "G minor", "D minor", "A minor", "E minor", "B minor",
+            "F# minor", "C# minor", "G# minor", "D# minor", "A# minor", "E# minor"];
+#[derive(Clone)]
+pub struct KeySignature {
+    pub key: i8,
+    pub is_minor: bool,
+}
+impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
+impl KeySignature {
+    pub fn to_string(&self) -> String {
+        let index: usize = if self.is_minor {(23i8 + self.key) as usize} else {(8i8 + self.key) as usize};
+        return String::from(KEY_SIGNATURES[index]);
+    }
+}
+
 
 const SUPPORTED_TUPLETS: [(u8, u8); 10] = [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)];
 
@@ -37,7 +57,7 @@ pub struct Duration {
 }
 impl Default for Duration {
     fn default() -> Self { Duration {
-        value: DURATION_QUARTER_TIME.to_u16().unwrap(), dotted: false, double_dotted: false,
+        value: DURATION_QUARTER.to_u16().unwrap(), dotted: false, double_dotted: false,
         tuplet_enters:1, tuplet_times:1,
         min_time: 0
     }}
@@ -49,13 +69,16 @@ impl Duration {
 
     pub fn convert_time(&self, time: u32) -> u32 {
         let result = fraction::Fraction::new(time * self.tuplet_enters.to_u32().unwrap(), self.tuplet_times.to_u32().unwrap());
-        if result.denom().expect("Cannot get fraction denominator") == &1 {1}
-        else {result.to_u32().expect("Cannot get fraction result")}
+        if *result.denom().unwrap() == 1 {return (*result.numer().unwrap()).to_u32().unwrap()}
+        else {result.trunc().to_u32().unwrap()}
     }
 
     pub fn time(&self) -> u32 {
-        let mut result = (f64::from(DURATION_QUARTER_TIME as i32) * 4f64 / f64::from(self.value)).trunc();
+        let mut result = (f64::from(DURATION_QUARTER_TIME.to_i32().unwrap()) * 4f64 / f64::from(self.value)).trunc();
+        //println!("\tDuration.time(): result: {}", result);
         if self.dotted { result += (result/2f64).trunc(); }
+        //if self.dotted { result += (result/4f64).trunc() * 3f64; }
+        //println!("\tDuration.time(): result: {}", result);
         return self.convert_time(result.to_u32().unwrap());
     }
 
@@ -83,7 +106,7 @@ impl Duration {
 /// 
 /// If flag at *0x20* is true, the tuplet is read
 pub fn read_duration(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
-    println!("read_duration()");
+    //println!("read_duration()");
     let mut d = Duration::default();
     //let b = read_signed_byte(data, seek); println!("B: {}", b); d.value = 1 << (b + 2);
     d.value = 1 << (read_signed_byte(data, seek) + 2);
@@ -153,23 +176,3 @@ const KEY_G_MINOR_SHARP: (i8, bool) = (5, true);
 const KEY_D_MINOR_SHARP: (i8, bool) = (6, true);
 const KEY_A_MINOR_SHARP: (i8, bool) = (7, true);
 const KEY_E_MINOR_SHARP: (i8, bool) = (8, true);*/
-
-pub const KEY_SIGNATURES: [&'static str; 34] = ["F♭ major", "C♭ major", "G♭ major", "D♭ major", "A♭ major", "E♭ major", "B♭ major",
-            "F major", "C major", "G major", "D major", "A major", "E major", "B major",
-            "F# major", "C# major", "G# major",
-            "D♭ minor", "A♭ minor", "E♭ minor", "B♭ minor",
-            "F minor", "C minor", "G minor", "D minor", "A minor", "E minor", "B minor",
-            "F# minor", "C# minor", "G# minor", "D# minor", "A# minor", "E# minor"];
-
-#[derive(Clone)]
-pub struct KeySignature {
-    pub key: i8,
-    pub is_minor: bool,
-}
-impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
-impl KeySignature {
-    pub fn to_string(&self) -> String {
-        let index: usize = if self.is_minor {(23i8 + self.key) as usize} else {(8i8 + self.key) as usize};
-        return String::from(KEY_SIGNATURES[index]);
-    }
-}
