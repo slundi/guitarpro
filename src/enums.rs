@@ -21,6 +21,18 @@ pub enum SlideType {
     OutDownwards,
     OutUpWards
 }
+pub fn get_slide_type(value: i8) -> SlideType {
+    match value {
+        -2 => SlideType::IntoFromAbove,
+        -1 => SlideType::IntoFromBelow,
+        0  => SlideType::None,
+        1  => SlideType::ShiftSlideTo,
+        2  => SlideType::LegatoSlideTo,
+        3  => SlideType::OutDownwards,
+        4  => SlideType::OutUpWards,
+        _ => panic!("Invalid slide type"),
+    }
+}
 
 /// An enumeration of all supported slide types.
 #[derive(Debug,Clone,PartialEq)]

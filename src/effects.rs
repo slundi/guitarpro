@@ -143,6 +143,24 @@ impl Default for HarmonicEffect { fn default() -> Self {HarmonicEffect { kind: H
 #[derive(Debug,Clone,PartialEq)]
 pub struct TremoloPickingEffect {duration: Duration,}
 impl Default for TremoloPickingEffect { fn default() -> Self {TremoloPickingEffect { duration: Duration::default() }}}
+/// Read tremolo picking. Tremolo constists of picking speed encoded in `signed-byte`. For value mapping refer to `from_tremolo_value()`.
+pub fn read_tremolo_picking(data: &Vec<u8>, seek: &mut usize) -> TremoloPickingEffect {
+    let mut tp = TremoloPickingEffect::default();
+    //TODO: tp.duration = from_tremolo_value(read_signed_byte(data, seek)
+    return tp;
+}
+/// Convert tremolo picking speed to actual duration. Values are:
+/// - *1*: eighth
+/// - *2*: sixteenth
+/// - *3*: thirtySecond
+fn from_tremolo_value(value: i8) -> u8 {
+    match value {
+        1 => DURATION_EIGHTH,
+        3 => DURATION_SIXTEENTH,
+        2 => DURATION_THIRTY_SECOND,
+        _ => panic!("Cannot get tremolo value")
+    }
+}
 
 /// A trill effect.
 #[derive(Debug,Clone,PartialEq)]
@@ -151,3 +169,7 @@ pub struct TrillEffect {
     duration: Duration,
 }
 impl Default for TrillEffect { fn default() -> Self {TrillEffect { fret:0, duration: Duration::default() }}}
+/// Read slides. Slide is encoded in `signed-byte`. See `SlideType` for value mapping.
+fn read_slide(data: &Vec<u8>, seek: &mut usize) -> SlideType {
+    get_slide_type(read_signed_byte(data, seek))
+}

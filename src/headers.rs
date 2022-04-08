@@ -47,6 +47,14 @@ pub struct Clipboard {
 impl Default for Clipboard {
 	fn default() -> Self { Clipboard {start_measure: 1, stop_measure: 1, start_track: 1, stop_track: 1, start_beat: 1, stop_beat: 1, sub_bar_copy: false} }
 }
+pub fn read_clipboard(data: &Vec<u8>, seek: &mut usize, song: &mut Song) -> Clipboard {
+    let mut c = Clipboard::default();
+    c.start_measure = read_int(data, seek);
+    c.stop_measure = read_int(data, seek);
+    c.start_track = read_int(data, seek);
+    c.stop_track = read_int(data, seek);
+    return c;
+}
 
 #[derive(Debug,Clone)]
 pub struct MeasureHeader {
