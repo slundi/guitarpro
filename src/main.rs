@@ -54,7 +54,7 @@ fn main() {
     match ext.as_str() {
         "GP3" | "GP4" | "GP5" => {
             println!("Guitar pro file"); //old Guitar Pro files
-            gp::read_data(&data, &mut song);
+            song.read_data(&data);
             println!("Artist: \"{}\"", song.artist);
             println!("Title:  \"{}\"", song.name);
             println!("Album:  \"{}\"", song.album);
