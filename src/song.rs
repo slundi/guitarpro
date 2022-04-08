@@ -95,7 +95,7 @@ pub fn read_data(data: &Vec<u8>, song: &mut Song) {
     if song.version.number < VERSION_5_00 {
         song.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
         //println!("Triplet feel: {}", song.triplet_feel);
-        if song.version.number == VERSION_4_0X {} //read lyrics
+        if song.version.number == VERSION_4_0X {song.lyrics = read_lyrics(data, &mut seek);} //read lyrics
         song.tempo = read_int(data, &mut seek).to_i16().unwrap();
         song.key.key = read_int(data, &mut seek).to_i8().unwrap();
         //println!("Tempo: {} bpm\t\tKey: {}", song.tempo, song.key.to_string());
