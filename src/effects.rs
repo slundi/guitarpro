@@ -46,21 +46,7 @@ impl Default for BendEffect { fn default() -> Self { BendEffect { kind: BendType
 ///   * Vibrato: `bool`.
 pub fn read_bend_effect(data: &Vec<u8>, seek: &mut usize) -> Option<BendEffect> {
     let mut be = BendEffect::default();
-    be.kind = match read_signed_byte(data, seek) {
-        0 => BendType::None,
-        1 => BendType::Bend,
-        2 => BendType::BendRelease,
-        3 => BendType::BendReleaseBend,
-        4 => BendType::Prebend,
-        5 => BendType::PrebendRelease,
-        6 => BendType::Dip,
-        7 => BendType::Dive,
-        8 => BendType::ReleaseUp,
-        9 => BendType::InvertedDip,
-        10 => BendType::Return,
-        11 => BendType::ReleaseDown,
-        _ => panic!("Cannot read bend type"),
-    };
+    be.kind = get_bend_type(read_signed_byte(data, seek));
     be.value = read_int(data, seek).to_i16().unwrap();
     let count: u8 = read_int(data, seek).try_into().unwrap();
     for _ in 0..count {
@@ -136,13 +122,7 @@ pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
         _ => panic!("Cannot get grace note effect duration"),
     };*/
     g.is_dead = g.fret == -1;
-    g.transition = match read_signed_byte(data, seek) {
-        0 => GraceEffectTransition::None,
-        1 => GraceEffectTransition::Slide,
-        2 => GraceEffectTransition::Bend,
-        3 => GraceEffectTransition::Hammer,
-        _ => panic!("Cannot get transition for the grace effect"),
-    };
+    g.transition = get_grace_effect_transition(read_signed_byte(data, seek));
     return g;
 }
 

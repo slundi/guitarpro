@@ -86,15 +86,6 @@ pub fn read_beat(data: &Vec<u8>, seek: &mut usize, voice: &mut Voice, start: i64
     if voice.beats[b].status == BeatStatus::Empty {return 0;} else {return duration.time().to_i64().unwrap();}
 }
 
-fn get_beat_status(value: u8) -> BeatStatus {
-    match value {
-        0 => BeatStatus::Empty,
-        1 => BeatStatus::Normal,
-        2 => BeatStatus::Rest,
-        _ => BeatStatus::Normal, //panic!("Cannot get beat status"),
-    }
-}
-
 /// Parameters of beat display
 #[derive(Debug,Clone,PartialEq)]
 pub struct BeatDisplay {
@@ -186,13 +177,7 @@ pub fn read_beat_effects(data: &Vec<u8>, seek: &mut usize, note_effect: &mut Not
     be.vibrato = (flags & 0x02) == 0x02 || be.vibrato;
     be.fade_in = (flags & 0x10) == 0x10;
     if (flags & 0x20) == 0x20 {
-        be.slap_effect = match read_byte(data, seek) {
-            0 => SlapEffect::None,
-            1 => SlapEffect::Tapping,
-            2 => SlapEffect::Slapping,
-            3 => SlapEffect::Popping,
-            _ => panic!("Cannot read slap effect for the beat effects"),
-        };
+        be.slap_effect = get_slap_effect(read_byte(data, seek));
         if be.slap_effect == SlapEffect::None {be.tremolo_bar = Some(read_tremolo_bar(data, seek));} else {read_int(data, seek);}
         if (flags & 0x40) == 0x40 {be.stroke = read_beat_stroke(data, seek);}
         //In GP3 harmonics apply to the whole beat, not the individual notes. Here we set the noteEffect for all the notes in the beat.

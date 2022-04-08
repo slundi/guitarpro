@@ -28,9 +28,26 @@ pub enum NoteType {
     Rest, //0
     Normal, Tie, Dead,
 }
+pub fn get_note_type(value: u8) -> NoteType {
+    match value {
+        0 => NoteType::Rest,
+        1 => NoteType::Normal,
+        2 => NoteType::Tie,
+        3 => NoteType::Dead,
+        _ => panic!("Cannot read note type"),
+    }
+}
 
 #[derive(Debug,Clone,PartialEq)]
 pub enum BeatStatus {Empty, Normal, Rest}
+pub fn get_beat_status(value: u8) -> BeatStatus {
+    match value {
+        0 => BeatStatus::Empty,
+        1 => BeatStatus::Normal,
+        2 => BeatStatus::Rest,
+        _ => BeatStatus::Normal, //panic!("Cannot get beat status"),
+    }
+}
 
 #[derive(Debug,Clone,PartialEq)]
 pub enum TupletBracket {None, Start, End}
@@ -45,6 +62,15 @@ pub enum BeatStrokeDirection { None, Up, Down }
 /// Characteristic of articulation
 #[derive(Debug,Clone,PartialEq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }
+pub fn get_slap_effect(value: u8) -> SlapEffect {
+    match value {
+        0 => SlapEffect::None,
+        1 => SlapEffect::Tapping,
+        2 => SlapEffect::Slapping,
+        3 => SlapEffect::Popping,
+        _ => panic!("Cannot read slap effect for the beat effects"),
+    }
+}
 
 
 /// Voice directions indicating the direction of beams
@@ -171,6 +197,23 @@ pub enum BendType {
     /// Release the bar down.
     ReleaseDown
 }
+pub fn get_bend_type(value: i8) -> BendType {
+    match value {
+        0 => BendType::None,
+        1 => BendType::Bend,
+        2 => BendType::BendRelease,
+        3 => BendType::BendReleaseBend,
+        4 => BendType::Prebend,
+        5 => BendType::PrebendRelease,
+        6 => BendType::Dip,
+        7 => BendType::Dive,
+        8 => BendType::ReleaseUp,
+        9 => BendType::InvertedDip,
+        10 => BendType::Return,
+        11 => BendType::ReleaseDown,
+        _ => panic!("Cannot read bend type"),
+    }
+}
 
 /// All transition types for grace notes.
 #[derive(Debug,Clone,PartialEq)]
@@ -183,6 +226,15 @@ pub enum GraceEffectTransition {
     Bend,
     ///Perform a hammer on.
     Hammer
+}
+pub fn get_grace_effect_transition(value: i8) -> GraceEffectTransition {
+    match value {
+        0 => GraceEffectTransition::None,
+        1 => GraceEffectTransition::Slide,
+        2 => GraceEffectTransition::Bend,
+        3 => GraceEffectTransition::Hammer,
+        _ => panic!("Cannot get transition for the grace effect"),
+    }
 }
 
 #[derive(Debug,Clone,PartialEq)]

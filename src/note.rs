@@ -140,13 +140,7 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
     note.string = guitar_string.0;
     note.effect.ghost_note = (flags & 0x04) == 0x04;
     println!("read_note(), flags: {} \t string: {} \t ghost note: {}", flags, guitar_string.0, note.effect.ghost_note);
-    if (flags & 0x20) == 0x20 {note.kind = match read_byte(data, seek) {
-        0 => NoteType::Rest,
-        1 => NoteType::Normal,
-        2 => NoteType::Tie,
-        3 => NoteType::Dead,
-        _ => panic!("Cannot read note type"),
-    }}
+    if (flags & 0x20) == 0x20 {note.kind = get_note_type(read_byte(data, seek)); }
     if (flags & 0x01) == 0x01 {
         let duration = read_signed_byte(data, seek);
         let tuplet = read_signed_byte(data, seek);
@@ -192,7 +186,6 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
 /// - Bend. See `readBend`.
 /// - Grace note. See `readGrace`.
 fn read_note_effects(data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
-    //println!("read_note_effect()");
     let flags = read_byte(data, seek);
     //println!("read_effect(), flags: {}", flags);
     note.effect.hammer = (flags & 0x02) == 0x02;
