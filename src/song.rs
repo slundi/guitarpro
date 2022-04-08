@@ -98,12 +98,12 @@ pub fn read_data(data: &Vec<u8>, song: &mut Song) {
         if song.version.number == VERSION_4_0X {} //read lyrics
         song.tempo = read_int(data, &mut seek).to_i16().unwrap();
         song.key.key = read_int(data, &mut seek).to_i8().unwrap();
-        println!("Tempo: {} bpm\t\tKey: {}", song.tempo, song.key.to_string());
+        //println!("Tempo: {} bpm\t\tKey: {}", song.tempo, song.key.to_string());
         if song.version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
         read_midi_channels(data, &mut seek, &mut song.channels);
         let measure_count = read_int(data, &mut seek).to_usize().unwrap();
         let track_count = read_int(data, &mut seek).to_usize().unwrap();
-        println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
+        //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
         for i in 1..measure_count + 1  {
             //song.current_measure_number = Some(i.to_i16().unwrap());

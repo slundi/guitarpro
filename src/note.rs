@@ -107,7 +107,7 @@ impl NoteEffect {
 /// - *0x80*: *blank*
 pub fn read_notes(data: &Vec<u8>, seek: &mut usize, track: &mut Track, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
     let flags = read_byte(data, seek);
-    println!("read_notes(), flags: {}", flags);
+    //println!("read_notes(), flags: {}", flags);
     for i in 0..track.strings.len() {
         if (flags & 1 << (7 - track.strings[i].0)) > 0 {
             let mut note = Note{effect: note_effect.clone(), ..Default::default()};
@@ -139,7 +139,7 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
     let flags = read_byte(data, seek);
     note.string = guitar_string.0;
     note.effect.ghost_note = (flags & 0x04) == 0x04;
-    println!("read_note(), flags: {} \t string: {} \t ghost note: {}", flags, guitar_string.0, note.effect.ghost_note);
+    //println!("read_note(), flags: {} \t string: {} \t ghost note: {}", flags, guitar_string.0, note.effect.ghost_note);
     if (flags & 0x20) == 0x20 {note.kind = get_note_type(read_byte(data, seek)); }
     if (flags & 0x01) == 0x01 {
         let duration = read_signed_byte(data, seek);
@@ -193,7 +193,7 @@ fn read_note_effects(data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
     if (flags & 0x01) == 0x01 {note.effect.bend = read_bend_effect(data, seek);}
     if (flags & 0x10) == 0x10 {note.effect.grace = Some(read_grace_effect(data, seek));}
     if (flags & 0x04) == 0x04 {note.effect.slides.push(SlideType::ShiftSlideTo);}
-    println!("read_note_effects(): {:?}", note);
+    //println!("read_note_effects(): {:?}", note);
 }
 
 /// Get note value of tied note

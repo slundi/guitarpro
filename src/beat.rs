@@ -63,7 +63,7 @@ pub fn read_beat(data: &Vec<u8>, seek: &mut usize, voice: &mut Voice, start: i64
         new_beat = false;
         break;
     }}
-    if new_beat {
+    if new_beat { //TODO: FIXME: ?
         voice.beats.push(Beat{start: Some(start), ..Default::default() });
         b = voice.beats.len() - 1;
     }
@@ -179,11 +179,11 @@ pub fn read_beat_effects(data: &Vec<u8>, seek: &mut usize, note_effect: &mut Not
     if (flags & 0x20) == 0x20 {
         be.slap_effect = get_slap_effect(read_byte(data, seek));
         if be.slap_effect == SlapEffect::None {be.tremolo_bar = Some(read_tremolo_bar(data, seek));} else {read_int(data, seek);}
-        if (flags & 0x40) == 0x40 {be.stroke = read_beat_stroke(data, seek);}
-        //In GP3 harmonics apply to the whole beat, not the individual notes. Here we set the noteEffect for all the notes in the beat.
-        if (flags & 0x04) == 0x04 {note_effect.harmonic = Some(HarmonicEffect::default());}
-        if (flags & 0x08) == 0x08 {note_effect.harmonic = Some(HarmonicEffect {kind: HarmonicType::Artificial, ..Default::default()});}
     }
+    if (flags & 0x40) == 0x40 {be.stroke = read_beat_stroke(data, seek);}
+    //In GP3 harmonics apply to the whole beat, not the individual notes. Here we set the noteEffect for all the notes in the beat.
+    if (flags & 0x04) == 0x04 {note_effect.harmonic = Some(HarmonicEffect::default());}
+    if (flags & 0x08) == 0x08 {note_effect.harmonic = Some(HarmonicEffect {kind: HarmonicType::Artificial, ..Default::default()});}
     return be;
 }
 /// Read beat stroke. Beat stroke consists of two :ref:`Bytes <byte>` which correspond to stroke up

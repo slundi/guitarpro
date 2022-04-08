@@ -6,7 +6,7 @@ It is based on [Perlence/PyGuitarPro](https://github.com/Perlence/PyGuitarPro) a
 
 ## Roadmap
 
-* [ ] Read GP3 files, seems OK
+* [x] Read GP3 files
 * [ ] Read GP4 files
 * [ ] Read GP5 files
 * [ ] Read GPX files (version 6)

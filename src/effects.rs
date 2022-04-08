@@ -48,7 +48,7 @@ pub fn read_bend_effect(data: &Vec<u8>, seek: &mut usize) -> Option<BendEffect> 
     let mut be = BendEffect::default();
     be.kind = get_bend_type(read_signed_byte(data, seek));
     be.value = read_int(data, seek).to_i16().unwrap();
-    let count: u8 = read_int(data, seek).try_into().unwrap();
+    let count: u8 = read_int(data, seek).to_u8().unwrap();
     for _ in 0..count {
         let mut bp = BendPoint::default();
         bp.position = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(BEND_EFFECT_MAX_POSITION) / GP_BEND_POSITION).round().to_u8().unwrap();
@@ -56,6 +56,7 @@ pub fn read_bend_effect(data: &Vec<u8>, seek: &mut usize) -> Option<BendEffect> 
         bp.vibrato = read_bool(data, seek);
         be.points.push(bp);
     }
+    //println!("read_bend_effect(): {:?}", be);
     if count > 0 {return Some(be);}
     else {return None;}
 }
@@ -109,7 +110,7 @@ impl GraceEffect {
 /// - Transition: `byte`. This variable determines the transition type used to make the grace note: `0: None`, `1: Slide`, `2: Bend`, `3: Hammer` (defined in `GraceEffectTransition`).
 /// - Duration: `byte`. Determines the grace note duration, coded this way: `3: Sixteenth note`, `2: Twenty-fourth note`, `1: Thirty-second note`.
 pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
-    println!("read_grace_effect()");
+    //println!("read_grace_effect()");
     let mut g = GraceEffect::default();
     g.fret = read_signed_byte(data, seek);
     g.velocity = unpack_velocity(read_byte(data, seek).to_i16().unwrap());

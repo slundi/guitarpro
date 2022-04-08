@@ -63,7 +63,7 @@ pub fn read_measures(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
             read_measure(data, seek, song, &mut m, t);
             song.tracks[t].measures.push(m);
         }
-        println!("read_measures(), start: {} \t numerator: {} \t denominator: {} \t length: {}", start, song.measure_headers[h].time_signature.numerator, song.measure_headers[h].time_signature.denominator.value, song.measure_headers[h].length());
+        //println!("read_measures(), start: {} \t numerator: {} \t denominator: {} \t length: {}", start, song.measure_headers[h].time_signature.numerator, song.measure_headers[h].time_signature.denominator.value, song.measure_headers[h].length());
         start += song.measure_headers[h].length();
     }
     song.current_track = None;

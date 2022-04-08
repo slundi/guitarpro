@@ -97,7 +97,7 @@ fn read_mix_table_change_values(data: &Vec<u8>, seek: &mut usize, mte: &mut MixT
     let b = read_signed_byte(data, seek);
     if b >= 0 {mte.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
     //tempo
-    let b = read_signed_byte(data, seek);
+    let b = read_int(data, seek);
     if b >= 0 {mte.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
 }
 /// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
