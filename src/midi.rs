@@ -41,7 +41,7 @@ pub const CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano",
 
 pub const DEFAULT_PERCUSSION_CHANNEL: u8 = 9;
 /// A MIDI channel describes playing data for a track.
-#[derive(Copy, Clone)]
+#[derive(Debug,Copy,Clone)]
 pub struct MidiChannel {
     pub channel: u8,
     pub effect_channel: u8,

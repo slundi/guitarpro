@@ -13,7 +13,7 @@ use crate::rse::*;
 
 
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Song {
     pub version: Version,
     pub clipboard: Option<Clipboard>,

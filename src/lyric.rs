@@ -14,7 +14,7 @@ pub const _MAX_LYRICS_LINE_COUNT: u8 = 5;
 ///   * " " (spaces or carry returns): separates the syllables of a word
 ///   * "+": merge two syllables for the same beat
 ///   * "\[lorem ipsum...\]": hidden text
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Lyrics {
     pub track_choice: u8,
     pub line1: BTreeMap<u16, String>,

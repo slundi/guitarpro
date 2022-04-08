@@ -1,17 +1,17 @@
 /// An enumeration of different triplet feels.
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub enum TripletFeel { NONE, EIGHTH, SIXTEENTH }
 
 
 /// An enumeration of available clefs
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub enum MeasureClef { Treble, Bass, Tenor, Alto }
 /// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub enum LineBreak { None, Break, Protect }
 
 /// An enumeration of all supported slide types.
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum SlideType {
     IntoFromAbove, //-2
     IntoFromBelow, //-1
@@ -23,37 +23,37 @@ pub enum SlideType {
 }
 
 /// An enumeration of all supported slide types.
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum NoteType {
     Rest, //0
     Normal, Tie, Dead,
 }
 
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum BeatStatus {Empty, Normal, Rest}
 
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum TupletBracket {None, Start, End}
 
 /// Octave signs
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum Octave { None, Ottava, Quindicesima, Ottavabassa, Quindicesimabassa }
 
 /// All beat stroke directions
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum BeatStrokeDirection { None, Up, Down }
 /// Characteristic of articulation
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }
 
 
 /// Voice directions indicating the direction of beams
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum VoiceDirection { None, Up, Down }
 
 
 /// Type of the chord.
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum ChordType {
     /// Major chord.
     Major,
@@ -88,7 +88,7 @@ pub enum ChordType {
 }
 
 /// Tonality of the chord
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum ChordAlteration {
     /// Perfect.
     Perfect,
@@ -99,7 +99,7 @@ pub enum ChordAlteration {
 }
 
 /// Extension type of the chord
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum ChordExtension {
     None,
     /// Ninth chord.
@@ -111,7 +111,7 @@ pub enum ChordExtension {
 }
 
 /// Left and right hand fingering used in tabs and chord diagram editor.
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum Fingering {
     /// Open or muted.
     Open, //-1?
@@ -140,7 +140,7 @@ pub fn get_fingering(value: i8) -> Fingering {
 }
 
 /// All Bend presets
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum BendType {
     /// No Preset.
     None,
@@ -173,7 +173,7 @@ pub enum BendType {
 }
 
 /// All transition types for grace notes.
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum GraceEffectTransition {
     ///No transition
     None,
@@ -185,7 +185,7 @@ pub enum GraceEffectTransition {
     Hammer
 }
 
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum HarmonicType {
     Natural, //1
     Artificial,
@@ -195,9 +195,9 @@ pub enum HarmonicType {
 }
 
 /// Values of auto-accentuation on the beat found in track RSE settings
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
 
 /// A navigation sign like *Coda* (𝄌: U+1D10C) or *Segno* (𝄋 or 𝄉: U+1D10B or U+1D109).
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub enum DirectionSign { Coda, Segno, }

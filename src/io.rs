@@ -1,3 +1,4 @@
+use fraction::ToPrimitive;
 use regex::Regex;
 
 lazy_static! {
@@ -12,7 +13,7 @@ lazy_static! {
 /// * returns the read byte as u8
 pub fn read_byte(data: &Vec<u8>, seek: &mut usize ) -> u8 {
     if data.len() < *seek {panic!("End of filee reached");}
-    let b = data[*seek] as u8;
+    let b = data[*seek];
     *seek += 1;
     return b;
 }
@@ -34,7 +35,7 @@ pub fn read_signed_byte(data: &Vec<u8>, seek: &mut usize ) -> i8 {
 /// * returns boolean value
 pub fn read_bool(data: &Vec<u8>, seek: &mut usize ) -> bool {
     if data.len() < *seek {panic!("End of file reached");}
-    let b = data[*seek] as i8;
+    let b = data[*seek];
     *seek += 1;
     return b != 0;
 }
@@ -85,7 +86,7 @@ pub fn read_double(data: &Vec<u8>, seek: &mut usize ) -> f64 {
 
 /// Read a string.
 pub fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
-    let n = read_int(data, seek) as usize;
+    let n = read_int(data, seek).to_usize().unwrap();
     let parse = std::str::from_utf8(&data[*seek..*seek+n]);
     if parse.is_err() {panic!("Unable to read string");}
     *seek += n;
@@ -94,7 +95,7 @@ pub fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
 
 /// Read a string.
 pub fn read_byte_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
-    let n = read_byte(data, seek) as usize;
+    let n = read_byte(data, seek).to_usize().unwrap();
     //println!("read_byte_size_string: n={}", n);
     let parse = std::str::from_utf8(&data[*seek..*seek+n]);
     if parse.is_err() {panic!("Unable to read string");}
@@ -107,7 +108,7 @@ pub fn read_byte_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
 /// * `seek` - cursor that will be incremented
 /// * returns version
 pub fn read_version_string(data: &Vec<u8>, seek: &mut usize) -> crate::headers::Version {
-    let n = data[0] as usize;
+    let n = data[0].to_usize().unwrap();
     let mut v = crate::headers::Version {data: String::with_capacity(30), number: 0, clipboard: false};
     for i in 1..n+1 {
         let c = data[i];
@@ -132,9 +133,9 @@ pub fn read_version_string(data: &Vec<u8>, seek: &mut usize) -> crate::headers::
 
 /// Read a color. Colors are used by `Marker` and `Track`. They consist of 3 consecutive bytes and one blank byte.
 pub fn read_color(data: &Vec<u8>, seek: &mut usize) -> i32 {
-    let r = read_byte(data, seek) as i32;
-    let g = read_byte(data, seek) as i32;
-    let b = read_byte(data, seek) as i32;
+    let r = read_byte(data, seek).to_i32().unwrap();
+    let g = read_byte(data, seek).to_i32().unwrap();
+    let b = read_byte(data, seek).to_i32().unwrap();
     *seek += 1;
     return r * 65536 + g * 256 + b;
 }

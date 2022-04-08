@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 
 use crate::{effects::*, enums::*, io::*, track::*, beat::*, key_signature::*};
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq)]
 pub struct Note {
     pub value: i16,
     pub velocity: i16,
@@ -32,7 +32,7 @@ impl Note {
 }
 
 /// Contains all effects which can be applied to one note.
-#[derive(Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq)]
 pub struct NoteEffect {
     pub accentuated_note: bool,
     pub bend: Option<BendEffect>,
@@ -107,9 +107,9 @@ impl NoteEffect {
 /// - *0x80*: *blank*
 pub fn read_notes(data: &Vec<u8>, seek: &mut usize, track: &mut Track, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
     let flags = read_byte(data, seek);
-    //println!("read_notes(), flags: {}", flags);
+    println!("read_notes(), flags: {}", flags);
     for i in 0..track.strings.len() {
-        if (flags & 1 << (7 - track.strings[i].0.to_i8().unwrap())) > 0 {
+        if (flags & 1 << (7 - track.strings[i].0)) > 0 {
             let mut note = Note{effect: note_effect.clone(), ..Default::default()};
             read_note(data, seek, &mut note, track.strings[i], track);
             beat.notes.push(note);
@@ -156,13 +156,16 @@ fn read_note(data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (
     }
     if (flags & 0x10) == 0x10 {
         let v = read_signed_byte(data, seek);
+        //println!("read_note(), v: {}", v);
         note.velocity = crate::effects::unpack_velocity(v.to_i16().unwrap());
+        //println!("read_note(), velocity: {}", note.velocity);
     }
     if (flags & 0x20) == 0x20 {
         let fret = read_signed_byte(data, seek);
         let value = if note.kind == NoteType::Tie { get_tied_note_value(guitar_string.0, track)}
         else {fret.to_i16().unwrap()};
         note.value = max(0, min(99, value));
+        //println!("read_note(), value: {}", note.value);
     }
     if (flags & 0x80) == 0x80 {
         note.effect.left_hand_finger = get_fingering(read_signed_byte(data, seek));
@@ -197,6 +200,7 @@ fn read_note_effects(data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
     if (flags & 0x01) == 0x01 {note.effect.bend = read_bend_effect(data, seek);}
     if (flags & 0x10) == 0x10 {note.effect.grace = Some(read_grace_effect(data, seek));}
     if (flags & 0x04) == 0x04 {note.effect.slides.push(SlideType::ShiftSlideTo);}
+    println!("read_note_effects(): {:?}", note);
 }
 
 /// Get note value of tied note

@@ -4,7 +4,7 @@ use crate::rse::*;
 use crate::io::*;
 
 /// A mix table item describes a mix parameter, e.g. volume or reverb
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct MixTableItem {
     pub value: u8,
     pub duration: u8,
@@ -14,7 +14,7 @@ impl Default for MixTableItem { fn default() -> Self { MixTableItem { value: 0, 
 
 const WAH_EFFECT_OFF:  i8 = -2;
 const WAH_EFFECT_NONE: i8 = -1;
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct WahEffect {
     value: i8,
     display: bool,
@@ -30,7 +30,7 @@ impl WahEffect {
 }
 
 /// A MixTableChange describes a change in mix parameters
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct MixTableChange {
     pub instrument: Option<MixTableItem>,
     pub rse: RseInstrument,

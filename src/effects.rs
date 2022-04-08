@@ -1,10 +1,9 @@
 use fraction::ToPrimitive;
-use std::convert::Into;
 
 use crate::{io::*, chord::*, key_signature::*, enums::*};
 
 /// A single point within the BendEffect
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct BendPoint {
     pub position: u8,
     pub value: i8,
@@ -24,7 +23,7 @@ pub const BEND_EFFECT_MAX_POSITION: u8 =12;
 pub const GP_BEND_SEMITONE: f32 = 25.0;
 pub const GP_BEND_POSITION: f32 = 60.0;
 /// This effect is used to describe string bends and tremolo bars
-#[derive(Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq)]
 pub struct BendEffect {
     pub kind: BendType,
     pub value: i16,
@@ -89,12 +88,12 @@ pub const FORTE_FORTISSIMO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 7;
 pub const DEFAULT_VELOCITY: i16 = FORTE;
 /// Convert Guitar Pro dynamic value to raw MIDI velocity
 pub fn unpack_velocity(v: i16) -> i16 {
-    println!("unpack_velocity({})", v);
+    //println!("unpack_velocity({})", v);
     return MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT;
 }
 
 /// A grace note effect
-#[derive(Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq)]
 pub struct GraceEffect {
     pub duration: u8,
     pub fret: i8,
@@ -127,7 +126,7 @@ pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
     println!("read_grace_effect()");
     let mut g = GraceEffect::default();
     g.fret = read_signed_byte(data, seek);
-    g.velocity = unpack_velocity(read_byte(data, seek).into());
+    g.velocity = unpack_velocity(read_byte(data, seek).to_i16().unwrap());
     g.duration = 1 << (7 - read_byte(data, seek));
     //g.duration = 1 << (7 - read_byte(data, seek));
     /*g.duration = match read_byte(data, seek) {
@@ -148,7 +147,7 @@ pub fn read_grace_effect(data: &Vec<u8>, seek: &mut usize) -> GraceEffect {
 }
 
 /// A harmonic note effect
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct HarmonicEffect {
     pub kind: HarmonicType,
     //artificial harmonic
@@ -160,12 +159,12 @@ pub struct HarmonicEffect {
 impl Default for HarmonicEffect { fn default() -> Self {HarmonicEffect { kind: HarmonicType::Natural, pitch: None, octave: None, fret: None}}}
 
 /// A tremolo picking effect.
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct TremoloPickingEffect {duration: Duration,}
 impl Default for TremoloPickingEffect { fn default() -> Self {TremoloPickingEffect { duration: Duration::default() }}}
 
 /// A trill effect.
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct TrillEffect {
     fret: i8,
     duration: Duration,

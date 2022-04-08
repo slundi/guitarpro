@@ -2,7 +2,7 @@ use fraction::ToPrimitive;
 
 use crate::{io::*, gp::*, key_signature::*, enums::*};
 
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Version {
     pub data: String,
     pub number: u8,
@@ -34,7 +34,7 @@ pub fn read_version(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Clipboard {
     pub start_measure: i32,
     pub stop_measure: i32,
@@ -48,7 +48,7 @@ impl Default for Clipboard {
 	fn default() -> Self { Clipboard {start_measure: 1, stop_measure: 1, start_track: 1, stop_track: 1, start_beat: 1, stop_beat: 1, sub_bar_copy: false} }
 }
 
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct MeasureHeader {
     pub number: u16,
 	pub start: i64,
@@ -140,7 +140,7 @@ fn read_repeat_alternative(data: &Vec<u8>, seek: &mut usize, measure_headers: &m
 }
 
 /// A marker annotation for beats.
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Marker {
     pub title: String,
     pub color: i32,
@@ -155,7 +155,7 @@ fn read_marker(data: &Vec<u8>, seek: &mut usize, marker: &mut Marker) {
 }
 
 /// This class can store the information about a group of measures which are repeated.
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct RepeatGroup {
     /// List of measure header indexes.
     pub measure_headers: Vec<usize>,

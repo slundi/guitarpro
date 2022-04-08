@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::{io::*, gp::*, rse::*, measure::*};
 
 /// Settings of the track.
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct TrackSettings {
     pub tablature: bool,
     pub notation: bool,
@@ -32,7 +32,7 @@ impl Default for TrackSettings { fn default() -> Self { TrackSettings {
 }}}
 
 
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Track {
     pub number: i32,
 	pub offset: i32,

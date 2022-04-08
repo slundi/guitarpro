@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::{io::*, enums::*};
 
 /// A chord annotation for beats
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct Chord {
     pub length: u8,
     pub sharp: Option<bool>,
@@ -165,7 +165,7 @@ fn read_new_format_chord(data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
 }
 
 /// A single barre
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct Barre {
     pub fret: i8,
     /// First string from the bottom of the barre
@@ -178,7 +178,7 @@ pub struct Barre {
 pub const SHARP_NOTES: [&str; 12] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 pub const FLAT_NOTES:  [&str; 12] = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq)]
 pub struct PitchClass {
     pub note: String,
     pub just: i8,

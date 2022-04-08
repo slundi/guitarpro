@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::{beat::*, gp::*, key_signature::*, io::*, enums::*};
 
 /// A measure header contains metadata for measures over multiple tracks.
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Measure {
     pub number: usize,
     pub start: i64,
@@ -63,7 +63,7 @@ pub fn read_measures(data: &Vec<u8>, seek: &mut usize, song: &mut Song) {
             read_measure(data, seek, song, &mut m, t);
             song.tracks[t].measures.push(m);
         }
-        //println!("read_measures(), start: {} \t numerator: {} \t denominator: {} \t length: {}", start, song.measure_headers[h].time_signature.numerator, song.measure_headers[h].time_signature.denominator.value, song.measure_headers[h].length());
+        println!("read_measures(), start: {} \t numerator: {} \t denominator: {} \t length: {}", start, song.measure_headers[h].time_signature.numerator, song.measure_headers[h].time_signature.denominator.value, song.measure_headers[h].length());
         start += song.measure_headers[h].length();
     }
     song.current_track = None;

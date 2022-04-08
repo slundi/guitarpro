@@ -1,5 +1,5 @@
 ///A padding construct
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Padding {
     pub right: u16,
     pub top: u16,
@@ -8,7 +8,7 @@ pub struct Padding {
 }
 
 /// A point construct using integer coordinates
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Point { pub x: u16, pub y: u16, }
 
 // An enumeration of the elements which can be shown in the header and footer of a rendered song sheet.
@@ -40,7 +40,7 @@ pub const HEADER_FOOTER_ALL: u16 = 0x1ff;
 /// - ``%copyright%``: will be replaced with Song.copyright
 /// - ``%N%``: will be replaced with the current page number (if supported by layout)
 /// - ``%P%``: will be replaced with the number of pages (if supported by layout)
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct PageSetup {
     pub page_size: Point,
     pub page_margin: Padding,

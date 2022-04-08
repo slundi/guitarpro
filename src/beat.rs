@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::{mix_table::*, effects::*, chord::*, key_signature::*, note::*, io::*, track::*, enums::*};
 
 /// A beat contains multiple notes
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct Beat {
     pub notes: Vec<Note>,
     pub duration: Duration,
@@ -96,7 +96,7 @@ fn get_beat_status(value: u8) -> BeatStatus {
 }
 
 /// Parameters of beat display
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct BeatDisplay {
     break_beam: bool,
     force_beam: bool,
@@ -109,7 +109,7 @@ pub struct BeatDisplay {
 impl Default for BeatDisplay { fn default() -> Self { BeatDisplay { break_beam:false, force_beam:false, beam_direction:VoiceDirection::None, tuple_bracket:TupletBracket::None, break_secondary:0, break_secondary_tuplet:false, force_bracket:false }}}
 
 /// A stroke effect for beats.
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct BeatStroke {
     pub direction: BeatStrokeDirection,
     pub value: u16,
@@ -125,7 +125,7 @@ impl BeatStroke {
 }
 
 /// This class contains all beat effects
-#[derive(Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct BeatEffects {
     pub stroke: BeatStroke,
     pub has_rasgueado: bool,
@@ -245,7 +245,7 @@ pub fn read_tremolo_bar(data: &Vec<u8>, seek: &mut usize) -> BendEffect {
 }
 
 /// A voice contains multiple beats
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Voice {
     //pub measure: Measure, //circular depth?
     pub measure_index: i16,
