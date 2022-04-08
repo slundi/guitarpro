@@ -45,7 +45,7 @@ pub fn read_chord(data: &Vec<u8>, seek: &mut usize, string_count: u8) -> Chord {
     let mut c = Chord {length: string_count, strings: vec![-1; string_count.into()], ..Default::default()};
     for _ in 0..string_count {c.strings.push(-1);}
     c.new_format = Some(read_bool(data, seek));
-    if c.new_format == Some(true) {read_new_format_chord(data, seek, &mut c);}
+    if c.new_format == Some(true) {read_new_format_chord_v3(data, seek, &mut c);}
     else {read_old_format_chord(data, seek, &mut c);}
     return c;
 }
@@ -88,63 +88,20 @@ fn read_old_format_chord(data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
 /// - Barre end string: 2 `Ints <int>`.
 /// - Omissions: 7 `Bools <bool>`. If the value is true then note is played in chord.
 /// - Blank space, 1 `byte`.
-fn read_new_format_chord(data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
+fn read_new_format_chord_v3(data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
     chord.sharp = Some(read_bool(data, seek));
     *seek += 3;
     chord.root = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, chord.sharp));
-    chord.kind = Some(match read_int(data, seek) {
-        0  => ChordType::Major,
-        1  => ChordType::Seventh,
-        2  => ChordType::MajorSeventh,
-        3  => ChordType::Sixth,
-        4  => ChordType::Minor,
-        5  => ChordType::MinorSeventh,
-        6  => ChordType::MinorMajor,
-        7  => ChordType::MinorSixth,
-        8  => ChordType::SuspendedSecond,
-        9  => ChordType::SuspendedFourth,
-        10 => ChordType::SeventhSuspendedSecond,
-        11 => ChordType::SeventhSuspendedFourth,
-        12 => ChordType::Diminished,
-        13 => ChordType::Augmented,
-        14 => ChordType::Power,
-        _  => panic!("Cannot read chord type (new format)"),
-    });
-    chord.extension = Some(match read_int(data, seek) {
-        0 => ChordExtension::None,
-        1 => ChordExtension::Ninth,
-        2 => ChordExtension::Eleventh,
-        3 => ChordExtension::Thirteenth,
-        _ => panic!("Cannot read chord type (new format)"),
-    });
+    chord.kind = Some(get_chord_type(read_int(data, seek).to_u8().unwrap()));
+    chord.extension = Some(get_chord_extension(read_int(data, seek).to_u8().unwrap()));
     chord.bass = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, chord.sharp));
-    chord.tonality = Some(match read_int(data, seek) {
-        0 => ChordAlteration::Perfect,
-        1 => ChordAlteration::Diminished,
-        2 => ChordAlteration::Augmented,
-        _ => panic!("Cannot read chord fifth (new format)"),
-    });
+    chord.tonality = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
     chord.add = Some(read_bool(data, seek));
     chord.name = read_byte_size_string(data, seek);
     *seek += 22 - chord.name.len();
-    chord.fifth = Some(match read_int(data, seek) {
-        0 => ChordAlteration::Perfect,
-        1 => ChordAlteration::Diminished,
-        2 => ChordAlteration::Augmented,
-        _ => panic!("Cannot read chord fifth (new format)"),
-    });
-    chord.ninth = Some(match read_int(data, seek) {
-        0 => ChordAlteration::Perfect,
-        1 => ChordAlteration::Diminished,
-        2 => ChordAlteration::Augmented,
-        _ => panic!("Cannot read chord fifth (new format)"),
-    });
-    chord.eleventh = Some(match read_int(data, seek) {
-        0 => ChordAlteration::Perfect,
-        1 => ChordAlteration::Diminished,
-        2 => ChordAlteration::Augmented,
-        _ => panic!("Cannot read chord fifth (new format)"),
-    });
+    chord.fifth = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
+    chord.ninth = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
+    chord.eleventh = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
     chord.first_fret = Some(read_int(data, seek).to_u8().unwrap());
     for i in 0u8..6u8 {
         let fret = read_int(data, seek).to_i8().unwrap();

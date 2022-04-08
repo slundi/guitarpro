@@ -112,6 +112,26 @@ pub enum ChordType {
     /// Power chord.
     Power,
 }
+pub fn get_chord_type(value: u8) -> ChordType {
+    match value {
+        0  => ChordType::Major,
+        1  => ChordType::Seventh,
+        2  => ChordType::MajorSeventh,
+        3  => ChordType::Sixth,
+        4  => ChordType::Minor,
+        5  => ChordType::MinorSeventh,
+        6  => ChordType::MinorMajor,
+        7  => ChordType::MinorSixth,
+        8  => ChordType::SuspendedSecond,
+        9  => ChordType::SuspendedFourth,
+        10 => ChordType::SeventhSuspendedSecond,
+        11 => ChordType::SeventhSuspendedFourth,
+        12 => ChordType::Diminished,
+        13 => ChordType::Augmented,
+        14 => ChordType::Power,
+        _  => panic!("Cannot read chord type (new format)"),
+    }
+}
 
 /// Tonality of the chord
 #[derive(Debug,Clone,PartialEq)]
@@ -122,6 +142,14 @@ pub enum ChordAlteration {
     Diminished,
     /// Augmented.
     Augmented,
+}
+pub fn get_chord_alteration(value: u8) -> ChordAlteration {
+    match value {
+        0 => ChordAlteration::Perfect,
+        1 => ChordAlteration::Diminished,
+        2 => ChordAlteration::Augmented,
+        _ => panic!("Cannot read chord fifth (new format)"),
+    }
 }
 
 /// Extension type of the chord
@@ -134,6 +162,16 @@ pub enum ChordExtension {
     Eleventh,
     /// Thirteenth chord.
     Thirteenth
+}
+pub fn get_chord_extension(value: u8) -> ChordExtension {
+    match value {
+        0 => ChordExtension::None,
+        1 => ChordExtension::Ninth,
+        2 => ChordExtension::Eleventh,
+        3 => ChordExtension::Thirteenth,
+        _ => panic!("Cannot read chord type (new format)"),
+    }
+
 }
 
 /// Left and right hand fingering used in tabs and chord diagram editor.
