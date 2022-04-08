@@ -4,7 +4,6 @@ use fraction::ToPrimitive;
 use crate::enums::*;
 use crate::io::*;
 use crate::headers::*;
-use crate::measure::*;
 use crate::track::*;
 use crate::key_signature::*;
 use crate::lyric::*;
@@ -101,7 +100,7 @@ impl Song {
             self.key.key = read_int(data, &mut seek).to_i8().unwrap();
             //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
             if self.version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
-            read_midi_channels(data, &mut seek, &mut self.channels);
+            self.read_midi_channels(data, &mut seek);
             let measure_count = read_int(data, &mut seek).to_usize().unwrap();
             let track_count = read_int(data, &mut seek).to_usize().unwrap();
             //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
@@ -111,8 +110,8 @@ impl Song {
                 self.read_measure_header(data, &mut seek, i);
             }
             //self.current_measure_number = Some(0);
-            for i in 0..track_count {read_track(data, &mut seek, self, i);}
-            read_measures(data, &mut seek, self);
+            for i in 0..track_count {self.read_track(data, &mut seek, i);}
+            self.read_measures(data, &mut seek);
             if self.version.number == VERSION_4_0X {} //annotate error reading
         }
         //read GP5 information

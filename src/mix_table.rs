@@ -1,7 +1,9 @@
 use fraction::ToPrimitive;
 
+use crate::headers::*;
 use crate::rse::*;
 use crate::io::*;
+use crate::gp::*;
 
 /// A mix table item describes a mix parameter, e.g. volume or reverb
 #[derive(Debug,Clone,PartialEq)]
@@ -54,108 +56,111 @@ impl MixTableChange {
         return self.instrument.is_none() &&  self.volume.is_none() && self.balance.is_none() && self.chorus.is_none() && self.reverb.is_none() && self.phaser.is_none() && self.tremolo.is_none() && self.tempo.is_none() && self.wah.is_none();
     }
 }
-/// Read mix table change. List of values is read first. See `read_values()`.
-/// 
-/// List of values is followed by the list of durations for parameters that have changed. See `read_durations()`.
-/// 
-/// Mix table change in Guitar Pro 4 format extends Guitar Pro 3 format. It constists of `values <read_mix_table_change_values()>`,
-/// `durations <read_mix_table_change_durations()>`, and, new to GP3, `flags <read_mix_table_change_flags()>`.
-pub fn read_mix_table_change(data: &Vec<u8>, seek: &mut usize) -> MixTableChange {
-    let mut tc = MixTableChange::default();
-    read_mix_table_change_values(data, seek, &mut tc);
-    read_mix_table_change_durations(data, seek, &mut tc);
-    //read_mix_table_change_flags(data, seek, &mut tc); //TODO: Guitar Pro 4
-    return tc;
-}
-/// Read mix table change values. Mix table change values consist of 7 `signed-byte` and an `int`, which correspond to:
-/// - instrument
-/// - volume 
-/// - balance
-/// - chorus
-/// - reverb
-/// - phaser
-/// - tremolo
-/// - tempo
-/// 
-/// If signed byte is *-1* then corresponding parameter hasn't changed.
-fn read_mix_table_change_values(data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) {
-    //instrument
-    let b = read_signed_byte(data, seek);
-    if b >= 0 {mte.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-    //volume
-    let b = read_signed_byte(data, seek);
-    if b >= 0 {mte.volume = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-    //balance
-    let b = read_signed_byte(data, seek);
-    if b >= 0 {mte.balance = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-    //chorus
-    let b = read_signed_byte(data, seek);
-    if b >= 0 {mte.chorus = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-    //reverb
-    let b = read_signed_byte(data, seek);
-    if b >= 0 {mte.reverb = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-    //phaser
-    let b = read_signed_byte(data, seek);
-    if b >= 0 {mte.phaser = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-    //tremolo
-    let b = read_signed_byte(data, seek);
-    if b >= 0 {mte.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-    //tempo
-    let b = read_int(data, seek);
-    if b >= 0 {mte.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
-}
-/// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
-fn read_mix_table_change_durations(data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) {
-    if mte.volume.is_some()  {mte.volume.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-    if mte.balance.is_some() {mte.balance.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
-    if mte.chorus.is_some()  {mte.chorus.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-    if mte.reverb.is_some()  {mte.reverb.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-    if mte.phaser.is_some()  {mte.phaser.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-    if mte.tremolo.is_some() {mte.tremolo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
-    if mte.tempo.is_some()   {
-        mte.tempo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();
-        mte.hide_tempo = false;
-    }
-}
 
-/// Read mix table change flags (Guitar Pro 4). The meaning of flags:
-/// - *0x01*: change volume for all tracks
-/// - *0x02*: change balance for all tracks
-/// - *0x04*: change chorus for all tracks
-/// - *0x08*: change reverb for all tracks
-/// - *0x10*: change phaser for all tracks
-/// - *0x20*: change tremolo for all tracks
-fn read_mix_table_change_flags(data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) -> i8 {
-    let flags = read_signed_byte(data, seek);
-    if mte.volume.is_some() {
-        let mut e = mte.volume.take().unwrap();
-        e.all_tracks = (flags & 0x01) == 0x01;
-        mte.volume = Some(e);
+impl Song {
+    /// Read mix table change. List of values is read first. See `read_values()`.
+    /// 
+    /// List of values is followed by the list of durations for parameters that have changed. See `read_durations()`.
+    /// 
+    /// Mix table change in Guitar Pro 4 format extends Guitar Pro 3 format. It constists of `values <read_mix_table_change_values()>`,
+    /// `durations <read_mix_table_change_durations()>`, and, new to GP3, `flags <read_mix_table_change_flags()>`.
+    pub fn read_mix_table_change(&self, data: &Vec<u8>, seek: &mut usize) -> MixTableChange {
+        let mut tc = MixTableChange::default();
+        self.read_mix_table_change_values(data, seek, &mut tc);
+        self.read_mix_table_change_durations(data, seek, &mut tc);
+        if self.version.number == VERSION_4_0X {self.read_mix_table_change_flags(data, seek, &mut tc);}
+        return tc;
     }
-    if mte.balance.is_some() {
-        let mut e = mte.balance.take().unwrap();
-        e.all_tracks = (flags & 0x01) == 0x01;
-        mte.balance = Some(e);
+    /// Read mix table change values. Mix table change values consist of 7 `signed-byte` and an `int`, which correspond to:
+    /// - instrument
+    /// - volume 
+    /// - balance
+    /// - chorus
+    /// - reverb
+    /// - phaser
+    /// - tremolo
+    /// - tempo
+    /// 
+    /// If signed byte is *-1* then corresponding parameter hasn't changed.
+    fn read_mix_table_change_values(&self, data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) {
+        //instrument
+        let b = read_signed_byte(data, seek);
+        if b >= 0 {mte.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        //volume
+        let b = read_signed_byte(data, seek);
+        if b >= 0 {mte.volume = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        //balance
+        let b = read_signed_byte(data, seek);
+        if b >= 0 {mte.balance = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        //chorus
+        let b = read_signed_byte(data, seek);
+        if b >= 0 {mte.chorus = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        //reverb
+        let b = read_signed_byte(data, seek);
+        if b >= 0 {mte.reverb = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        //phaser
+        let b = read_signed_byte(data, seek);
+        if b >= 0 {mte.phaser = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        //tremolo
+        let b = read_signed_byte(data, seek);
+        if b >= 0 {mte.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        //tempo
+        let b = read_int(data, seek);
+        if b >= 0 {mte.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
     }
-    if mte.chorus.is_some() {
-        let mut e = mte.chorus.take().unwrap();
-        e.all_tracks = (flags & 0x01) == 0x01;
-        mte.chorus = Some(e);
+    /// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
+    fn read_mix_table_change_durations(&self, data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) {
+        if mte.volume.is_some()  {mte.volume.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mte.balance.is_some() {mte.balance.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mte.chorus.is_some()  {mte.chorus.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mte.reverb.is_some()  {mte.reverb.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mte.phaser.is_some()  {mte.phaser.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mte.tremolo.is_some() {mte.tremolo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mte.tempo.is_some()   {
+            mte.tempo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();
+            mte.hide_tempo = false;
+        }
     }
-    if mte.reverb.is_some() {
-        let mut e = mte.reverb.take().unwrap();
-        e.all_tracks = (flags & 0x01) == 0x01;
-        mte.reverb = Some(e);
+
+    /// Read mix table change flags (Guitar Pro 4). The meaning of flags:
+    /// - *0x01*: change volume for all tracks
+    /// - *0x02*: change balance for all tracks
+    /// - *0x04*: change chorus for all tracks
+    /// - *0x08*: change reverb for all tracks
+    /// - *0x10*: change phaser for all tracks
+    /// - *0x20*: change tremolo for all tracks
+    fn read_mix_table_change_flags(&self, data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) -> i8 {
+        let flags = read_signed_byte(data, seek);
+        if mte.volume.is_some() {
+            let mut e = mte.volume.take().unwrap();
+            e.all_tracks = (flags & 0x01) == 0x01;
+            mte.volume = Some(e);
+        }
+        if mte.balance.is_some() {
+            let mut e = mte.balance.take().unwrap();
+            e.all_tracks = (flags & 0x01) == 0x01;
+            mte.balance = Some(e);
+        }
+        if mte.chorus.is_some() {
+            let mut e = mte.chorus.take().unwrap();
+            e.all_tracks = (flags & 0x01) == 0x01;
+            mte.chorus = Some(e);
+        }
+        if mte.reverb.is_some() {
+            let mut e = mte.reverb.take().unwrap();
+            e.all_tracks = (flags & 0x01) == 0x01;
+            mte.reverb = Some(e);
+        }
+        if mte.phaser.is_some() {
+            let mut e = mte.phaser.take().unwrap();
+            e.all_tracks = (flags & 0x01) == 0x01;
+            mte.phaser = Some(e);
+        }
+        if mte.tremolo.is_some() {
+            let mut e = mte.tremolo.take().unwrap();
+            e.all_tracks = (flags & 0x01) == 0x01;
+            mte.tremolo = Some(e);
+        }
+        return flags;
     }
-    if mte.phaser.is_some() {
-        let mut e = mte.phaser.take().unwrap();
-        e.all_tracks = (flags & 0x01) == 0x01;
-        mte.phaser = Some(e);
-    }
-    if mte.tremolo.is_some() {
-        let mut e = mte.tremolo.take().unwrap();
-        e.all_tracks = (flags & 0x01) == 0x01;
-        mte.tremolo = Some(e);
-    }
-    return flags;
 }
