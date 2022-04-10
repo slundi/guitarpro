@@ -53,7 +53,7 @@ impl Song {
     /// - measure n/track 2
     /// - ...
     /// - measure n/track m
-    pub fn read_measures(&mut self, data: &Vec<u8>, seek: &mut usize) {
+    pub fn read_measures(&mut self, data: &[u8], seek: &mut usize) {
         let mut start = DURATION_QUARTER_TIME;
         for h in 0..self.measure_headers.len() {
             self.measure_headers[h].start = start;
@@ -72,7 +72,7 @@ impl Song {
     }
 
     /// Read measure. The measure is written as number of beats followed by sequence of beats.
-    fn read_measure(&mut self, data: &Vec<u8>, seek: &mut usize, measure: &mut Measure, track_index: usize) {
+    fn read_measure(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
         self.current_voice_number = Some(1);
         //read a voice 
         let beats = read_int(data, seek).to_usize().unwrap();

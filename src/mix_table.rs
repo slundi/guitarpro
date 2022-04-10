@@ -64,7 +64,7 @@ impl Song {
     /// 
     /// Mix table change in Guitar Pro 4 format extends Guitar Pro 3 format. It constists of `values <read_mix_table_change_values()>`,
     /// `durations <read_mix_table_change_durations()>`, and, new to GP3, `flags <read_mix_table_change_flags()>`.
-    pub fn read_mix_table_change(&self, data: &Vec<u8>, seek: &mut usize) -> MixTableChange {
+    pub fn read_mix_table_change(&self, data: &[u8], seek: &mut usize) -> MixTableChange {
         let mut tc = MixTableChange::default();
         self.read_mix_table_change_values(data, seek, &mut tc);
         self.read_mix_table_change_durations(data, seek, &mut tc);
@@ -82,7 +82,7 @@ impl Song {
     /// - tempo
     /// 
     /// If signed byte is *-1* then corresponding parameter hasn't changed.
-    fn read_mix_table_change_values(&self, data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) {
+    fn read_mix_table_change_values(&self, data: &[u8], seek: &mut usize, mte: &mut MixTableChange) {
         //instrument
         let b = read_signed_byte(data, seek);
         if b >= 0 {mte.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
@@ -109,7 +109,7 @@ impl Song {
         if b >= 0 {mte.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
     }
     /// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
-    fn read_mix_table_change_durations(&self, data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) {
+    fn read_mix_table_change_durations(&self, data: &[u8], seek: &mut usize, mte: &mut MixTableChange) {
         if mte.volume.is_some()  {mte.volume.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
         if mte.balance.is_some() {mte.balance.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
         if mte.chorus.is_some()  {mte.chorus.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
@@ -129,7 +129,7 @@ impl Song {
     /// - *0x08*: change reverb for all tracks
     /// - *0x10*: change phaser for all tracks
     /// - *0x20*: change tremolo for all tracks
-    fn read_mix_table_change_flags(&self, data: &Vec<u8>, seek: &mut usize, mte: &mut MixTableChange) -> i8 {
+    fn read_mix_table_change_flags(&self, data: &[u8], seek: &mut usize, mte: &mut MixTableChange) -> i8 {
         let flags = read_signed_byte(data, seek);
         if mte.volume.is_some() {
             let mut e = mte.volume.take().unwrap();

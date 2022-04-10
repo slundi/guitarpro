@@ -136,7 +136,7 @@ impl Song {
     /// - Text: `int-byte-size-string`.
     /// - Beat effects. See `BeatEffects::read()`.
     /// - Mix table change effect. See `MixTableChange::read()`.
-    pub fn read_beat(&mut self, data: &Vec<u8>, seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
+    pub fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
         let flags = read_byte(data, seek);
         //println!("read_beat(), flags: {}", flags);
         //get a beat
@@ -184,7 +184,7 @@ impl Song {
     /// - *2*: slap
     /// - *3*: pop
     /// - Beat stroke direction. See `BeatStroke::read()`
-    fn read_beat_effects_v3(&self, data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
+    fn read_beat_effects_v3(&self, data: &[u8], seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
         //println!("read_beat_effects()");
         let mut be = BeatEffects::default();
         let flags = read_byte(data, seek);
@@ -226,7 +226,7 @@ impl Song {
     /// - Tremolo bar. See `readTremoloBar`.
     /// - Beat stroke. See `readBeatStroke`.
     /// - Pick stroke: `signed-byte`. For value mapping see `BeatStrokeDirection`.
-    fn read_beat_effects_v4(&self, data: &Vec<u8>, seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
+    fn read_beat_effects_v4(&self, data: &[u8], seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
         let mut be = BeatEffects::default();
         let flags1 = read_signed_byte(data, seek);
         let flags2 = read_signed_byte(data, seek);
@@ -242,7 +242,7 @@ impl Song {
     }
     /// Read beat stroke. Beat stroke consists of two `Bytes <byte>` which correspond to stroke up
     /// and stroke down speed. See `BeatStrokeDirection` for value mapping.
-    fn read_beat_stroke(&self, data: &Vec<u8>, seek: &mut usize) -> BeatStroke {
+    fn read_beat_stroke(&self, data: &[u8], seek: &mut usize) -> BeatStroke {
         //println!("read_beat_stroke()");
         let mut bs = BeatStroke::default();
         let down = read_signed_byte(data, seek);
@@ -270,7 +270,7 @@ impl Song {
     }
     /// Read tremolo bar beat effect. The only type of tremolo bar effect Guitar Pro 3 supports is `dip <BendType::Dip>`. The value of the
     /// effect is encoded in `Int` and shows how deep tremolo bar is pressed.
-    fn read_tremolo_bar(&self, data: &Vec<u8>, seek: &mut usize) -> BendEffect {
+    fn read_tremolo_bar(&self, data: &[u8], seek: &mut usize) -> BendEffect {
         //println!("read_tremolo_bar()");
         let mut be = BendEffect{kind: BendType::Dip, ..Default::default()};
         be.value = read_int(data, seek).to_i16().unwrap();

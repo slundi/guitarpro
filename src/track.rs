@@ -89,7 +89,7 @@ impl Song {
     /// * **Number of frets**: `integer`. The number of frets of the instrument.
     /// * **Height of the capo**: `integer`. The number of the fret on which a capo is present. If no capo is used, the value is `0x00000000`.
     /// * **Track's color**: `color`. The track's displayed color in Guitar Pro.
-    pub fn read_track(&mut self, data: &Vec<u8>, seek: &mut usize, _number: usize) {
+    pub fn read_track(&mut self, data: &[u8], seek: &mut usize, _number: usize) {
         let mut track = Track::default();
         //read the flag
         let flags = read_byte(data, seek);

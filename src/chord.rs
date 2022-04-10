@@ -86,11 +86,11 @@ impl PitchClass {
         p
     }
     pub fn from_note(note: String) -> PitchClass {
-        let mut p = PitchClass {note:note, just:0, accidental:0, value:-1, sharp: true,};
-        if p.note.ends_with("b")      {p.accidental = -1; p.sharp = false;}
-        else if p.note.ends_with("#") {p.accidental = 1;}
+        let mut p = PitchClass {note, just:0, accidental:0, value:-1, sharp: true,};
+        if p.note.ends_with('b')      {p.accidental = -1; p.sharp = false;}
+        else if p.note.ends_with('#') {p.accidental = 1;}
         for i in 0i8..12i8 {
-            if SHARP_NOTES[i as usize] == &p.note || FLAT_NOTES[i as usize] == &p.note {p.value = i; break;}
+            if SHARP_NOTES[i as usize] == p.note || FLAT_NOTES[i as usize] == p.note {p.value = i; break;}
         }
         let pitch = p.value - p.accidental; 
         p.just = pitch % 12;
@@ -106,7 +106,7 @@ impl PitchClass {
 impl Song {
     /// Read chord diagram. First byte is chord header. If it's set to 0, then following chord is written in 
     /// default (GP3) format. If chord header is set to 1, then chord diagram in encoded in more advanced (GP4) format.
-    pub fn read_chord(&self, data: &Vec<u8>, seek: &mut usize, string_count: u8) -> Chord {
+    pub fn read_chord(&self, data: &[u8], seek: &mut usize, string_count: u8) -> Chord {
         let mut c = Chord {length: string_count, strings: vec![-1; string_count.into()], ..Default::default()};
         for _ in 0..string_count {c.strings.push(-1);}
         c.new_format = Some(read_bool(data, seek));
@@ -122,7 +122,7 @@ impl Song {
     /// - First fret: `int`. The fret from which the chord is displayed in chord editor.
     /// - List of frets: 6 `ints`. Frets are listed in order: fret on the string 1, fret on the string 2, ..., fret on the
     /// string 6. If string is untouched then the values of fret is *-1*.
-    fn read_old_format_chord(&self, data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
+    fn read_old_format_chord(&self, data: &[u8], seek: &mut usize, chord: &mut Chord) {
         chord.name = read_int_size_string(data, seek);
         chord.first_fret = Some(read_int(data, seek).to_u8().unwrap());
         if chord.first_fret.is_some() {
@@ -156,7 +156,7 @@ impl Song {
     /// - Barre end string: 2 `Ints <int>`.
     /// - Omissions: 7 `Bools <bool>`. If the value is true then note is played in chord.
     /// - Blank space, 1 `byte`.
-    fn read_new_format_chord_v3(&self, data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
+    fn read_new_format_chord_v3(&self, data: &[u8], seek: &mut usize, chord: &mut Chord) {
         chord.sharp = Some(read_bool(data, seek));
         *seek += 3;
         chord.root = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, chord.sharp));
@@ -214,7 +214,7 @@ impl Song {
     /// - Omissions: 7 `Bools <bool>`. If the value is true then note is played in chord.
     /// - Blank space, 1 `byte`.
     /// - Fingering: 7 `SignedBytes <signed-byte>`. For value mapping, see `Fingering`.
-    fn read_new_format_chord_v4(&self, data: &Vec<u8>, seek: &mut usize, chord: &mut Chord) {
+    fn read_new_format_chord_v4(&self, data: &[u8], seek: &mut usize, chord: &mut Chord) {
         chord.sharp = Some(read_bool(data, seek));
         *seek += 3;
         chord.root = Some(PitchClass::from(read_byte(data, seek).to_i8().unwrap(), None, chord.sharp));
@@ -256,14 +256,14 @@ mod test {
     #[test]
     fn test_pitch_1() {
         let p = PitchClass::from_note("D#".to_string());
-        assert_eq!(true, p.sharp, "D# is sharp? {}", true);
+        assert!(p.sharp, "D# is sharp? {}", true);
         assert_eq!(1, p.accidental);
     }
     #[test]
     fn test_pitch_2() {
         let p = PitchClass::from(4, Some(-1), None);
         assert_eq!(3, p.value);
-        assert_eq!(false, p.sharp);
+        assert!(!p.sharp);
         assert_eq!("Eb", p.to_string(), "Note should be Eb");
     }
     #[test]

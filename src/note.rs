@@ -104,7 +104,7 @@ impl Song {
     /// - *0x20*: 2th string
     /// - *0x40*: 1th string
     /// - *0x80*: *blank*
-    pub fn read_notes(&mut self, data: &Vec<u8>, seek: &mut usize, track_index: usize, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
+    pub fn read_notes(&mut self, data: &[u8], seek: &mut usize, track_index: usize, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
         let flags = read_byte(data, seek);
         //println!("read_notes(), flags: {}", flags);
         for i in 0..self.tracks[track_index].strings.len() {
@@ -134,7 +134,7 @@ impl Song {
     /// - Fret number: `signed-byte`. If flag at *0x20* is set then read fret number.
     /// - Fingering: 2 `SignedBytes <signed-byte>`. See `Fingering`.
     /// - Note effects. See `read_note_effects()`.
-    fn read_note(&mut self, data: &Vec<u8>, seek: &mut usize, note: &mut Note, guitar_string: (i8,i8), track_index: usize) {
+    fn read_note(&mut self, data: &[u8], seek: &mut usize, note: &mut Note, guitar_string: (i8,i8), track_index: usize) {
         let flags = read_byte(data, seek);
         note.string = guitar_string.0;
         note.effect.ghost_note = (flags & 0x04) == 0x04;
@@ -185,7 +185,7 @@ impl Song {
     /// Flags are followed by:
     /// - Bend. See `readBend`.
     /// - Grace note. See `readGrace`.
-    fn read_note_effects_v3(&self, data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
+    fn read_note_effects_v3(&self, data: &[u8], seek: &mut usize, note: &mut Note) {
         let flags = read_byte(data, seek);
         //println!("read_effect(), flags: {}", flags);
         note.effect.hammer = (flags & 0x02) == 0x02;
@@ -222,7 +222,7 @@ impl Song {
     /// - Slide. See `read_slides()`.
     /// - Harmonic. See `read_harmonic()`.
     /// - Trill. See `read_trill()`.
-    fn read_note_effects_v4(&mut self, data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
+    fn read_note_effects_v4(&mut self, data: &[u8], seek: &mut usize, note: &mut Note) {
         let flags1 = read_signed_byte(data, seek);
         let flags2 = read_signed_byte(data, seek);
         note.effect.hammer = (flags1 & 0x02) == 0x02;

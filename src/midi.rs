@@ -4,7 +4,7 @@ use crate::{io::*, gp::*};
 
 //MIDI channels
 
-pub const CHANNEL_DEFAULT_NAMES: [&'static str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
+pub const CHANNEL_DEFAULT_NAMES: [&str; 128] = ["Piano", "Bright Piano", "Electric Grand", "Honky Tonk Piano", "Electric Piano 1", "Electric Piano 2",
                                             "Harpsichord", "Clavinet", "Celesta",
                                             "Glockenspiel",
                                             "Music Box",
@@ -72,7 +72,7 @@ impl MidiChannel {
 
 impl Song{
     /// Read all the MIDI channels
-    pub fn read_midi_channels(&mut self, data: &Vec<u8>, seek: &mut usize) { for i in 0u8..64u8 { self.channels.push(self.read_midi_channel(data, seek, i)); } }
+    pub fn read_midi_channels(&mut self, data: &[u8], seek: &mut usize) { for i in 0u8..64u8 { self.channels.push(self.read_midi_channel(data, seek, i)); } }
     /// Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
     ///`port1/channel1`, `port1/channel2`, ..., `port1/channel16`, `port2/channel1`, ..., `port4/channel16`.
     ///
@@ -87,7 +87,7 @@ impl Song{
     /// * **Tremolo**: `byte`
     /// * **blank1**: `byte` => Backward compatibility with version 3.0
     /// * **blank2**: `byte` => Backward compatibility with version 3.0
-    fn read_midi_channel(&self, data: &Vec<u8>, seek: &mut usize, channel: u8) -> MidiChannel {
+    fn read_midi_channel(&self, data: &[u8], seek: &mut usize, channel: u8) -> MidiChannel {
         let instrument = read_int(data, seek);
         let mut c = MidiChannel{channel, effect_channel: channel, ..Default::default()};
         c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);

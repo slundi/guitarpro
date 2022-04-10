@@ -23,7 +23,7 @@ impl Default for TimeSignature {
     fn default() -> Self { TimeSignature { numerator: 4, denominator:Duration::default(), beams: vec![2,2,2,2]}}
 }
 
-pub const KEY_SIGNATURES: [&'static str; 34] = ["F♭ major", "C♭ major", "G♭ major", "D♭ major", "A♭ major", "E♭ major", "B♭ major",
+pub const KEY_SIGNATURES: [&str; 34] = ["F♭ major", "C♭ major", "G♭ major", "D♭ major", "A♭ major", "E♭ major", "B♭ major",
             "F major", "C major", "G major", "D major", "A major", "E major", "B major",
             "F# major", "C# major", "G# major",
             "D♭ minor", "A♭ minor", "E♭ minor", "B♭ minor",
@@ -105,7 +105,7 @@ impl Duration {
 /// * *3*: thirty-second note
 /// 
 /// If flag at *0x20* is true, the tuplet is read
-pub fn read_duration(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
+pub fn read_duration(data: &[u8], seek: &mut usize, flags: u8) -> Duration {
     //println!("read_duration()");
     let mut d = Duration{value: 1 << (read_signed_byte(data, seek) + 2), ..Default::default()};
     //let b = read_signed_byte(data, seek); println!("B: {}", b); d.value = 1 << (b + 2);

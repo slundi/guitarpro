@@ -89,7 +89,7 @@ impl Song {
     /// - Measure headers. See `readMeasureHeaders`.
     /// - Tracks. See `read_tracks()`.
     /// - Measures. See `read_measures()`.
-    pub fn read_data(&mut self, data: &Vec<u8>) {
+    pub fn read_data(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
         self.read_version(data, &mut seek);
         self.read_meta(data, &mut seek);
@@ -139,7 +139,7 @@ impl Song {
         }
     }
     /// Read meta information (name, artist, ...)
-    fn read_meta(&mut self, data: &Vec<u8>, seek: &mut usize) {
+    fn read_meta(&mut self, data: &[u8], seek: &mut usize) {
         // read GP3 informations
         self.name        = read_int_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
         self.subtitle    = read_int_size_string(data, seek);

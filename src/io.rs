@@ -11,7 +11,7 @@ lazy_static! {
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns the read byte as u8
-pub fn read_byte(data: &Vec<u8>, seek: &mut usize ) -> u8 {
+pub fn read_byte(data: &[u8], seek: &mut usize ) -> u8 {
     if data.len() < *seek {panic!("End of filee reached");}
     let b = data[*seek];
     *seek += 1;
@@ -22,7 +22,7 @@ pub fn read_byte(data: &Vec<u8>, seek: &mut usize ) -> u8 {
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns the read byte as u8
-pub fn read_signed_byte(data: &Vec<u8>, seek: &mut usize ) -> i8 {
+pub fn read_signed_byte(data: &[u8], seek: &mut usize ) -> i8 {
     if data.len() < *seek {panic!("End of file reached");}
     let b = data[*seek] as i8;
     *seek += 1;
@@ -33,7 +33,7 @@ pub fn read_signed_byte(data: &Vec<u8>, seek: &mut usize ) -> i8 {
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns boolean value
-pub fn read_bool(data: &Vec<u8>, seek: &mut usize ) -> bool {
+pub fn read_bool(data: &[u8], seek: &mut usize ) -> bool {
     if data.len() < *seek {panic!("End of file reached");}
     let b = data[*seek];
     *seek += 1;
@@ -44,7 +44,7 @@ pub fn read_bool(data: &Vec<u8>, seek: &mut usize ) -> bool {
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns the short value
-pub fn read_short(data: &Vec<u8>, seek: &mut usize ) -> i16 {
+pub fn read_short(data: &[u8], seek: &mut usize ) -> i16 {
     if data.len() < *seek + 1 {panic!("End of file reached");}
     let n = i16::from_le_bytes([data[*seek], data[*seek+1]]);
     *seek += 2;
@@ -55,7 +55,7 @@ pub fn read_short(data: &Vec<u8>, seek: &mut usize ) -> i16 {
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns the integer value
-pub fn read_int(data: &Vec<u8>, seek: &mut usize ) -> i32 {
+pub fn read_int(data: &[u8], seek: &mut usize ) -> i32 {
     if data.len() < *seek + 4 {panic!("End of file reached");}
     let n = i32::from_le_bytes([data[*seek], data[*seek+1], data[*seek+2], data[*seek+3]]);
     *seek += 4;
@@ -66,7 +66,7 @@ pub fn read_int(data: &Vec<u8>, seek: &mut usize ) -> i32 {
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns the float value
-pub fn read_float(data: &Vec<u8>, seek: &mut usize ) -> f32 {
+pub fn read_float(data: &[u8], seek: &mut usize ) -> f32 {
     if data.len() < *seek + 8 {panic!("End of file reached");}
     let n = f32::from_le_bytes([data[*seek], data[*seek+1], data[*seek+2], data[*seek+3]]);
     *seek += 4;
@@ -77,7 +77,7 @@ pub fn read_float(data: &Vec<u8>, seek: &mut usize ) -> f32 {
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns the float value
-pub fn read_double(data: &Vec<u8>, seek: &mut usize ) -> f64 {
+pub fn read_double(data: &[u8], seek: &mut usize ) -> f64 {
     if data.len() >= *seek {panic!("End of file reached");}
     let n = f64::from_le_bytes([data[*seek], data[*seek+1], data[*seek+2], data[*seek+3], data[*seek+4], data[*seek+5], data[*seek+6], data[*seek+7]]);
     *seek += 8;
@@ -85,7 +85,7 @@ pub fn read_double(data: &Vec<u8>, seek: &mut usize ) -> f64 {
 }
 
 /// Read a string.
-pub fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
+pub fn read_int_size_string(data: &[u8], seek: &mut usize) -> String {
     let n = read_int(data, seek).to_usize().unwrap();
     let parse = std::str::from_utf8(&data[*seek..*seek+n]);
     if parse.is_err() {panic!("Unable to read string");}
@@ -94,7 +94,7 @@ pub fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
 }
 
 /// Read a string.
-pub fn read_byte_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
+pub fn read_byte_size_string(data: &[u8], seek: &mut usize) -> String {
     let n = read_byte(data, seek).to_usize().unwrap();
     //println!("read_byte_size_string: n={}", n);
     let parse = std::str::from_utf8(&data[*seek..*seek+n]);
@@ -107,7 +107,7 @@ pub fn read_byte_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
 /// * `data` - array of bytes
 /// * `seek` - cursor that will be incremented
 /// * returns version
-pub fn read_version_string(data: &Vec<u8>, seek: &mut usize) -> crate::headers::Version {
+pub fn read_version_string(data: &[u8], seek: &mut usize) -> crate::headers::Version {
     let n = data[0].to_usize().unwrap();
     let mut v = crate::headers::Version {data: String::with_capacity(30), number: crate::enums::AppVersion::Version_5_10, clipboard: false};
     for i in 1..n+1 {
@@ -132,7 +132,7 @@ pub fn read_version_string(data: &Vec<u8>, seek: &mut usize) -> crate::headers::
 }
 
 /// Read a color. Colors are used by `Marker` and `Track`. They consist of 3 consecutive bytes and one blank byte.
-pub fn read_color(data: &Vec<u8>, seek: &mut usize) -> i32 {
+pub fn read_color(data: &[u8], seek: &mut usize) -> i32 {
     let r = read_byte(data, seek).to_i32().unwrap();
     let g = read_byte(data, seek).to_i32().unwrap();
     let b = read_byte(data, seek).to_i32().unwrap();

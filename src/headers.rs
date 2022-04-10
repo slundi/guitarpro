@@ -68,7 +68,7 @@ impl Default for Marker {fn default() -> Self { Marker {title: "Section".to_owne
 /// Read a marker. The markers are written in two steps:
 /// - first is written an integer equal to the marker's name length + 1
 /// - then a string containing the marker's name. Finally the marker's color is written.
-fn read_marker(data: &Vec<u8>, seek: &mut usize, marker: &mut Marker) {
+fn read_marker(data: &[u8], seek: &mut usize, marker: &mut Marker) {
     marker.title = read_int_size_string(data, seek);
     marker.color = read_color(data, seek);
 }
@@ -100,7 +100,7 @@ impl RepeatGroup {
 
 impl Song {
     /// Read and process version
-    pub fn read_version(&mut self, data: &Vec<u8>, seek: &mut usize) {
+    pub fn read_version(&mut self, data: &[u8], seek: &mut usize) {
         self.version = read_version_string(data, seek);
         let mut clipboard = Clipboard::default();
         //check for clipboard and read it
@@ -116,7 +116,7 @@ impl Song {
             clipboard.sub_bar_copy = read_int(data, seek) != 0;
         }
     }
-    fn read_clipboard(&mut self, data: &Vec<u8>, seek: &mut usize) -> Clipboard {
+    fn read_clipboard(&mut self, data: &[u8], seek: &mut usize) -> Clipboard {
         let mut c = Clipboard{start_measure: read_int(data, seek), ..Default::default()};
         c.stop_measure = read_int(data, seek);
         c.start_track = read_int(data, seek);
@@ -140,7 +140,7 @@ impl Song {
     /// 1) First is written an `integer` equal to the marker's name length + 1
     /// 2) a string containing the marker's name. Finally the marker's color is written.
     /// * **Tonality of the measure**: `byte`. This value encodes a key (signature) change on the current piece. It is encoded as: `0: C`, `1: G (#)`, `2: D (##)`, `-1: F (b)`, ...
-    pub fn read_measure_header(&mut self, data: &Vec<u8>, seek: &mut usize, number: usize) {
+    pub fn read_measure_header(&mut self, data: &[u8], seek: &mut usize, number: usize) {
         //println!("N={}\tmeasure_headers={}", number, song.measure_headers.len());
         let flag = read_byte(data, seek);
         //println!("read_measure_header(), flags: {}", flag);
@@ -167,7 +167,7 @@ impl Song {
         self.measure_headers.push(mh);
     }
 
-    fn read_repeat_alternative(&mut self, data: &Vec<u8>, seek: &mut usize) -> i8 {
+    fn read_repeat_alternative(&mut self, data: &[u8], seek: &mut usize) -> i8 {
         //println!("read_repeat_alternative()");
         let value = read_byte(data, seek);
         let mut existing_alternative = 0i8;

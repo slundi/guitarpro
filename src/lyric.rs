@@ -39,7 +39,7 @@ impl Lyrics {
 ///
 /// First, read an `i32` that points to the track lyrics are bound to. Then it is followed by 5 lyric lines. Each one consists of
 /// number of starting measure encoded in`i32` and`int-size-string` holding text of the lyric line.
-pub fn read_lyrics(data: &Vec<u8>, seek: &mut usize) -> Lyrics {
+pub fn read_lyrics(data: &[u8], seek: &mut usize) -> Lyrics {
     let mut lyrics = Lyrics{track_choice: read_int(data, seek).to_u8().unwrap(), ..Default::default()};
     //println!("Lyrics for track #{}", lyrics.track_choice);
     lyrics.line1.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
