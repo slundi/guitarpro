@@ -35,10 +35,10 @@ pub struct KeySignature {
     pub is_minor: bool,
 }
 //impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
-impl KeySignature {
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for KeySignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let index: usize = if self.is_minor {(23i8 + self.key).to_usize().unwrap()} else {(8i8 + self.key).to_usize().unwrap()};
-        String::from(KEY_SIGNATURES[index])
+        write!(f, "{}", KEY_SIGNATURES[index])
     }
 }
 

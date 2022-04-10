@@ -7,7 +7,7 @@ pub enum AppVersion {
 
 /// An enumeration of different triplet feels.
 #[derive(Debug,Clone)]
-pub enum TripletFeel { NONE, EIGHTH, SIXTEENTH }
+pub enum TripletFeel { None, Eighth, Sixteenth }
 
 
 /// An enumeration of available clefs

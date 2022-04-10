@@ -24,15 +24,15 @@ pub struct Lyrics {
     pub line5: BTreeMap<u16, String>,
 }
 //impl Default for Lyrics { fn default() -> Self { Lyrics { track_choice: 0, line1: BTreeMap::new(), line2: BTreeMap::new(), line3: BTreeMap::new(), line4: BTreeMap::new(), line5: BTreeMap::new(), }}}
-impl Lyrics {
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for Lyrics {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut s = String::new();
         for l in &self.line1 { s.push_str(l.1); s.push('\n'); }
         for l in &self.line2 { s.push_str(l.1); s.push('\n'); }
         for l in &self.line3 { s.push_str(l.1); s.push('\n'); }
         for l in &self.line4 { s.push_str(l.1); s.push('\n'); }
         for l in &self.line5 { s.push_str(l.1); s.push('\n'); }
-        s.trim().replace('\n', " ").replace('\r', " ")
+        write!(f, "{}", s.trim().replace('\n', " ").replace('\r', " "))
     }
 }
 /// Read lyrics.

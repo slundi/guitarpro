@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::{io::*, gp::*, enums::*};
 
 /// A chord annotation for beats
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Default)]
 pub struct Chord {
     pub length: u8,
     pub sharp: Option<bool>,
@@ -27,7 +27,7 @@ pub struct Chord {
 
     //TODO: @property def notes(self): return <string for string in self.strings if string >= 0>,
 }
-impl Default for Chord {
+/*impl Default for Chord {
     fn default() -> Self { Chord {
         length: 0,
         sharp:None, root:None, kind:None, extension:None, bass:None, tonality:None, add:None, name:String::new(),
@@ -35,7 +35,7 @@ impl Default for Chord {
         first_fret: None, strings:Vec::new(), barres:Vec::new(), omissions:Vec::new(), fingerings:Vec::new(),
         show:None, new_format:None,
     }}
-}
+}*/
 impl Chord {
     //TODO: @property def notes(self): return [string for string in self.strings if string >= 0]
 }
@@ -97,9 +97,12 @@ impl PitchClass {
         p.value = p.just + p.accidental;
         p
     }
-    pub fn to_string(&self) -> String {
-        if self.sharp {String::from(SHARP_NOTES[self.value as usize])}
-        else          {String::from(FLAT_NOTES[self.value as usize])}
+}
+
+impl std::fmt::Display for PitchClass {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.sharp { write!(f, "{}", SHARP_NOTES[self.value as usize]) }
+        else          { write!(f, "{}", FLAT_NOTES[self.value as usize]) }
     }
 }
 

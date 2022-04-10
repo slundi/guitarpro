@@ -66,7 +66,7 @@ impl Default for Song {
         tempo: 120, hide_tempo: false, tempo_name:String::from("Moderate"),
         key: KeySignature::default(),
 
-        triplet_feel: TripletFeel::NONE,
+        triplet_feel: TripletFeel::None,
         current_measure_number: None, current_track: None, current_voice_number: None, current_beat_number: None,
 
         master_effect: RseMasterEffect::default(),
@@ -95,7 +95,7 @@ impl Song {
         self.read_meta(data, &mut seek);
         
         if self.version.number == AppVersion::Version_3_00 || self.version.number == AppVersion::Version_4_0x{
-            self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
+            self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
             //println!("Triplet feel: {}", self.triplet_feel);
             if self.version.number == AppVersion::Version_4_0x {self.lyrics = read_lyrics(data, &mut seek);} //read lyrics
             self.tempo = read_int(data, &mut seek).to_i16().unwrap();

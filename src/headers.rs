@@ -46,7 +46,7 @@ impl Default for MeasureHeader {
         repeat_open: false,
         repeat_alternative: 0,
         repeat_close: -1,
-        triplet_feel: TripletFeel::NONE,
+        triplet_feel: TripletFeel::None,
         key_signature: KeySignature::default(),
         double_bar: false,
         marker: Marker::default(),

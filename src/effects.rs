@@ -101,12 +101,12 @@ fn from_tremolo_value(value: i8) -> u8 {
 }
 
 /// A trill effect.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Default)]
 pub struct TrillEffect {
     fret: i8,
     duration: Duration,
 }
-impl Default for TrillEffect { fn default() -> Self {TrillEffect { fret:0, duration: Duration::default() }}}
+//impl Default for TrillEffect { fn default() -> Self {TrillEffect { fret:0, duration: Duration::default() }}}
 
 impl Song {
     /// Read a bend. It is encoded as:
@@ -122,8 +122,7 @@ impl Song {
         be.value = read_int(data, seek).to_i16().unwrap();
         let count: u8 = read_int(data, seek).to_u8().unwrap();
         for _ in 0..count {
-            let mut bp = BendPoint::default();
-            bp.position = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(BEND_EFFECT_MAX_POSITION) / GP_BEND_POSITION).round().to_u8().unwrap();
+            let mut bp = BendPoint{position: (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(BEND_EFFECT_MAX_POSITION) / GP_BEND_POSITION).round().to_u8().unwrap(), ..Default::default()};
             bp.value = (f32::from(read_int(data, seek).to_i16().unwrap()) * f32::from(be.semitone_length) / GP_BEND_SEMITONE).round().to_i8().unwrap();
             bp.vibrato = read_bool(data, seek);
             be.points.push(bp);
