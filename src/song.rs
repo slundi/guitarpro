@@ -94,7 +94,7 @@ impl Song {
         self.read_version(data, &mut seek);
         self.read_meta(data, &mut seek);
         
-        if self.version.number == AppVersion::Version_3_00 || self.version.number == AppVersion::Version_4_0x{
+        if self.version.number == AppVersion::Version_3_00 || self.version.number == AppVersion::Version_4_0x {
             self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
             //println!("Triplet feel: {}", self.triplet_feel);
             if self.version.number == AppVersion::Version_4_0x {self.lyrics = read_lyrics(data, &mut seek);} //read lyrics
@@ -110,9 +110,23 @@ impl Song {
             for i in 1..measure_count + 1  {
                 //self.current_measure_number = Some(i.to_i16().unwrap());
                 self.read_measure_header(data, &mut seek, i);
+                if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {
+                    let directions = self.read_directions(data, &mut seek); //TODO: handle result
+                    for s in directions.0 {
+                        if s.1 > -1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0);}
+                    }
+                    for s in directions.1 {
+                        if s.1 > -1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0);}
+                    }
+                }
             }
             //self.current_measure_number = Some(0);
             for i in 0..track_count {self.read_track(data, &mut seek, i);}
+            //Tracks in Guitar Pro 5 have almost the same format as in Guitar Pro 3. If it's Guitar Pro 5.0 then 2 blank bytes are read after `read_tracks()`.
+            //If format version is higher than 5.0, 1 blank byte is read.
+            if self.version.number == AppVersion::Version_5_00 {seek += 2;}
+            else if self.version.number == AppVersion::Version_5_10 {seek += 1;}
+
             self.read_measures(data, &mut seek);
             if self.version.number == AppVersion::Version_4_0x {} //annotate error reading
         }

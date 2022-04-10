@@ -6,8 +6,16 @@ pub enum AppVersion {
 }
 
 /// An enumeration of different triplet feels.
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum TripletFeel { None, Eighth, Sixteenth }
+pub fn get_triplet_feel(value: i8) -> TripletFeel {
+    match value {
+        0 => TripletFeel::None,
+        1 => TripletFeel::Eighth,
+        2 => TripletFeel::Sixteenth,
+        _ => panic!("Invalid triplet feel"),
+    }
+}
 
 
 /// An enumeration of available clefs
@@ -322,7 +330,25 @@ pub enum HarmonicType {
 /// Values of auto-accentuation on the beat found in track RSE settings
 #[derive(Debug,Clone)]
 pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
+pub fn get_accentuation(value: u8) -> Accentuation {
+    match value {
+        0 => Accentuation::None,
+        1 => Accentuation::VerySoft,
+        2 => Accentuation::Soft,
+        3 => Accentuation::Medium,
+        4 => Accentuation::Strong,
+        5 => Accentuation::VeryStrong,
+        _ => panic!("Cannot get accentuation"),
+    }
+}
 
 /// A navigation sign like *Coda* (𝄌: U+1D10C) or *Segno* (𝄋 or 𝄉: U+1D10B or U+1D109).
-#[derive(Debug,Clone)]
-pub enum DirectionSign { Coda, Segno, }
+#[derive(Debug,Clone,PartialEq,Eq,Hash)]
+pub enum DirectionSign {
+    Coda, DoubleCoda,
+    Segno, SegnoSegno,
+    Fine,
+    DaCapo, DaCapoAlCoda, DaCapoAlDoubleCoda, DaCapoAlFine,
+    DaSegno, DaSegnoAlCoda, DaSegnoAlDoubleCoda, DaSegnoAlFine, DaSegnoSegno, DaSegnoSegnoAlCoda, DaSegnoSegnoAlDoubleCoda, DaSegnoSegnoAlFine,
+    DaCoda, DaDoubleCoda,
+}

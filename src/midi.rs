@@ -52,7 +52,7 @@ pub struct MidiChannel {
     pub reverb: i8,
     pub phaser: i8,
     pub tremolo: i8,
-    pub bank: i32,
+    pub bank: u8,
 }
 impl Default for MidiChannel {
     fn default() -> Self { MidiChannel { channel: 0, effect_channel: 1, instrument: 25, volume: 104, balance: 64, chorus: 0, reverb: 0, phaser: 0, tremolo: 0, bank: 0, }}
@@ -87,7 +87,7 @@ impl Song{
     /// * **Tremolo**: `byte`
     /// * **blank1**: `byte` => Backward compatibility with version 3.0
     /// * **blank2**: `byte` => Backward compatibility with version 3.0
-    fn read_midi_channel(&self, data: &[u8], seek: &mut usize, channel: u8) -> MidiChannel {
+    pub fn read_midi_channel(&self, data: &[u8], seek: &mut usize, channel: u8) -> MidiChannel {
         let instrument = read_int(data, seek);
         let mut c = MidiChannel{channel, effect_channel: channel, ..Default::default()};
         c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);

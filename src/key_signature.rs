@@ -17,7 +17,7 @@ pub const DURATION_HUNDRED_TWENTY_EIGHTH: u8 = 128;
 pub struct TimeSignature {
     pub numerator: i8,
     pub denominator: Duration,
-    pub beams: Vec<i32>,
+    pub beams: Vec<u8>,
 }
 impl Default for TimeSignature {
     fn default() -> Self { TimeSignature { numerator: 4, denominator:Duration::default(), beams: vec![2,2,2,2]}}

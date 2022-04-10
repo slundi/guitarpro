@@ -68,8 +68,8 @@ impl PitchClass {
     pub fn from(just: i8, accidental: Option<i8>, sharp: Option<bool>) -> PitchClass {
         let mut p = PitchClass {just, accidental:0, value:-1, sharp: true, note:String::with_capacity(2) };
         p.value = p.just % 12;
-        let mut pitch = 0i8;
-        if accidental.is_none() {
+        let mut pitch: i8;
+        if accidental == None {
             p.note=String::from(SHARP_NOTES[p.value as usize]); //try: note = SHARP_NOTES[p.value]; except KeyError: note = FLAT_NOTES[p.value];
             //if FLAT_NOTES[p.value]  == &note {note=String::from(FLAT_NOTES[p.value]);  p.sharp = false;} 
             if p.note.ends_with('b')      {p.accidental = -1; p.sharp = false;}

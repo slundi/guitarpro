@@ -1,3 +1,7 @@
+use fraction::ToPrimitive;
+
+use crate::{gp::*, io::*};
+
 ///A padding construct
 #[derive(Debug,Clone)]
 pub struct Padding {
@@ -62,3 +66,45 @@ impl Default for PageSetup {fn default() -> Self { PageSetup { page_size:Point{x
     copyright:String::from("Copyright %copyright%\nAll Rights Reserved - International Copyright Secured"),
     page_number:String::from("Page %N%/%P%"),
 }}}
+
+impl Song {
+    /// Read page setup. Page setup is read as follows:
+    /// - Page size: 2 :ref:`Ints <int>`. Width and height of the page.
+    /// - Page padding: 4 :ref:`Ints <int>`. Left, right, top, bottom padding of the page.
+    /// - Score size proportion: :ref:`int`.
+    /// - Header and footer elements: :ref:`short`. See :class:`guitarpro.models.HeaderFooterElements` for value mapping.
+    /// - List of placeholders:
+    ///   * title
+    ///   * subtitle
+    ///   * artist
+    ///   * album
+    ///   * words
+    ///   * music
+    ///   * wordsAndMusic
+    ///   * copyright1, e.g. *"Copyright %copyright%"*
+    ///   * copyright2, e.g. *"All Rights Reserved - International Copyright Secured"*
+    ///   * pageNumber
+    pub fn read_page_setup(&mut self, data: &[u8], seek: &mut usize) {
+        let mut s = PageSetup::default();
+        s.page_size.x = read_int(data, seek).to_u16().unwrap();
+        s.page_size.y = read_int(data, seek).to_u16().unwrap();
+        s.page_margin.left   = read_int(data, seek).to_u16().unwrap();
+        s.page_margin.right  = read_int(data, seek).to_u16().unwrap();
+        s.page_margin.top    = read_int(data, seek).to_u16().unwrap();
+        s.page_margin.bottom = read_int(data, seek).to_u16().unwrap();
+        s.score_size_proportion = read_int(data, seek).to_f32().unwrap() / 100.0;
+        s.header_and_footer = read_short(data, seek).to_u16().unwrap();
+        s.title = read_int_size_string(data, seek);
+        s.subtitle = read_int_size_string(data, seek);
+        s.artist = read_int_size_string(data, seek);
+        s.album = read_int_size_string(data, seek);
+        s.words = read_int_size_string(data, seek);
+        s.music = read_int_size_string(data, seek);
+        s.word_and_music = read_int_size_string(data, seek);
+        let mut c = read_int_size_string(data, seek);
+        c.push('\n');
+        c.push_str(&read_int_size_string(data, seek));
+        s.copyright = c;
+        s.page_number = read_int_size_string(data, seek);
+    }
+}

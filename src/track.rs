@@ -1,6 +1,6 @@
 use fraction::ToPrimitive;
 
-use crate::{io::*, gp::*, rse::*, measure::*};
+use crate::{io::*, gp::*, enums::*, rse::*, measure::*};
 
 /// Settings of the track.
 #[derive(Debug,Clone)]
@@ -53,6 +53,7 @@ pub struct Track {
     pub use_rse: bool,
     pub rse: TrackRse,
     pub measures: Vec<Measure>,
+    pub settings: TrackSettings,
 }
 impl Default for Track {
     fn default() -> Self { Track {
@@ -69,6 +70,7 @@ impl Default for Track {
         indicate_tuning: false,
         use_rse: false, rse: TrackRse::default(),
         measures: Vec::new(),
+        settings: TrackSettings::default(),
     }}
 }
 impl Song {
@@ -123,5 +125,87 @@ impl Song {
         track.color = read_color(data, seek);
         println!("\tInstrument: {} \t Strings: {}/{} ({:?})", self.channels[index].get_instrument_name(), string_count, track.strings.len(), track.strings);
         self.tracks.push(track);
+    }
+
+    /// Read track. If it's Guitar Pro 5.0 format and track is first then one blank byte is read. Then go track's flags. It presides the track's attributes:
+    /// - *0x01*: drums track
+    /// - *0x02*: 12 stringed guitar track
+    /// - *0x04*: banjo track
+    /// - *0x08*: track visibility
+    /// - *0x10*: track is soloed
+    /// - *0x20*: track is muted
+    /// - *0x40*: RSE is enabled
+    /// - *0x80*: show tuning in the header of the sheet.
+    /// 
+    /// Flags are followed by:
+    /// - Name: `String`. A 40 characters long string containing the track's name.
+    /// - Number of strings: :ref:`int`. An integer equal to the number of strings of the track.
+    /// - Tuning of the strings: `Table of integers`. The tuning of the strings is stored as a 7-integers table, the "Number of strings" first integers being really used. The strings are stored from the highest to the lowest.
+    /// - Port: :ref:`int`. The number of the MIDI port used.
+    /// - Channel. See `GP3File.readChannel`.
+    /// - Number of frets: :ref:`int`. The number of frets of the instrument.
+    /// - Height of the capo: :ref:`int`. The number of the fret on which a capo is set. If no capo is used, the value is 0.
+    /// - Track's color. The track's displayed color in Guitar Pro.
+    /// 
+    /// The properties are followed by second set of flags stored in a :ref:`short`:
+    /// - *0x0001*: show tablature
+    /// - *0x0002*: show standard notation
+    /// - *0x0004*: chord diagrams are below standard notation
+    /// - *0x0008*: show rhythm with tab
+    /// - *0x0010*: force horizontal beams
+    /// - *0x0020*: force channels 11 to 16
+    /// - *0x0040*: diagram list on top of the score
+    /// - *0x0080*: diagrams in the score
+    /// - *0x0200*: auto let-ring
+    /// - *0x0400*: auto brush
+    /// - *0x0800*: extend rhythmic inside the tab
+    /// 
+    /// Then follow:
+    /// - Auto accentuation: :ref:`byte`. See :class:`guitarpro.models.Accentuation`.
+    /// - MIDI bank: :ref:`byte`.
+    /// - Track RSE. See `readTrackRSE`.
+    pub fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) {
+        if self.tracks[number].number == 1 || self.version.number == AppVersion::Version_5_00 {*seek += 1;} //always 0
+        let flags1 = read_byte(data, seek);
+        self.tracks[number].percussion_track = (flags1 & 0x01) == 0x01;
+        self.tracks[number].banjo_track = (flags1 & 0x02) == 0x02;
+        self.tracks[number].visible = (flags1 & 0x04) == 0x04;
+        self.tracks[number].solo = (flags1 & 0x10) == 0x10;
+        self.tracks[number].mute = (flags1 & 0x20) == 0x20;
+        self.tracks[number].use_rse = (flags1 & 0x40) == 0x40;
+        self.tracks[number].indicate_tuning = (flags1 & 0x80) == 0x80;
+        self.tracks[number].name = read_byte_size_string(data, seek);
+        *seek += 40 - self.tracks[number].name.len();
+        let string_count = read_int(data, seek).to_u8().unwrap();
+        self.tracks[number].strings.clear();
+        for i in 0i8..7i8 {
+            let i_tuning = read_int(data, seek).to_i8().unwrap();
+            if string_count.to_i8().unwrap() > i { self.tracks[number].strings.push((i + 1, i_tuning)); }
+        }
+        self.tracks[number].port = read_int(data, seek).to_u8().unwrap();
+        //TODO: 
+        self.read_midi_channel(data, seek, self.tracks[number].channel_index.to_u8().unwrap());
+        if self.channels[number].channel == 9 {self.tracks[number].percussion_track = true;}
+        self.tracks[number].fret_count = read_int(data, seek).to_u8().unwrap();
+        self.tracks[number].offset = read_int(data, seek);
+        self.tracks[number].color = read_color(data, seek);
+
+        let flags2 = read_short(data, seek);
+        self.tracks[number].settings.tablature = (flags2 & 0x0001) == 0x0001;
+        self.tracks[number].settings.notation = (flags2 & 0x0002) == 0x0002;
+        self.tracks[number].settings.diagram_are_below = (flags2 & 0x0004) == 0x0004;
+        self.tracks[number].settings.show_rythm = (flags2 & 0x0008) == 0x0008;
+        self.tracks[number].settings.force_horizontal = (flags2 & 0x0010) == 0x0010;
+        self.tracks[number].settings.force_channels = (flags2 & 0x0020) == 0x0020;
+        self.tracks[number].settings.diagram_list = (flags2 & 0x0040) == 0x0040;
+        self.tracks[number].settings.diagram_in_score = (flags2 & 0x0080) == 0x0080;
+        //0x0100 ???
+        self.tracks[number].settings.auto_let_ring = (flags2 & 0x0200) == 0x0200;
+        self.tracks[number].settings.auto_brush = (flags2 & 0x0400) == 0x0400;
+        self.tracks[number].settings.extend_rythmic = (flags2 & 0x0800) == 0x0800;
+
+        self.tracks[number].rse.auto_accentuation = get_accentuation(read_byte(data, seek));
+        self.channels[number].bank = read_byte(data, seek); //TODO:
+        self.read_track_rse(data, seek, number);
     }
 }
