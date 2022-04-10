@@ -254,24 +254,31 @@ mod test {
     use crate::chord::PitchClass;
 
     #[test]
-    fn test_pitches() {
-        // 1
+    fn test_pitch_1() {
         let p = PitchClass::from_note("D#".to_string());
         assert_eq!(true, p.sharp, "D# is sharp? {}", true);
         assert_eq!(1, p.accidental);
-        //2
+    }
+    #[test]
+    fn test_pitch_2() {
         let p = PitchClass::from(4, Some(-1), None);
         assert_eq!(3, p.value);
         assert_eq!(false, p.sharp);
         assert_eq!("Eb", p.to_string(), "Note should be Eb");
-        //3
+    }
+    #[test]
+    fn test_pitch_3() {
         let p = PitchClass::from(4, Some(-1), Some(true));
         assert_eq!(3, p.value);
         assert_eq!("D#", p.to_string(), "Note should be D#");
-        //4
+    }
+    #[test]
+    fn test_pitch_4() {
         let p = PitchClass::from(3, None, None);
         assert_eq!("Eb", p.to_string(), "Note should be Eb");
-        //5
+    }
+    #[test]
+    fn test_pitch_5() {
         let p = PitchClass::from(3, None, Some(true));
         assert_eq!("D#", p.to_string(), "Note should be D#");
     }
