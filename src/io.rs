@@ -110,10 +110,9 @@ pub fn read_byte_size_string(data: &[u8], seek: &mut usize) -> String {
 pub fn read_version_string(data: &[u8], seek: &mut usize) -> crate::headers::Version {
     let n = data[0].to_usize().unwrap();
     let mut v = crate::headers::Version {data: String::with_capacity(30), number: crate::enums::AppVersion::Version_5_10, clipboard: false};
-    for i in 1..n+1 {
-        let c = data[i];
+    for (i, c) in data.iter().enumerate().skip(1).take(n) {
         if i == 0 {break;} //NULL symbol so we exit
-        v.data.push(c as char);
+        v.data.push(*c as char);
     }
     //println!("Version {} {}", n, s);
     *seek += 31;
