@@ -28,7 +28,7 @@ impl BeatStroke {
         let mut bs = BeatStroke::default();
         if self.direction == BeatStrokeDirection::Up {bs.direction = BeatStrokeDirection::Down}
         else if self.direction == BeatStrokeDirection::Down {bs.direction = BeatStrokeDirection::Up}
-        return bs;
+        bs
     }
 }
 
@@ -68,19 +68,19 @@ impl Default for BeatEffects { fn default() -> Self { BeatEffects {
     vibrato: false,
 }}}
 impl BeatEffects {
-    pub fn is_chord(&self) -> bool {return self.chord.is_some();}
-    pub fn is_tremolo_bar(&self) -> bool {return self.tremolo_bar.is_some();}
-    pub fn is_slap_effect(&self) -> bool {return self.slap_effect != SlapEffect::None;}
-    pub fn has_pick_stroke(&self) -> bool {return self.pick_stroke != BeatStrokeDirection::None;}
+    pub fn is_chord(&self) -> bool {self.chord.is_some()}
+    pub fn is_tremolo_bar(&self) -> bool {self.tremolo_bar.is_some()}
+    pub fn is_slap_effect(&self) -> bool {self.slap_effect != SlapEffect::None}
+    pub fn has_pick_stroke(&self) -> bool {self.pick_stroke != BeatStrokeDirection::None}
     pub fn is_default(&self) -> bool {
         let d = BeatEffects::default();
-        return self.stroke == d.stroke &&
+        self.stroke == d.stroke &&
             self.has_rasgueado == d.has_rasgueado &&
             self.pick_stroke == d.pick_stroke &&
             self.fade_in == d.fade_in &&
             self.vibrato == d.vibrato &&
             self.tremolo_bar == d.tremolo_bar &&
-            self.slap_effect == d.slap_effect;
+            self.slap_effect == d.slap_effect
     }
 }
 
@@ -108,14 +108,14 @@ impl Default for Beat { fn default() -> Self { Beat {
     status: BeatStatus::Normal,
 }}}
 impl Beat {
-    //pub fn start_in_measure(&self) -> u16 {return self.start - self.voice.measure.start;}
+    //pub fn start_in_measure(&self) -> u16 {self.start - self.voice.measure.start}
     pub fn has_vibrato(&self) -> bool {
-        for i in 0..self.notes.len() {if self.notes[i].effect.vibrato {return true}}
-        return false;
+        for i in 0..self.notes.len() {if self.notes[i].effect.vibrato {return true;}}
+        false
     }
     pub fn has_harmonic(&self) -> bool {
         for i in 0..self.notes.len() {if self.notes[i].effect.is_harmonic() {return true;}}
-        return false;
+        false
     }
 }
 
@@ -168,7 +168,7 @@ impl Song {
             voice.beats[b].effect.mix_table_change = Some(mtc);
         }
         self.read_notes(data, seek, track_index, &mut voice.beats[b], &duration, note_effect);
-        if voice.beats[b].status == BeatStatus::Empty {return 0;} else {return duration.time().to_i64().unwrap();}
+        if voice.beats[b].status == BeatStatus::Empty {0} else {duration.time().to_i64().unwrap()}
     }
 
     /// Read beat effects. The first byte is effects flags:
@@ -199,7 +199,7 @@ impl Song {
         //In GP3 harmonics apply to the whole beat, not the individual notes. Here we set the noteEffect for all the notes in the beat.
         if (flags & 0x04) == 0x04 {note_effect.harmonic = Some(HarmonicEffect::default());}
         if (flags & 0x08) == 0x08 {note_effect.harmonic = Some(HarmonicEffect {kind: HarmonicType::Artificial, ..Default::default()});}
-        return be;
+        be
     }
     ///Read beat effects. Beat effects are read using two byte flags. The first byte of flags is:
     /// - *0x01*: *blank*
@@ -238,7 +238,7 @@ impl Song {
         if (flags1 & 0x40) == 0x40 {be.stroke = self.read_beat_stroke(data, seek);}
         be.has_rasgueado = (flags2 &0x01) == 0x01;
         if (flags2 & 0x02) == 0x02 {be.pick_stroke = get_beat_stroke_direction(read_signed_byte(data, seek));}
-        return be;
+        be
     }
     /// Read beat stroke. Beat stroke consists of two `Bytes <byte>` which correspond to stroke up
     /// and stroke down speed. See `BeatStrokeDirection` for value mapping.
@@ -255,7 +255,7 @@ impl Song {
             bs.direction = BeatStrokeDirection::Down;
             bs.value = self.stroke_value(down).to_u16().unwrap();
         }
-        return bs;
+        bs
     }
     fn stroke_value(&self, value: i8) -> u8 {
         match value {
@@ -272,14 +272,13 @@ impl Song {
     /// effect is encoded in `Int` and shows how deep tremolo bar is pressed.
     fn read_tremolo_bar(&self, data: &Vec<u8>, seek: &mut usize) -> BendEffect {
         //println!("read_tremolo_bar()");
-        let mut be = BendEffect::default();
-        be.kind = BendType::Dip;
+        let mut be = BendEffect{kind: BendType::Dip, ..Default::default()};
         be.value = read_int(data, seek).to_i16().unwrap();
         be.points.push(BendPoint{ position: 0, value: 0, ..Default::default() });
         be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION / 2,
                                         value: (-f32::from(be.value) / GP_BEND_SEMITONE).round().to_i8().unwrap(),
                                     ..Default::default() });
         be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION, value: 0, ..Default::default() });
-        return be;
+        be
     }
 }

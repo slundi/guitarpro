@@ -81,7 +81,7 @@ mod test {
         let size: usize = fs::metadata(&path).unwrap_or_else(|_e|{panic!("Unable to get file size")}).len().to_usize().unwrap();
         let mut data: Vec<u8> = Vec::with_capacity(size);
         f.take(u64::from_ne_bytes(size.to_ne_bytes())).read_to_end(&mut data).unwrap_or_else(|_error|{panic!("Unable to read file contents");});
-        return data;
+        data
     }
 
     //chords

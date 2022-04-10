@@ -6,13 +6,13 @@ use crate::io::*;
 use crate::gp::*;
 
 /// A mix table item describes a mix parameter, e.g. volume or reverb
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Default)]
 pub struct MixTableItem {
     pub value: u8,
     pub duration: u8,
     pub all_tracks: bool,
 }
-impl Default for MixTableItem { fn default() -> Self { MixTableItem { value: 0, duration: 0, all_tracks: false }}}
+//impl Default for MixTableItem { fn default() -> Self { MixTableItem { value: 0, duration: 0, all_tracks: false }}}
 
 const WAH_EFFECT_OFF:  i8 = -2;
 const WAH_EFFECT_NONE: i8 = -1;
@@ -26,9 +26,9 @@ impl WahEffect {
     pub fn check_value(value: i8) {
         if !(-2 <= value && value <= 100) {panic!("Value for a wah effect must be in range from -2 to 100")}
     }
-    pub fn is_on(&self) -> bool {return self.value <= 0 && self.value <= 100;}
-    pub fn is_off(&self) -> bool {return self.value == WAH_EFFECT_OFF;}
-    pub fn is_none(&self) -> bool {return self.value == WAH_EFFECT_NONE;}
+    pub fn is_on(&self) -> bool {self.value <= 0 && self.value <= 100}
+    pub fn is_off(&self) -> bool {self.value == WAH_EFFECT_OFF}
+    pub fn is_none(&self) -> bool {self.value == WAH_EFFECT_NONE}
 }
 
 /// A MixTableChange describes a change in mix parameters
@@ -53,7 +53,7 @@ impl Default for MixTableChange { fn default() -> Self { MixTableChange { instru
 }}}
 impl MixTableChange {
     pub fn is_just_wah(&self) -> bool {
-        return self.instrument.is_none() &&  self.volume.is_none() && self.balance.is_none() && self.chorus.is_none() && self.reverb.is_none() && self.phaser.is_none() && self.tremolo.is_none() && self.tempo.is_none() && self.wah.is_none();
+        self.instrument.is_none() &&  self.volume.is_none() && self.balance.is_none() && self.chorus.is_none() && self.reverb.is_none() && self.phaser.is_none() && self.tremolo.is_none() && self.tempo.is_none() && self.wah.is_none()
     }
 }
 
@@ -69,7 +69,7 @@ impl Song {
         self.read_mix_table_change_values(data, seek, &mut tc);
         self.read_mix_table_change_durations(data, seek, &mut tc);
         if self.version.number == AppVersion::Version_4_0x {self.read_mix_table_change_flags(data, seek, &mut tc);}
-        return tc;
+        tc
     }
     /// Read mix table change values. Mix table change values consist of 7 `signed-byte` and an `int`, which correspond to:
     /// - instrument
@@ -161,6 +161,6 @@ impl Song {
             e.all_tracks = (flags & 0x01) == 0x01;
             mte.tremolo = Some(e);
         }
-        return flags;
+        flags
     }
 }

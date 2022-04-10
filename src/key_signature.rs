@@ -29,16 +29,16 @@ pub const KEY_SIGNATURES: [&'static str; 34] = ["F♭ major", "C♭ major", "G�
             "D♭ minor", "A♭ minor", "E♭ minor", "B♭ minor",
             "F minor", "C minor", "G minor", "D minor", "A minor", "E minor", "B minor",
             "F# minor", "C# minor", "G# minor", "D# minor", "A# minor", "E# minor"];
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Default)]
 pub struct KeySignature {
     pub key: i8,
     pub is_minor: bool,
 }
-impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
+//impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
 impl KeySignature {
     pub fn to_string(&self) -> String {
         let index: usize = if self.is_minor {(23i8 + self.key).to_usize().unwrap()} else {(8i8 + self.key).to_usize().unwrap()};
-        return String::from(KEY_SIGNATURES[index]);
+        String::from(KEY_SIGNATURES[index])
     }
 }
 
@@ -63,13 +63,13 @@ impl Default for Duration {
     }}
 }
 impl Duration {
-    //fn convert_time(&self, time: u64) -> u64 { return time * self.division_times as u64 / self.division_enters as u64; }
+    //fn convert_time(&self, time: u64) -> u64 { time * self.division_times as u64 / self.division_enters as u64 }
 
-    pub fn is_supported(&self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times)); }
+    pub fn is_supported(&self) -> bool { SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times))}
 
     pub fn convert_time(&self, time: u32) -> u32 {
         let result = fraction::Fraction::new(time * self.tuplet_enters.to_u32().unwrap(), self.tuplet_times.to_u32().unwrap());
-        if *result.denom().unwrap() == 1 {return (*result.numer().unwrap()).to_u32().unwrap()}
+        if *result.denom().unwrap() == 1 {(*result.numer().unwrap()).to_u32().unwrap()}
         else {result.trunc().to_u32().unwrap()}
     }
 
@@ -79,18 +79,18 @@ impl Duration {
         if self.dotted { result += (result/2f64).trunc(); }
         //if self.dotted { result += (result/4f64).trunc() * 3f64; }
         //println!("\tDuration.time(): result: {}", result);
-        return self.convert_time(result.to_u32().unwrap());
+        self.convert_time(result.to_u32().unwrap())
     }
 
     pub fn index(&self) -> u8 {
         let mut index = 0u8;
         let mut value = self.value;
         loop {
-            value = value >> 1;
+            value >>= 1;
             if value > 0 {index += 1;}
             else {break;}
         }
-        return index
+        index
     }
     //@classmethod def fromFraction(cls, frac): return cls(frac.denominator, frac.numerator)
 }
@@ -107,9 +107,8 @@ impl Duration {
 /// If flag at *0x20* is true, the tuplet is read
 pub fn read_duration(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
     //println!("read_duration()");
-    let mut d = Duration::default();
+    let mut d = Duration{value: 1 << (read_signed_byte(data, seek) + 2), ..Default::default()};
     //let b = read_signed_byte(data, seek); println!("B: {}", b); d.value = 1 << (b + 2);
-    d.value = 1 << (read_signed_byte(data, seek) + 2);
     d.dotted = (flags & 0x01) == 0x01;
     if (flags & 0x20) == 0x20 {
         let i_tuplet = read_int(data, seek);
@@ -123,7 +122,7 @@ pub fn read_duration(data: &Vec<u8>, seek: &mut usize, flags: u8) -> Duration {
         else if i_tuplet == 12 {d.tuplet_enters = 12; d.tuplet_times = 8;}
         else if i_tuplet == 13 {d.tuplet_enters = 13; d.tuplet_times = 8;}
     }
-    return d;
+    d
 }
 
 /*/// A *n:m* tuplet.
@@ -134,7 +133,7 @@ struct Tuplet {
 }*/
 /*impl Default for Tuplet { fn default() -> Self { Tuplet { enters: 1, times: 1 }}}
 impl Tuplet {
-    fn is_supported(self) -> bool { return SUPPORTED_TUPLETS.contains(&(self.enters, self.times)); }
+    fn is_supported(self) -> bool { SUPPORTED_TUPLETS.contains(&(self.enters, self.times)) }
     fn convert_time(self) -> u8 {
         let result = fraction::Fraction::new(self.enters, self.times);
         if result.denom().expect("Cannot get fraction denominator") == &1 {1}

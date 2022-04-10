@@ -1,19 +1,19 @@
 #[macro_use]
 extern crate lazy_static;
 
-#[path = "song.rs"] mod gp;
+#[path = "song.rs"] pub mod gp;
 mod io;
-mod enums;
-mod headers;
-mod track;
-mod measure;
-mod effects;
-mod key_signature;
-mod midi;
-mod mix_table;
-mod chord;
-mod page;
-mod rse;
-mod note;
-mod lyric;
-mod beat;
+pub mod enums;
+pub mod headers;
+pub mod track;
+pub mod measure;
+pub mod effects;
+pub mod key_signature;
+pub mod midi;
+pub mod mix_table;
+pub mod chord;
+pub mod page;
+pub mod rse;
+pub mod note;
+pub mod lyric;
+pub mod beat;

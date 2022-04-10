@@ -66,14 +66,14 @@ pub struct PitchClass {
 }
 impl PitchClass {
     pub fn from(just: i8, accidental: Option<i8>, sharp: Option<bool>) -> PitchClass {
-        let mut p = PitchClass {just:just, accidental:0, value:-1, sharp: true, note:String::with_capacity(2) };
+        let mut p = PitchClass {just, accidental:0, value:-1, sharp: true, note:String::with_capacity(2) };
         p.value = p.just % 12;
         let mut pitch = 0i8;
         if accidental.is_none() {
             p.note=String::from(SHARP_NOTES[p.value as usize]); //try: note = SHARP_NOTES[p.value]; except KeyError: note = FLAT_NOTES[p.value];
             //if FLAT_NOTES[p.value]  == &note {note=String::from(FLAT_NOTES[p.value]);  p.sharp = false;} 
-            if p.note.ends_with("b")      {p.accidental = -1; p.sharp = false;}
-            else if p.note.ends_with("#") {p.accidental = 1;}
+            if p.note.ends_with('b')      {p.accidental = -1; p.sharp = false;}
+            else if p.note.ends_with('#') {p.accidental = 1;}
             pitch = p.value - p.accidental;
         } else {
             pitch = p.value;
@@ -83,7 +83,7 @@ impl PitchClass {
         p.just = pitch % 12;
         p.value = p.just + p.accidental;
         if sharp.is_none() { p.sharp = p.accidental >= 0; }
-        return p;
+        p
     }
     pub fn from_note(note: String) -> PitchClass {
         let mut p = PitchClass {note:note, just:0, accidental:0, value:-1, sharp: true,};
@@ -95,11 +95,11 @@ impl PitchClass {
         let pitch = p.value - p.accidental; 
         p.just = pitch % 12;
         p.value = p.just + p.accidental;
-        return p;
+        p
     }
     pub fn to_string(&self) -> String {
-        if self.sharp {return String::from(SHARP_NOTES[self.value as usize]);}
-        else          {return String::from(FLAT_NOTES[self.value as usize]);}
+        if self.sharp {String::from(SHARP_NOTES[self.value as usize])}
+        else          {String::from(FLAT_NOTES[self.value as usize])}
     }
 }
 
@@ -115,7 +115,7 @@ impl Song {
             else if self.version.number == AppVersion::Version_4_0x { self.read_new_format_chord_v4(data, seek, &mut c);}
         }
         else {self.read_old_format_chord(data, seek, &mut c);}
-        return c;
+        c
     }
     /// Read chord diagram encoded in GP3 format. Chord diagram is read as follows:
     /// - Name: `int-byte-size-string`. Name of the chord, e.g. *Em*.

@@ -54,8 +54,8 @@ impl Default for MeasureHeader {
     }}
 }
 impl MeasureHeader {
-    pub fn length(&self) -> i64 {return self.time_signature.numerator.to_i64().unwrap() * self.time_signature.denominator.time().to_i64().unwrap();}
-    pub fn end(&self) -> i64 {return self.start + self.length();}
+    pub fn length(&self) -> i64 {self.time_signature.numerator.to_i64().unwrap() * self.time_signature.denominator.time().to_i64().unwrap()}
+    pub fn end(&self) -> i64 {self.start + self.length()}
 }
 
 /// A marker annotation for beats.
@@ -74,7 +74,7 @@ fn read_marker(data: &Vec<u8>, seek: &mut usize, marker: &mut Marker) {
 }
 
 /// This class can store the information about a group of measures which are repeated.
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Default)]
 pub struct RepeatGroup {
     /// List of measure header indexes.
     pub measure_headers: Vec<usize>,
@@ -82,16 +82,11 @@ pub struct RepeatGroup {
     pub openings: Vec<usize>,
     pub is_closed: bool,
 }
-impl Default for RepeatGroup {fn default() -> Self { RepeatGroup {
-    measure_headers: Vec::new(),
-    closings: Vec::new(),
-    openings: Vec::new(),
-    is_closed: false,
-}}}
+//impl Default for RepeatGroup {fn default() -> Self { RepeatGroup {measure_headers: Vec::new(), closings: Vec::new(), openings: Vec::new(), is_closed: false, }}}
 impl RepeatGroup {
     pub fn add_measure_header(&mut self, measure_header: &MeasureHeader) {
         let index = measure_header.number.to_usize().unwrap();
-        if self.openings.len() == 0 {self.openings.push(index);} //if not len(self.openings): self.openings.append(h)
+        if self.openings.is_empty() {self.openings.push(index);} //if not len(self.openings): self.openings.append(h)
         self.measure_headers.push(index);
         if measure_header.repeat_close > 0 {
             self.closings.push(index);
@@ -122,12 +117,11 @@ impl Song {
         }
     }
     fn read_clipboard(&mut self, data: &Vec<u8>, seek: &mut usize) -> Clipboard {
-        let mut c = Clipboard::default();
-        c.start_measure = read_int(data, seek);
+        let mut c = Clipboard{start_measure: read_int(data, seek), ..Default::default()};
         c.stop_measure = read_int(data, seek);
         c.start_track = read_int(data, seek);
         c.stop_track = read_int(data, seek);
-        return c;
+        c
     }
     /// Read measure header. The first byte is the measure's flags. It lists the data given in the current measure.
     /// 
@@ -150,8 +144,7 @@ impl Song {
         //println!("N={}\tmeasure_headers={}", number, song.measure_headers.len());
         let flag = read_byte(data, seek);
         //println!("read_measure_header(), flags: {}", flag);
-        let mut mh = MeasureHeader::default();
-        mh.number = number.to_u16().unwrap();
+        let mut mh = MeasureHeader{number: number.to_u16().unwrap(), ..Default::default()};
         mh.start  = 0;
         mh.triplet_feel = self.triplet_feel.clone();
         //we need a previous header for the next 2 flags
@@ -182,6 +175,6 @@ impl Song {
             if self.measure_headers[i].repeat_open {break;}
             existing_alternative |= self.measure_headers[i].repeat_alternative;
         }
-        return (1 << value) - 1 ^ existing_alternative;
+        ((1 << value) - 1) ^ existing_alternative
     }
 }

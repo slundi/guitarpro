@@ -113,7 +113,6 @@ pub fn get_slap_effect(value: u8) -> SlapEffect {
 #[derive(Debug,Clone,PartialEq)]
 pub enum VoiceDirection { None, Up, Down }
 
-
 /// Type of the chord.
 #[derive(Debug,Clone,PartialEq)]
 pub enum ChordType {

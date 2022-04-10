@@ -24,9 +24,7 @@ impl Default for Note {fn default() -> Self {Note {
 }}}
 impl Note {
     pub fn real_value(&self, strings:Vec<(i8,i8)>) -> i8 {
-        if self.string > 0 {
-            return self.value.to_i8().unwrap() + strings[self.string.to_usize().unwrap() -1].1;
-        }
+        if self.string > 0 {return self.value.to_i8().unwrap() + strings[self.string.to_usize().unwrap() -1].1;}
         panic!("Cannot get real value for the note.");
     }
 }
@@ -72,14 +70,14 @@ impl Default for NoteEffect {
     }}
 }
 impl NoteEffect {
-    pub fn is_bend(&self) -> bool {return self.bend.is_some();}
-    pub fn is_harmonic(&self) -> bool {return self.harmonic.is_some();}
-    pub fn is_grace(&self) -> bool {return self.grace.is_some();}
-    pub fn is_trill(&self) -> bool {return self.trill.is_some();}
-    pub fn is_tremollo_picking(&self) -> bool {return self.tremolo_picking.is_some();}
+    pub fn is_bend(&self) -> bool {self.bend.is_some()}
+    pub fn is_harmonic(&self) -> bool {self.harmonic.is_some()}
+    pub fn is_grace(&self) -> bool {self.grace.is_some()}
+    pub fn is_trill(&self) -> bool {self.trill.is_some()}
+    pub fn is_tremollo_picking(&self) -> bool {self.tremolo_picking.is_some()}
     pub fn is_default(&self) -> bool {
         let d = NoteEffect::default();
-        return self.left_hand_finger == d.left_hand_finger &&
+        self.left_hand_finger == d.left_hand_finger &&
         self.right_hand_finger == d.right_hand_finger &&
         self.bend == d.bend &&
         self.harmonic == d.harmonic &&
@@ -91,9 +89,9 @@ impl NoteEffect {
         self.hammer == d.hammer &&
         self.palm_mute == d.palm_mute &&
         self.staccato == d.staccato &&
-        self.let_ring == d.let_ring;
+        self.let_ring == d.let_ring
     }
-    pub fn is_fingering(&self) -> bool {return self.left_hand_finger != Fingering::Open || self.right_hand_finger != Fingering::Open;}
+    pub fn is_fingering(&self) -> bool {self.left_hand_finger != Fingering::Open || self.right_hand_finger != Fingering::Open}
 }
 
 impl Song {
@@ -254,6 +252,6 @@ impl Song {
                 }
             }
         }
-        return -1;
+        -1
     }
 }

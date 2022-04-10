@@ -15,7 +15,7 @@ pub fn read_byte(data: &Vec<u8>, seek: &mut usize ) -> u8 {
     if data.len() < *seek {panic!("End of filee reached");}
     let b = data[*seek];
     *seek += 1;
-    return b;
+    b
 }
 
 /// Read a signed byte and increase the cursor position by 1
@@ -26,7 +26,7 @@ pub fn read_signed_byte(data: &Vec<u8>, seek: &mut usize ) -> i8 {
     if data.len() < *seek {panic!("End of file reached");}
     let b = data[*seek] as i8;
     *seek += 1;
-    return b;
+    b
 }
 
 /// Read a boolean and increase the cursor position by 1
@@ -37,7 +37,7 @@ pub fn read_bool(data: &Vec<u8>, seek: &mut usize ) -> bool {
     if data.len() < *seek {panic!("End of file reached");}
     let b = data[*seek];
     *seek += 1;
-    return b != 0;
+    b != 0
 }
 
 /// Read a short and increase the cursor position by 2 (2 little-endian bytes)
@@ -48,7 +48,7 @@ pub fn read_short(data: &Vec<u8>, seek: &mut usize ) -> i16 {
     if data.len() < *seek + 1 {panic!("End of file reached");}
     let n = i16::from_le_bytes([data[*seek], data[*seek+1]]);
     *seek += 2;
-    return n;
+    n
 }
 
 /// Read an integer and increase the cursor position by 4 (4 little-endian bytes)
@@ -59,7 +59,7 @@ pub fn read_int(data: &Vec<u8>, seek: &mut usize ) -> i32 {
     if data.len() < *seek + 4 {panic!("End of file reached");}
     let n = i32::from_le_bytes([data[*seek], data[*seek+1], data[*seek+2], data[*seek+3]]);
     *seek += 4;
-    return n;
+    n
 }
 
 /// Read a float and increase the cursor position by 4 (4 little-endian bytes)
@@ -70,7 +70,7 @@ pub fn read_float(data: &Vec<u8>, seek: &mut usize ) -> f32 {
     if data.len() < *seek + 8 {panic!("End of file reached");}
     let n = f32::from_le_bytes([data[*seek], data[*seek+1], data[*seek+2], data[*seek+3]]);
     *seek += 4;
-    return n;
+    n
 }
 
 /// Read a double and increase the cursor position by 8 (8 little-endian bytes)
@@ -81,7 +81,7 @@ pub fn read_double(data: &Vec<u8>, seek: &mut usize ) -> f64 {
     if data.len() >= *seek {panic!("End of file reached");}
     let n = f64::from_le_bytes([data[*seek], data[*seek+1], data[*seek+2], data[*seek+3], data[*seek+4], data[*seek+5], data[*seek+6], data[*seek+7]]);
     *seek += 8;
-    return n;
+    n
 }
 
 /// Read a string.
@@ -90,7 +90,7 @@ pub fn read_int_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
     let parse = std::str::from_utf8(&data[*seek..*seek+n]);
     if parse.is_err() {panic!("Unable to read string");}
     *seek += n;
-    return parse.unwrap().to_string();
+    parse.unwrap().to_string()
 }
 
 /// Read a string.
@@ -100,7 +100,7 @@ pub fn read_byte_size_string(data: &Vec<u8>, seek: &mut usize) -> String {
     let parse = std::str::from_utf8(&data[*seek..*seek+n]);
     if parse.is_err() {panic!("Unable to read string");}
     *seek += n;
-    return parse.unwrap().to_string();
+    parse.unwrap().to_string()
 }
 
 /// Read the file version. It is on the first 30 bytes of the file.
@@ -128,7 +128,7 @@ pub fn read_version_string(data: &Vec<u8>, seek: &mut usize) -> crate::headers::
         v.clipboard = v.data.starts_with("CLIPBOARD");
         v.number = crate::enums::AppVersion::Version_5_00;
     } //TODO: check subversions?
-    return v;
+    v
 }
 
 /// Read a color. Colors are used by `Marker` and `Track`. They consist of 3 consecutive bytes and one blank byte.
@@ -137,7 +137,7 @@ pub fn read_color(data: &Vec<u8>, seek: &mut usize) -> i32 {
     let g = read_byte(data, seek).to_i32().unwrap();
     let b = read_byte(data, seek).to_i32().unwrap();
     *seek += 1;
-    return r * 65536 + g * 256 + b;
+    r * 65536 + g * 256 + b
 }
 
 //writing functions

@@ -75,12 +75,14 @@ impl Default for Song {
 impl Song {
     /// Read the song.
     /// 
-    /// **GP3**: A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
+    /// **GP3**, **GP4**: A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
     /// - Version: `byte-size-string` of size 30.
     /// - Score information. See `readInfo`.
     /// - Triplet feel: `bool`. If value is true, then triplet feel is set to eigth.
+    /// - **GP4**: yrics. See :meth:`read_lyrics()`.
     /// - Tempo: `int`.
     /// - Key: `int`. Key signature of the song.
+    /// - **GP4**: - Octave: `signed-byte`. Reserved for future uses.
     /// - MIDI channels. See `readMidiChannels`.
     /// - Number of measures: `int`.
     /// - Number of tracks: `int`.

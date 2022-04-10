@@ -59,16 +59,15 @@ impl Default for MidiChannel {
 }
 impl MidiChannel {
     pub fn is_percussion_channel(self) -> bool {
-        if (self.channel % 16) == DEFAULT_PERCUSSION_CHANNEL {true}
-        else {false}
+        (self.channel % 16) == DEFAULT_PERCUSSION_CHANNEL
     }
     pub fn set_instrument(mut self, instrument: i32) {
         if instrument == -1 && self.is_percussion_channel() { self.instrument = 0; }
         else {self.instrument = instrument;}
     }
 
-    pub fn get_instrument(self) -> i32 {return self.instrument;}
-    pub fn get_instrument_name(&self) -> String {return String::from(CHANNEL_DEFAULT_NAMES[self.instrument.to_usize().unwrap()]);} //TODO: FIXME: does not seems OK
+    pub fn get_instrument(self) -> i32 {self.instrument}
+    pub fn get_instrument_name(&self) -> String {String::from(CHANNEL_DEFAULT_NAMES[self.instrument.to_usize().unwrap()])} //TODO: FIXME: does not seems OK
 }
 
 impl Song{
@@ -90,13 +89,12 @@ impl Song{
     /// * **blank2**: `byte` => Backward compatibility with version 3.0
     fn read_midi_channel(&self, data: &Vec<u8>, seek: &mut usize, channel: u8) -> MidiChannel {
         let instrument = read_int(data, seek);
-        let mut c = MidiChannel::default();
-        c.channel = channel; c.effect_channel = channel;
+        let mut c = MidiChannel{channel, effect_channel: channel, ..Default::default()};
         c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);
         c.chorus = read_signed_byte(data, seek); c.reverb = read_signed_byte(data, seek); c.phaser = read_signed_byte(data, seek); c.tremolo = read_signed_byte(data, seek);
         c.set_instrument(instrument);
         //println!("Channel: {}\t Volume: {}\tBalance: {}\tInstrument={}, {}, {}", c.channel, c.volume, c.balance, instrument, c.get_instrument(), c.get_instrument_name());
         *seek += 2; //Backward compatibility with version 3.0
-        return c;
+        c
     }
 }
