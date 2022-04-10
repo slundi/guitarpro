@@ -1,6 +1,6 @@
 use fraction::ToPrimitive;
 
-use crate::headers::*;
+use crate::enums::*;
 use crate::rse::*;
 use crate::io::*;
 use crate::gp::*;
@@ -68,7 +68,7 @@ impl Song {
         let mut tc = MixTableChange::default();
         self.read_mix_table_change_values(data, seek, &mut tc);
         self.read_mix_table_change_durations(data, seek, &mut tc);
-        if self.version.number == VERSION_4_0X {self.read_mix_table_change_flags(data, seek, &mut tc);}
+        if self.version.number == AppVersion::Version_4_0x {self.read_mix_table_change_flags(data, seek, &mut tc);}
         return tc;
     }
     /// Read mix table change values. Mix table change values consist of 7 `signed-byte` and an `int`, which correspond to:

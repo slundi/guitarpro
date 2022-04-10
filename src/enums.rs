@@ -1,3 +1,10 @@
+
+#[derive(Debug,Clone,PartialEq)]
+pub enum AppVersion {
+    //VERSION_1_0X, VERSION_2_2X,
+    Version_3_00, Version_4_0x, Version_5_00, Version_5_10
+}
+
 /// An enumeration of different triplet feels.
 #[derive(Debug,Clone)]
 pub enum TripletFeel { NONE, EIGHTH, SIXTEENTH }
@@ -67,10 +74,27 @@ pub enum TupletBracket {None, Start, End}
 /// Octave signs
 #[derive(Debug,Clone,PartialEq)]
 pub enum Octave { None, Ottava, Quindicesima, Ottavabassa, Quindicesimabassa }
+pub fn get_octave_number(value: Octave) -> i8 {
+    match value {
+        Octave::Ottava => 1,
+        Octave::Quindicesima => 2,
+        Octave::Ottavabassa => 3,
+        Octave::Quindicesimabassa => 4,
+        _ => 0,
+    }
+}
 
 /// All beat stroke directions
 #[derive(Debug,Clone,PartialEq)]
 pub enum BeatStrokeDirection { None, Up, Down }
+pub fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
+    match value {
+        0 => BeatStrokeDirection::None,
+        1 => BeatStrokeDirection::Up,
+        2 => BeatStrokeDirection::Down,
+        _ => panic!("Cannot read beat stroke direction"),
+    }
+}
 /// Characteristic of articulation
 #[derive(Debug,Clone,PartialEq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }

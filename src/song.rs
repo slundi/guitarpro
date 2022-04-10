@@ -53,7 +53,7 @@ pub struct Song {
 
 impl Default for Song {
 	fn default() -> Self { Song {
-        version: Version {data: String::with_capacity(30), clipboard: false, number: 0}, clipboard: None,
+        version: Version {data: String::with_capacity(30), clipboard: false, number: AppVersion::Version_5_10}, clipboard: None,
 		name:String::new(), subtitle: String::new(), artist:String::new(), album: String::new(),
         words: String::new(), author:String::new(), date:String::new(),
         copyright:String::new(), writer:String::new(), transcriber:String::new(), comments:String::new(),
@@ -92,14 +92,14 @@ impl Song {
         self.read_version(data, &mut seek);
         self.read_meta(data, &mut seek);
         
-        if self.version.number < VERSION_5_00 {
+        if self.version.number == AppVersion::Version_3_00 || self.version.number == AppVersion::Version_4_0x{
             self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::EIGHTH} else {TripletFeel::NONE};
             //println!("Triplet feel: {}", self.triplet_feel);
-            if self.version.number == VERSION_4_0X {self.lyrics = read_lyrics(data, &mut seek);} //read lyrics
+            if self.version.number == AppVersion::Version_4_0x {self.lyrics = read_lyrics(data, &mut seek);} //read lyrics
             self.tempo = read_int(data, &mut seek).to_i16().unwrap();
             self.key.key = read_int(data, &mut seek).to_i8().unwrap();
             //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
-            if self.version.number == VERSION_4_0X {read_signed_byte(data, &mut seek);} //octave
+            if self.version.number == AppVersion::Version_4_0x {read_signed_byte(data, &mut seek);} //octave
             self.read_midi_channels(data, &mut seek);
             let measure_count = read_int(data, &mut seek).to_usize().unwrap();
             let track_count = read_int(data, &mut seek).to_usize().unwrap();
@@ -112,10 +112,10 @@ impl Song {
             //self.current_measure_number = Some(0);
             for i in 0..track_count {self.read_track(data, &mut seek, i);}
             self.read_measures(data, &mut seek);
-            if self.version.number == VERSION_4_0X {} //annotate error reading
+            if self.version.number == AppVersion::Version_4_0x {} //annotate error reading
         }
         //read GP5 information
-        if self.version.number == VERSION_5_00 || self.version.number == VERSION_5_10 {
+        if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {
             //self.lyrics = 
             read_lyrics(data, &mut seek);
             /*self.masterEffect = self.readRSEMasterEffect()

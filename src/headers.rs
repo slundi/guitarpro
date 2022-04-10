@@ -2,17 +2,10 @@ use fraction::ToPrimitive;
 
 use crate::{io::*, gp::*, key_signature::*, enums::*};
 
-//pub const VERSION_1_0X: u8 = 10;
-//pub const VERSION_2_2X: u8 = 22;
-pub const VERSION_3_00: u8 = 30;
-pub const VERSION_4_0X: u8 = 40;
-pub const VERSION_5_00: u8 = 50;
-pub const VERSION_5_10: u8 = 51;
-
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct Version {
     pub data: String,
-    pub number: u8,
+    pub number: AppVersion,
     pub clipboard: bool
 }
 
@@ -116,13 +109,13 @@ impl Song {
         self.version = read_version_string(data, seek);
         let mut clipboard = Clipboard::default();
         //check for clipboard and read it
-        if self.version.number == VERSION_4_0X && self.version.clipboard {
+        if self.version.number == AppVersion::Version_4_0x && self.version.clipboard {
             clipboard.start_measure = read_int(data, seek);
             clipboard.stop_measure  = read_int(data, seek);
             clipboard.start_track = read_int(data, seek);
             clipboard.stop_track  = read_int(data, seek);
         }
-        if self.version.number == VERSION_5_00 && self.version.clipboard {
+        if self.version.number == AppVersion::Version_5_00 && self.version.clipboard {
             clipboard.start_beat = read_int(data, seek);
             clipboard.stop_beat  = read_int(data, seek);
             clipboard.sub_bar_copy = read_int(data, seek) != 0;

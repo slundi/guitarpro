@@ -167,7 +167,8 @@ impl Song {
             note.effect.right_hand_finger= get_fingering(read_signed_byte(data, seek));
         }
         if (flags & 0x08) == 0x08 {
-            self.read_note_effects(data, seek, note);
+            if      self.version.number == AppVersion::Version_3_00 {self.read_note_effects_v3(data, seek, note);}
+            else if self.version.number == AppVersion::Version_4_0x {self.read_note_effects_v4(data, seek, note);}
             if note.effect.is_harmonic() && note.effect.harmonic.is_some() {
                 let mut h = note.effect.harmonic.take().unwrap();
                 if h.kind == HarmonicType::Tapped {h.fret = Some(note.value.to_i8().unwrap() + 12);}
@@ -186,15 +187,57 @@ impl Song {
     /// Flags are followed by:
     /// - Bend. See `readBend`.
     /// - Grace note. See `readGrace`.
-    fn read_note_effects(&self, data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
+    fn read_note_effects_v3(&self, data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
         let flags = read_byte(data, seek);
         //println!("read_effect(), flags: {}", flags);
         note.effect.hammer = (flags & 0x02) == 0x02;
         note.effect.let_ring = (flags & 0x08) == 0x08;
-        if (flags & 0x01) == 0x01 {note.effect.bend = read_bend_effect(data, seek);}
-        if (flags & 0x10) == 0x10 {note.effect.grace = Some(read_grace_effect(data, seek));}
+        if (flags & 0x01) == 0x01 {note.effect.bend = self.read_bend_effect(data, seek);}
+        if (flags & 0x10) == 0x10 {note.effect.grace = Some(self.read_grace_effect(data, seek));}
         if (flags & 0x04) == 0x04 {note.effect.slides.push(SlideType::ShiftSlideTo);}
         //println!("read_note_effects(): {:?}", note);
+    }
+    /// Read note effects. The effects presence for the current note is set by the 2 bytes of flags. First set of flags:
+    /// - *0x01*: bend
+    /// - *0x02*: hammer-on/pull-off
+    /// - *0x04*: *blank*
+    /// - *0x08*: let-ring
+    /// - *0x10*: grace note
+    /// - *0x20*: *blank*
+    /// - *0x40*: *blank*
+    /// - *0x80*: *blank*
+    /// 
+    /// Second set of flags:
+    /// - *0x01*: staccato
+    /// - *0x02*: palm mute
+    /// - *0x04*: tremolo picking
+    /// - *0x08*: slide
+    /// - *0x10*: harmonic
+    /// - *0x20*: trill
+    /// - *0x40*: vibrato
+    /// - *0x80*: *blank*
+    /// 
+    /// Flags are followed by:
+    /// - Bend. See `read_bend()`.
+    /// - Grace note. See `read_grace()`.
+    /// - Tremolo picking. See `read_tremolo_picking()`.
+    /// - Slide. See `read_slides()`.
+    /// - Harmonic. See `read_harmonic()`.
+    /// - Trill. See `read_trill()`.
+    fn read_note_effects_v4(&mut self, data: &Vec<u8>, seek: &mut usize, note: &mut Note) {
+        let flags1 = read_signed_byte(data, seek);
+        let flags2 = read_signed_byte(data, seek);
+        note.effect.hammer = (flags1 & 0x02) == 0x02;
+        note.effect.let_ring = (flags1 & 0x08) == 0x08;
+        note.effect.staccato = (flags2 & 0x01) == 0x01;
+        note.effect.palm_mute = (flags2 & 0x02) == 0x02;
+        note.effect.vibrato = (flags2 & 0x40) == 0x40 || note.effect.vibrato;
+        if (flags1 & 0x01) == 0x01 {note.effect.bend = self.read_bend_effect(data, seek);}
+        if (flags1 & 0x10) == 0x10 {note.effect.grace = Some(self.read_grace_effect(data, seek));}
+        if (flags2 & 0x04) == 0x04 {note.effect.tremolo_picking = Some(self.read_tremolo_picking(data, seek));}
+        if (flags2 & 0x08) == 0x08 {note.effect.slides.push(get_slide_type(read_signed_byte(data, seek)));}
+        if (flags2 & 0x10) == 0x10 {note.effect.harmonic = Some(self.read_harmonic(data, seek, note));}
+        if (flags2 & 0x20) == 0x20 {note.effect.trill = Some(self.read_trill(data, seek));}
     }
 
     /// Get note value of tied note
