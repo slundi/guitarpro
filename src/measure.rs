@@ -2,6 +2,8 @@ use fraction::ToPrimitive;
 
 use crate::{beat::*, gp::*, key_signature::*, io::*, enums::*};
 
+const MAX_VOICES: usize = 2;
+
 /// A measure header contains metadata for measures over multiple tracks.
 #[derive(Debug,Clone)]
 pub struct Measure {
@@ -34,7 +36,7 @@ impl Default for Measure {fn default() -> Self { Measure {
     track_index: 0,
     header_index: 0,
     clef: MeasureClef::Treble,
-    voices: vec![Voice::default(), Voice::default()],
+    voices: vec![Voice::default(); MAX_VOICES],
     line_break: LineBreak::None
 }}}
 
@@ -86,5 +88,32 @@ impl Song {
         self.current_beat_number = None;
         //end read a voice
         self.current_voice_number = None;
+    }
+    /// Read measure. Guitar Pro 5 stores twice more measures compared to Guitar Pro 3. One measure consists of two sub-measures for each of two voices.
+    /// 
+    /// Sub-measures are followed by a  `LineBreak` stored in `byte`.
+    fn read_measure_v5(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
+        let mut start = measure.start;
+        for number in 0..MAX_VOICES {
+            self.current_voice_number = Some(number + 1);
+            //TODO: self.read_voice(data, seek, &mut start, number);
+        }
+        self.current_voice_number = None;
+        measure.line_break = get_line_break(read_byte(data, seek));
+    }
+
+    fn read_voice(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
+        let beats = read_int(data, seek).to_usize().unwrap();
+        for i in 0..beats {
+            self.current_beat_number = Some(i + 1);
+            //println!("read_measure() read_voice(), start: {}", measure.start);
+            measure.start += self.read_beat(data, seek, &mut measure.voices[0], measure.start, track_index);
+            //println!("read_measure() read_voice(), start: {}", measure.start);
+        }
+        self.current_beat_number = None;
+        //TODO: 
+        /*for beat in range(beats):
+            self._currentBeatNumber = beat + 1
+            start += self.readBeat(start, voice) */
     }
 }

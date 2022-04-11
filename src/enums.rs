@@ -24,6 +24,13 @@ pub enum MeasureClef { Treble, Bass, Tenor, Alto }
 /// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
 #[derive(Debug,Clone)]
 pub enum LineBreak { None, Break, Protect }
+pub fn get_line_break(value: u8) -> LineBreak {
+    match value {
+        1 => LineBreak::Break,
+        2 => LineBreak::Protect,
+        _ => LineBreak::None,
+    }
+}
 
 /// An enumeration of all supported slide types.
 #[derive(Debug,Clone,PartialEq)]
@@ -81,14 +88,24 @@ pub enum TupletBracket {None, Start, End}
 
 /// Octave signs
 #[derive(Debug,Clone,PartialEq)]
-pub enum Octave { None, Ottava, Quindicesima, Ottavabassa, Quindicesimabassa }
+pub enum Octave { None, Ottava, Quindicesima, OttavaBassa, QuindicesimaBassa }
 pub fn get_octave_number(value: Octave) -> i8 {
     match value {
         Octave::Ottava => 1,
         Octave::Quindicesima => 2,
-        Octave::Ottavabassa => 3,
-        Octave::Quindicesimabassa => 4,
+        Octave::OttavaBassa => 3,
+        Octave::QuindicesimaBassa => 4,
         _ => 0,
+    }
+}
+pub fn get_octave(value: u8) -> Octave {
+    match value {
+        0 => Octave::None,
+        1 => Octave::Ottava,
+        2 => Octave::Quindicesima,
+        3 => Octave::OttavaBassa,
+        4 => Octave::QuindicesimaBassa,
+        _ => panic!("Cannot get octave value"),
     }
 }
 

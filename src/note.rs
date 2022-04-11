@@ -155,8 +155,7 @@ impl Song {
         }
         if (flags & 0x20) == 0x20 {
             let fret = read_signed_byte(data, seek);
-            let value = if note.kind == NoteType::Tie { self.get_tied_note_value(guitar_string.0, track_index)}
-            else {fret.to_i16().unwrap()};
+            let value = if note.kind == NoteType::Tie { self.get_tied_note_value(guitar_string.0, track_index)} else {fret.to_i16().unwrap()};
             note.value = max(0, min(99, value));
             //println!("read_note(), value: {}", note.value);
         }
@@ -173,6 +172,52 @@ impl Song {
                 note.effect.harmonic = Some(h);
             }
         }
+    }
+    /// Read note. The first byte is note flags:
+    /// - *0x01*: duration percent
+    /// - *0x02*: heavy accentuated note
+    /// - *0x04*: ghost note
+    /// - *0x08*: presence of note effects
+    /// - *0x10*: dynamics
+    /// - *0x20*: fret
+    /// - *0x40*: accentuated note
+    /// - *0x80*: right hand or left hand fingering
+    /// 
+    /// Flags are followed by:
+    /// - Note type: `byte`. Note is normal if values is 1, tied if value is 2, dead if value is 3.
+    /// - Note dynamics: `signed-byte`. See `unpackVelocity`.
+    /// - Fret number: `signed-byte`. If flag at *0x20* is set then read fret number.
+    /// - Fingering: 2 `SignedBytes <signed-byte>`. See :class:`Fingering`.
+    /// - Duration percent: `double`.
+    /// - Second set of flags: `byte`.
+    /// - *0x02*: swap accidentals.
+    /// - Note effects. See `read_note_effects()`.
+    fn read_note_v5(&mut self, data: &[u8], seek: &mut usize, note: &mut Note, guitar_string: (i8,i8), track_index: usize) {
+        let flags = read_byte(data, seek);
+        note.string = guitar_string.0;
+        note.effect.heavy_accentuated_note = (flags &0x02) == 0x02;
+        note.effect.ghost_note = (flags &0x04) == 0x04;
+        note.effect.accentuated_note = (flags &0x40) == 0x40;
+        if (flags &0x20) == 0x20 {note.kind = get_note_type(read_byte(data, seek));}
+        if (flags &0x10) == 0x10 {
+            let v = read_signed_byte(data, seek);
+            //println!("read_note(), v: {}", v);
+            note.velocity = crate::effects::unpack_velocity(v.to_i16().unwrap());
+            //println!("read_note(), velocity: {}", note.velocity);
+        }
+        if (flags &0x20) == 0x20 {
+            let fret = read_signed_byte(data, seek);
+            let value = if note.kind == NoteType::Tie { self.get_tied_note_value(guitar_string.0, track_index)} else {fret.to_i16().unwrap()};
+            note.value = max(0, min(99, value));
+            //println!("read_note(), value: {}", note.value);
+        }
+        if (flags &0x80) == 0x80 {
+            note.effect.left_hand_finger = get_fingering(read_signed_byte(data, seek));
+            note.effect.right_hand_finger= get_fingering(read_signed_byte(data, seek));
+        }
+        if (flags & 0x01) == 0x01 {note.duration_percent = read_double(data, seek).to_f32().unwrap();}
+        note.swap_accidentals = (read_byte(data, seek) & 0x02) == 0x02;
+        if (flags & 0x08) == 0x08 {self.read_note_effects_v4(data, seek, note);}
     }
 
     /// Read note effects. First byte is note effects flags:

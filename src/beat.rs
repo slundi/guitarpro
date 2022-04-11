@@ -24,11 +24,9 @@ pub struct BeatStroke {
 }
 impl Default for BeatStroke { fn default() -> Self { BeatStroke { direction: BeatStrokeDirection::None, value: 0 }}}
 impl BeatStroke {
-    pub fn swap_direction(&self) -> BeatStroke {
-        let mut bs = BeatStroke::default();
-        if self.direction == BeatStrokeDirection::Up {bs.direction = BeatStrokeDirection::Down}
-        else if self.direction == BeatStrokeDirection::Down {bs.direction = BeatStrokeDirection::Up}
-        bs
+    pub(crate) fn swap_direction(&mut self) {
+        if self.direction == BeatStrokeDirection::Up {self.direction = BeatStrokeDirection::Down}
+        else if self.direction == BeatStrokeDirection::Down {self.direction = BeatStrokeDirection::Up}
     }
 }
 
@@ -68,11 +66,11 @@ impl Default for BeatEffects { fn default() -> Self { BeatEffects {
     vibrato: false,
 }}}
 impl BeatEffects {
-    pub fn is_chord(&self) -> bool {self.chord.is_some()}
-    pub fn is_tremolo_bar(&self) -> bool {self.tremolo_bar.is_some()}
-    pub fn is_slap_effect(&self) -> bool {self.slap_effect != SlapEffect::None}
-    pub fn has_pick_stroke(&self) -> bool {self.pick_stroke != BeatStrokeDirection::None}
-    pub fn is_default(&self) -> bool {
+    pub(crate) fn is_chord(&self) -> bool {self.chord.is_some()}
+    pub(crate) fn is_tremolo_bar(&self) -> bool {self.tremolo_bar.is_some()}
+    pub(crate) fn is_slap_effect(&self) -> bool {self.slap_effect != SlapEffect::None}
+    pub(crate) fn has_pick_stroke(&self) -> bool {self.pick_stroke != BeatStrokeDirection::None}
+    pub(crate) fn is_default(&self) -> bool {
         let d = BeatEffects::default();
         self.stroke == d.stroke &&
             self.has_rasgueado == d.has_rasgueado &&
@@ -108,12 +106,12 @@ impl Default for Beat { fn default() -> Self { Beat {
     status: BeatStatus::Normal,
 }}}
 impl Beat {
-    //pub fn start_in_measure(&self) -> u16 {self.start - self.voice.measure.start}
-    pub fn has_vibrato(&self) -> bool {
+    //pub(crate) fn start_in_measure(&self) -> u16 {self.start - self.voice.measure.start}
+    pub(crate) fn has_vibrato(&self) -> bool {
         for i in 0..self.notes.len() {if self.notes[i].effect.vibrato {return true;}}
         false
     }
-    pub fn has_harmonic(&self) -> bool {
+    pub(crate) fn has_harmonic(&self) -> bool {
         for i in 0..self.notes.len() {if self.notes[i].effect.is_harmonic() {return true;}}
         false
     }
@@ -136,7 +134,7 @@ impl Song {
     /// - Text: `int-byte-size-string`.
     /// - Beat effects. See `BeatEffects::read()`.
     /// - Mix table change effect. See `MixTableChange::read()`.
-    pub fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
+    pub(crate) fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
         let flags = read_byte(data, seek);
         //println!("read_beat(), flags: {}", flags);
         //get a beat
@@ -169,6 +167,53 @@ impl Song {
         }
         self.read_notes(data, seek, track_index, &mut voice.beats[b], &duration, note_effect);
         if voice.beats[b].status == BeatStatus::Empty {0} else {duration.time().to_i64().unwrap()}
+    }
+    /// Read beat. First, beat is read is in Guitar Pro 3 `guitarpro.gp3.readBeat`. Then it is followed by set of flags stored in `short`.
+    /// - *0x0001*: break beams
+    /// - *0x0002*: direct beams down
+    /// - *0x0004*: force beams
+    /// - *0x0008*: direct beams up
+    /// - *0x0010*: ottava (8va)
+    /// - *0x0020*: ottava bassa (8vb)
+    /// - *0x0040*: quindicesima (15ma)
+    /// - *0x0100*: quindicesima bassa (15mb)
+    /// - *0x0200*: start tuplet bracket here
+    /// - *0x0400*: end tuplet bracket here
+    /// - *0x0800*: break secondary beams
+    /// - *0x1000*: break secondary tuplet
+    /// - *0x2000*: force tuplet bracket
+    /// - Break secondary beams: `byte`. Appears if flag at *0x0800* is set. Signifies how much beams should be broken.
+    pub(crate) fn read_beat_v5(&mut self, data: &[u8], seek: &mut usize, start: &mut i64, voice: &mut Voice) -> i64 {
+        //TODO: let duration = self.read_beat(data, seek, voice, start, track_index);
+        //get a beat
+        let mut b = 0;
+        let mut new_beat = true;
+        for i in (0usize..voice.beats.len()).rev() {if voice.beats[i].start == Some(*start) {
+            b = i;
+            new_beat = false;
+            break;
+        }}
+        if new_beat {
+            voice.beats.push(Beat{start: Some(*start), ..Default::default() });
+            b = voice.beats.len() - 1;
+        }
+
+        let flags2 = read_short(data, seek);
+        if (flags2 & 0x0010) == 0x0010 {voice.beats[b].octave = Octave::Ottava;}
+        if (flags2 & 0x0020) == 0x0020 {voice.beats[b].octave = Octave::OttavaBassa;}
+        if (flags2 & 0x0040) == 0x0040 {voice.beats[b].octave = Octave::Quindicesima;}
+        if (flags2 & 0x0100) == 0x0100 {voice.beats[b].octave = Octave::QuindicesimaBassa;}
+
+        voice.beats[b].display.break_beam = (flags2 & 0x0001) == 0x0001;
+        voice.beats[b].display.force_beam = (flags2 & 0x0004) == 0x0004;
+        voice.beats[b].display.force_bracket = (flags2 & 0x2000) == 0x2000;
+        voice.beats[b].display.break_secondary_tuplet = (flags2 & 0x1000) == 0x1000;
+        if (flags2 & 0x0002) == 0x0002 {voice.beats[b].display.beam_direction = VoiceDirection::Down;}
+        if (flags2 & 0x0008) == 0x0008 {voice.beats[b].display.beam_direction = VoiceDirection::Up;}
+        if (flags2 & 0x0400) == 0x0400 {voice.beats[b].display.tuple_bracket = TupletBracket::Start;}
+        if (flags2 & 0x0800) == 0x0800 {voice.beats[b].display.tuple_bracket = TupletBracket::End;}
+
+        0//duration
     }
 
     /// Read beat effects. The first byte is effects flags:
@@ -255,8 +300,10 @@ impl Song {
             bs.direction = BeatStrokeDirection::Down;
             bs.value = self.stroke_value(down).to_u16().unwrap();
         }
+        if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {bs.swap_direction();}
         bs
     }
+
     fn stroke_value(&self, value: i8) -> u8 {
         match value {
             1 => DURATION_HUNDRED_TWENTY_EIGHTH,
