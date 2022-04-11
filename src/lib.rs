@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-
 #[path = "song.rs"] pub mod gp;
 mod io;
 pub mod enums;

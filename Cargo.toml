@@ -17,8 +17,8 @@ path = "src/lib.rs"
 name = "guitarpro_cli"
 path = "src/main.rs"
 
+[dev-dependencies]
+
 [dependencies]
-regex = "1"
-lazy_static = "1.4"
 clap = { version = "3", features = ["derive"] }
 fraction = "0.10"

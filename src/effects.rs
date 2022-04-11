@@ -259,7 +259,7 @@ impl Song {
     /// 
     /// If harmonic type is tapped:
     /// - Fret: `byte`.
-    pub(crate) fn read_harmonic_v5(&mut self, data: &[u8], seek: &mut usize, note: &crate::note::Note) -> HarmonicEffect {
+    pub(crate) fn read_harmonic_v5(&mut self, data: &[u8], seek: &mut usize, note: &mut crate::note::Note) {
         let mut he = HarmonicEffect::default();
         match read_signed_byte(data, seek) {
             1 => he.kind = HarmonicType::Natural,
@@ -281,7 +281,7 @@ impl Song {
             5 => he.kind = HarmonicType::Semi,
             _ => panic!("Cannot read harmonic type"),
         };
-        he
+        note.effect.harmonic = Some(he);
     }
     /// Read trill.
     /// - Fret: `signed-byte`.

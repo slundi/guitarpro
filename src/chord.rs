@@ -241,9 +241,9 @@ impl Song {
         let mut barre_frets:  Vec<u8> = Vec::with_capacity(5);
         let mut barre_starts: Vec<u8> = Vec::with_capacity(5);
         let mut barre_ends:   Vec<u8> = Vec::with_capacity(5);
-        for _ in 0u8..2u8 {barre_frets.push(read_byte(data, seek));}
-        for _ in 0u8..2u8 {barre_starts.push(read_byte(data, seek));}
-        for _ in 0u8..2u8 {barre_ends.push(read_byte(data, seek));}
+        for _ in 0u8..5u8 {barre_frets.push(read_byte(data, seek));}
+        for _ in 0u8..5u8 {barre_starts.push(read_byte(data, seek));}
+        for _ in 0u8..5u8 {barre_ends.push(read_byte(data, seek));}
         for i in 0..barre_count {chord.barres.push(Barre{fret:barre_frets[i].to_i8().unwrap(), start:barre_starts[i].to_i8().unwrap(), end:barre_ends[i].to_i8().unwrap()});}
         for _ in 0u8..7u8 {chord.omissions.push(read_bool(data, seek));}
         *seek += 1;
@@ -277,7 +277,7 @@ mod test {
     }
     #[test]
     fn test_pitch_4() {
-        let p = PitchClass::from(3, None, None);
+        //let p = PitchClass::from(3, None, None);
         //TODO: assert_eq!("Eb", p.to_string(), "Note should be Eb"); //TODO: FIXME: error on the Python source
     }
     #[test]
