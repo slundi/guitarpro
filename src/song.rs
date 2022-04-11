@@ -4,6 +4,7 @@ use fraction::ToPrimitive;
 use crate::enums::*;
 use crate::io::*;
 use crate::headers::*;
+use crate::page::*;
 use crate::track::*;
 use crate::key_signature::*;
 use crate::lyric::*;
@@ -44,6 +45,8 @@ pub struct Song {
     pub triplet_feel: TripletFeel,
     pub master_effect: RseMasterEffect,
 
+    pub page_setup: PageSetup,
+
     //Used to read the file
     pub current_measure_number: Option<usize>,
     pub current_track: Option<usize>,
@@ -69,27 +72,115 @@ impl Default for Song {
         triplet_feel: TripletFeel::None,
         current_measure_number: None, current_track: None, current_voice_number: None, current_beat_number: None,
 
+        page_setup: PageSetup::default(),
+
         master_effect: RseMasterEffect::default(),
 	}}
 }
 impl Song {
-    /// Read the song.
-    /// 
-    /// **GP3**, **GP4**: A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
+    /// Read the song. A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
     /// - Version: `byte-size-string` of size 30.
     /// - Score information. See `readInfo`.
     /// - Triplet feel: `bool`. If value is true, then triplet feel is set to eigth.
-    /// - **GP4**: yrics. See :meth:`read_lyrics()`.
     /// - Tempo: `int`.
     /// - Key: `int`. Key signature of the song.
-    /// - **GP4**: - Octave: `signed-byte`. Reserved for future uses.
     /// - MIDI channels. See `readMidiChannels`.
     /// - Number of measures: `int`.
     /// - Number of tracks: `int`.
     /// - Measure headers. See `readMeasureHeaders`.
     /// - Tracks. See `read_tracks()`.
     /// - Measures. See `read_measures()`.
-    pub fn read_data(&mut self, data: &[u8]) {
+    pub fn read_gp3(&mut self, data: &[u8]) {
+        let mut seek: usize = 0;
+        self.read_version(data, &mut seek);
+        self.read_meta(data, &mut seek);
+        self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
+        //println!("Triplet feel: {}", self.triplet_feel);
+        self.tempo = read_int(data, &mut seek).to_i16().unwrap();
+        self.key.key = read_int(data, &mut seek).to_i8().unwrap();
+        //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
+        self.read_midi_channels(data, &mut seek);
+        let measure_count = read_int(data, &mut seek).to_usize().unwrap();
+        let track_count = read_int(data, &mut seek).to_usize().unwrap();
+        //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
+        // Read measure headers. The *measures* are written one after another, their number have been specified previously.
+        for i in 1..measure_count + 1  {
+            //self.current_measure_number = Some(i.to_i16().unwrap());
+            self.read_measure_header(data, &mut seek, i);
+        }
+        //self.current_measure_number = Some(0);
+        for i in 0..track_count {self.read_track(data, &mut seek, i);}
+        self.read_measures(data, &mut seek);
+    }
+    /// Read the song. A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
+    /// - Version: `byte-size-string` of size 30.
+    /// - Score information. See `readInfo`.
+    /// - Triplet feel: `bool`. If value is true, then triplet feel is set to eigth.
+    /// - Lyrics. See `read_lyrics()`.
+    /// - Tempo: `int`.
+    /// - Key: `int`. Key signature of the song.
+    /// - Octave: `signed-byte`. Reserved for future uses.
+    /// - MIDI channels. See `readMidiChannels`.
+    /// - Number of measures: `int`.
+    /// - Number of tracks: `int`.
+    /// - Measure headers. See `readMeasureHeaders`.
+    /// - Tracks. See `read_tracks()`.
+    /// - Measures. See `read_measures()`.
+    pub fn read_gp4(&mut self, data: &[u8]) {
+        let mut seek: usize = 0;
+        self.read_version(data, &mut seek);
+        self.read_meta(data, &mut seek);
+        self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
+        //println!("Triplet feel: {}", self.triplet_feel);
+        self.lyrics = read_lyrics(data, &mut seek); //read lyrics
+        self.tempo = read_int(data, &mut seek).to_i16().unwrap();
+        self.key.key = read_int(data, &mut seek).to_i8().unwrap();
+        //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
+        read_signed_byte(data, &mut seek); //octave
+        self.read_midi_channels(data, &mut seek);
+        let measure_count = read_int(data, &mut seek).to_usize().unwrap();
+        let track_count = read_int(data, &mut seek).to_usize().unwrap();
+        //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
+        // Read measure headers. The *measures* are written one after another, their number have been specified previously.
+        for i in 1..measure_count + 1  {
+            //self.current_measure_number = Some(i.to_i16().unwrap());
+            self.read_measure_header(data, &mut seek, i);
+        }
+        //self.current_measure_number = Some(0);
+        for i in 0..track_count {self.read_track(data, &mut seek, i);}
+
+        self.read_measures(data, &mut seek);
+        if self.version.number == AppVersion::Version_4_0x {} //annotate error reading
+    }
+    pub fn read_gp5(&mut self, data: &[u8]) {
+        let mut seek: usize = 0;
+        self.read_version(data, &mut seek);
+        self.read_meta(data, &mut seek);
+        //TODO: read_info()
+        self.lyrics = read_lyrics(data, &mut seek); //read lyrics
+        self.master_effect = self.read_rse_master_effect(data, &mut seek);
+        self.read_page_setup(data, &mut seek);
+        self.tempo_name = read_byte_size_string(data, &mut seek);
+        self.tempo = read_int(data, &mut seek).to_i16().unwrap();
+        self.hide_tempo = if self.version.number != AppVersion::Version_5_00 {read_bool(data, &mut seek)} else {false};
+        self.key.key = read_byte(data, &mut seek).to_i8().unwrap();
+        read_int(data, &mut seek); //octave
+        self.read_midi_channels(data, &mut seek);
+        self.read_directions(data, &mut seek);
+        self.master_effect.reverb = read_int(data, &mut seek).to_f32().unwrap();
+        let measure_count = read_int(data, &mut seek).to_usize().unwrap();
+        let track_count = read_int(data, &mut seek).to_usize().unwrap();
+        for i in 1..measure_count + 1  {
+            self.read_measure_header(data, &mut seek, i);
+            let directions = self.read_directions(data, &mut seek);
+            for s in directions.0 { if s.1 > -1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0);} }
+            for s in directions.1 { if s.1 > -1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0);} }
+        }
+        for i in 0..track_count {self.read_track_v5(data, &mut seek, i);}
+        self.read_measures(data, &mut seek);
+    }
+
+    fn read_data(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
         self.read_version(data, &mut seek);
         self.read_meta(data, &mut seek);
