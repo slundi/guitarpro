@@ -1,10 +1,4 @@
 
-#[derive(Debug,Clone,PartialEq)]
-pub enum AppVersion {
-    //VERSION_1_0X, VERSION_2_2X,
-    Version_3_00, Version_4_0x, Version_5_00, Version_5_10
-}
-
 /// An enumeration of different triplet feels.
 #[derive(Debug,Clone,PartialEq)]
 pub enum TripletFeel { None, Eighth, Sixteenth }

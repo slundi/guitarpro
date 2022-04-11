@@ -7,7 +7,7 @@ use crate::{io::*, gp::*, key_signature::*, enums::*};
 #[derive(Debug,Clone,PartialEq)]
 pub struct Version {
     pub data: String,
-    pub number: AppVersion,
+    pub number: (u8, u8, u8),
     pub clipboard: bool
 }
 
@@ -107,14 +107,14 @@ impl Song {
     pub fn read_version(&mut self, data: &[u8], seek: &mut usize) {
         self.version = read_version_string(data, seek);
         //check for clipboard and read it
-        if self.version.number != AppVersion::Version_3_00 && self.version.clipboard { self.read_clipboard(data, seek); }
+        if self.version.number > (3,0,0) && self.version.clipboard { self.read_clipboard(data, seek); }
     }
     fn read_clipboard(&mut self, data: &[u8], seek: &mut usize) -> Clipboard {
         let mut c = Clipboard{start_measure: read_int(data, seek), ..Default::default()};
         c.stop_measure = read_int(data, seek);
         c.start_track = read_int(data, seek);
         c.stop_track = read_int(data, seek);
-        if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {
+        if self.version.number >= (5,0,0) {
             c.start_beat = read_int(data, seek);
             c.stop_beat = read_int(data, seek);
             c.sub_bar_copy = read_int(data, seek) != 0;
@@ -155,7 +155,7 @@ impl Song {
 
         mh.repeat_open = (flag & 0x04) == 0x04; //Beginning of repeat
         if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);} //End of repeat
-        if (flag & 0x10) == 0x10 {mh.repeat_alternative = if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {self.read_repeat_alternative_v5(data, seek)} else {self.read_repeat_alternative(data, seek)};} //Number of alternate endin
+        if (flag & 0x10) == 0x10 {mh.repeat_alternative = if self.version.number >= (5,0,0) {self.read_repeat_alternative_v5(data, seek)} else {self.read_repeat_alternative(data, seek)};} //Number of alternate endin
         if (flag & 0x20) == 0x20 {read_marker(data, seek, &mut mh.marker);} //Presence of a marker
         if (flag & 0x40) == 0x40 { //Tonality of the measure 
             mh.key_signature.key = read_signed_byte(data, seek);

@@ -1,9 +1,4 @@
 use fraction::ToPrimitive;
-use regex::Regex;
-
-lazy_static! {
-    static ref RE_VERSION: Regex = Regex::new(r"v(\d)\.(\d)").unwrap();
-}
 
 //reading functions
 
@@ -103,13 +98,26 @@ pub fn read_byte_size_string(data: &[u8], seek: &mut usize) -> String {
     parse.unwrap().to_string()
 }
 
+const VERSIONS: [((u8,u8,u8), bool, &str); 10] = [((3, 0, 0), false, "FICHIER GUITAR PRO v3.00"),
+
+                                                  ((4, 0, 0), false, "FICHIER GUITAR PRO v4.00"),
+                                                  ((4, 0, 6), false, "FICHIER GUITAR PRO v4.06"),
+                                                  ((4, 0, 6), true, "CLIPBOARD GUITAR PRO 4.0 [c6]"),
+
+                                                  ((5, 0, 0), false, "FICHIER GUITAR PRO v5.00"),
+                                                  ((5, 1, 0), false, "FICHIER GUITAR PRO v5.10"),
+                                                  ((5, 2, 0), false, "FICHIER GUITAR PRO v5.10"),  // sic
+                                                  ((5, 0, 0), true, "CLIPBOARD GP 5.0"),
+                                                  ((5, 1, 0), true, "CLIPBOARD GP 5.1"),
+                                                  ((5, 2, 0), true, "CLIPBOARD GP 5.2")];
+
 /// Read the file version. It is on the first 30 bytes of the file.
 /// * `data` - array of bytes
 /// * `seek` - cursor that will be incremented
 /// * returns version
 pub fn read_version_string(data: &[u8], seek: &mut usize) -> crate::headers::Version {
     let n = data[0].to_usize().unwrap();
-    let mut v = crate::headers::Version {data: String::with_capacity(30), number: crate::enums::AppVersion::Version_5_10, clipboard: false};
+    let mut v = crate::headers::Version {data: String::with_capacity(30), number: (5,2,0), clipboard: false};
     for (i, c) in data.iter().enumerate().skip(1).take(n) {
         if i == 0 {break;} //NULL symbol so we exit
         v.data.push(*c as char);
@@ -117,16 +125,14 @@ pub fn read_version_string(data: &[u8], seek: &mut usize) -> crate::headers::Ver
     //println!("Version {} {}", n, s);
     *seek += 31;
     //get the version
-    let cap = RE_VERSION.captures(&v.data).expect("Cannot extrat version code");
-    if      &cap[1] == "3" {v.number = crate::enums::AppVersion::Version_3_00;}
-    else if &cap[1] == "4" {
-        v.clipboard = v.data.starts_with("CLIPBOARD");
-        v.number = crate::enums::AppVersion::Version_4_0x;
+    for x in VERSIONS {
+        if v.data == x.2 {
+            v.number = x.0;
+            v.clipboard = x.1;
+            break;
+        }
     }
-    else if &cap[1] == "5" {
-        v.clipboard = v.data.starts_with("CLIPBOARD");
-        v.number = crate::enums::AppVersion::Version_5_00;
-    } //TODO: check subversions?
+    println!("########################## Version: {:?}", v);
     v
 }
 

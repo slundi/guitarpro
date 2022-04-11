@@ -36,7 +36,7 @@ impl Default for Measure {fn default() -> Self { Measure {
     track_index: 0,
     header_index: 0,
     clef: MeasureClef::Treble,
-    voices: vec![Voice::default(); MAX_VOICES],
+    voices: Vec::with_capacity(2),
     line_break: LineBreak::None
 }}}
 
@@ -75,9 +75,15 @@ impl Song {
 
     /// Read measure. The measure is written as number of beats followed by sequence of beats.
     fn read_measure(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
+        let mut voice = Voice::default();
         self.current_voice_number = Some(1);
+        self.read_voice(data, seek, &mut voice, &mut measure.start, track_index);
+        self.current_voice_number = None;
+        measure.voices.push(voice);
+        /*
         //read a voice 
         let beats = read_int(data, seek).to_usize().unwrap();
+
         //println!("read_measure() read_voice(), beat count: {}", beats);
         for i in 0..beats {
             self.current_beat_number = Some(i + 1);
@@ -87,7 +93,7 @@ impl Song {
         }
         self.current_beat_number = None;
         //end read a voice
-        self.current_voice_number = None;
+        self.current_voice_number = None;*/
     }
     /// Read measure. Guitar Pro 5 stores twice more measures compared to Guitar Pro 3. One measure consists of two sub-measures for each of two voices.
     /// 
@@ -96,24 +102,22 @@ impl Song {
         let mut start = measure.start;
         for number in 0..MAX_VOICES {
             self.current_voice_number = Some(number + 1);
-            //TODO: self.read_voice(data, seek, &mut start, number);
+            let mut voice = Voice::default();
+            self.read_voice(data, seek, &mut voice, &mut start, track_index);
+            measure.voices.push(voice);
         }
         self.current_voice_number = None;
         measure.line_break = get_line_break(read_byte(data, seek));
     }
 
-    fn read_voice(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
+    fn read_voice(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: &mut i64, track_index: usize) {
         let beats = read_int(data, seek).to_usize().unwrap();
         for i in 0..beats {
             self.current_beat_number = Some(i + 1);
             //println!("read_measure() read_voice(), start: {}", measure.start);
-            measure.start += self.read_beat(data, seek, &mut measure.voices[0], measure.start, track_index);
+            *start += self.read_beat(data, seek, voice, *start, track_index);
             //println!("read_measure() read_voice(), start: {}", measure.start);
         }
         self.current_beat_number = None;
-        //TODO: 
-        /*for beat in range(beats):
-            self._currentBeatNumber = beat + 1
-            start += self.readBeat(start, voice) */
     }
 }

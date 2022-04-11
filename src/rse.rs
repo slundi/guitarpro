@@ -48,7 +48,7 @@ impl Song {
     /// - 10-band equalizer. See `read_equalizer()`.
     pub(crate) fn read_rse_master_effect(&self, data: &[u8], seek: &mut usize) -> RseMasterEffect {
         let mut me = RseMasterEffect::default();
-        if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {
+        if self.version.number >= (5,0,0) {
             me.volume = read_int(data, seek).to_f32().unwrap();
             read_int(data, seek); //???
             me.equalizer = self.read_rse_equalizer(data, seek, 11);
@@ -76,7 +76,7 @@ impl Song {
         *seek += 3;  //???
         *seek += 12; //???
         self.read_rse_instrument(data, seek, number);
-        if self.version.number == AppVersion::Version_5_10 {
+        if self.version.number > (5,0,0) {
             self.tracks[number].rse.equalizer = self.read_rse_equalizer(data, seek, 4);
             self.read_rse_instrument_effect(data, seek, number);
         }
@@ -90,7 +90,7 @@ impl Song {
         self.tracks[number].rse.instrument.instrument = read_int(data, seek).to_i16().unwrap();
         self.tracks[number].rse.instrument.unknown = read_int(data, seek).to_i16().unwrap(); //??? mostly 1
         self.tracks[number].rse.instrument.sound_bank = read_int(data, seek).to_i16().unwrap();
-        if self.version.number == AppVersion::Version_5_00 {
+        if self.version.number == (5,0,0) {
             self.tracks[number].rse.instrument.effect_number = read_short(data, seek);
             *seek += 1;
         } else {self.tracks[number].rse.instrument.effect_number = read_int(data, seek).to_i16().unwrap();}
@@ -99,7 +99,7 @@ impl Song {
     /// - Effect name: `int-byte-size-string`.
     /// - Effect category: `int-byte-size-string`.
     pub(crate) fn read_rse_instrument_effect(&mut self, data: &[u8], seek: &mut usize, number: usize) {
-        if self.version.number == AppVersion::Version_5_10 {
+        if self.version.number > (5,0,0) {
             self.tracks[number].rse.instrument.effect = read_int_size_string(data, seek);
             self.tracks[number].rse.instrument.effect_category = read_int_size_string(data, seek);
         }

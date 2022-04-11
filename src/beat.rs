@@ -157,8 +157,8 @@ impl Song {
         if (flags & 0x04) == 0x04 {voice.beats[b].text = read_int_size_string(data, seek);}
         if (flags & 0x08) == 0x08 {
             let chord = voice.beats[b].effect.chord.clone();
-            if      self.version.number == AppVersion::Version_3_00 {voice.beats[b].effect = self.read_beat_effects_v3(data, seek, &mut note_effect); }
-            else if self.version.number == AppVersion::Version_4_0x {voice.beats[b].effect = self.read_beat_effects_v4(data, seek, &mut note_effect);}
+            if      self.version.number == (3,0,0) {voice.beats[b].effect = self.read_beat_effects_v3(data, seek, &mut note_effect); }
+            else if self.version.number == (4,0,0) {voice.beats[b].effect = self.read_beat_effects_v4(data, seek, &mut note_effect);}
             voice.beats[b].effect.chord = chord;
         }
         if (flags & 0x10) == 0x10 {
@@ -300,7 +300,7 @@ impl Song {
             bs.direction = BeatStrokeDirection::Down;
             bs.value = self.stroke_value(down).to_u16().unwrap();
         }
-        if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {bs.swap_direction();}
+        if self.version.number >= (5,0,0) {bs.swap_direction();}
         bs
     }
 

@@ -72,9 +72,9 @@ impl Song {
         let mut tc = MixTableChange::default();
         self.read_mix_table_change_values(data, seek, &mut tc);
         self.read_mix_table_change_durations(data, seek, &mut tc);
-        if self.version.number != AppVersion::Version_3_00 {
+        if self.version.number != (3,0,0) {
             let flags = self.read_mix_table_change_flags(data, seek, &mut tc);
-            if self.version.number != AppVersion::Version_5_00 || self.version.number != AppVersion::Version_5_10 {
+            if self.version.number >= (5,0,0) {
                 tc.wah = Some(self.read_wah_effect(data, seek, flags));
                 //TODO: self.read_rse_instrument_effect(data, seek, &mut tc.rse);
             }
@@ -100,7 +100,7 @@ impl Song {
         if b >= 0 {mte.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //RSE instrument GP5
         //TODO: if self.version.number != AppVersion::Version_5_00 || self.version.number != AppVersion::Version_5_10 {tc.rse = self.read_rse_instrument(data, seek);}
-        if self.version.number != AppVersion::Version_5_00  { *seek += 1; }
+        if self.version.number == (5,0,0)  { *seek += 1; }
         //volume
         let b = read_signed_byte(data, seek);
         if b >= 0 {mte.volume = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
@@ -120,7 +120,7 @@ impl Song {
         let b = read_signed_byte(data, seek);
         if b >= 0 {mte.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //tempo
-        if self.version.number != AppVersion::Version_5_00 || self.version.number != AppVersion::Version_5_10 {mte.tempo_name = read_byte_size_string(data, seek);}
+        if self.version.number >= (5,0,0) {mte.tempo_name = read_byte_size_string(data, seek);}
         let b = read_int(data, seek);
         if b >= 0 {mte.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
     }
@@ -137,7 +137,7 @@ impl Song {
         if mte.tempo.is_some()   {
             mte.tempo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();
             mte.hide_tempo = false;
-            if self.version.number == AppVersion::Version_5_10 {mte.hide_tempo = read_bool(data, seek);}
+            if self.version.number == (5,0,10) {mte.hide_tempo = read_bool(data, seek);}
         }
     }
 
@@ -184,7 +184,7 @@ impl Song {
             e.all_tracks = (flags & 0x01) == 0x01;
             mte.tremolo = Some(e);
         }
-        if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {mte.use_rse = (flags & 0x40) == 0x40;}
+        if self.version.number >= (5,0,0) {mte.use_rse = (flags & 0x40) == 0x40;}
         flags
     }
 

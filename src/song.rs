@@ -56,7 +56,7 @@ pub struct Song {
 
 impl Default for Song {
 	fn default() -> Self { Song {
-        version: Version {data: String::with_capacity(30), clipboard: false, number: AppVersion::Version_5_10}, clipboard: None,
+        version: Version {data: String::with_capacity(30), clipboard: false, number: (5,1,0)}, clipboard: None,
 		name:String::new(), subtitle: String::new(), artist:String::new(), album: String::new(),
         words: String::new(), author:String::new(), date:String::new(),
         copyright:String::new(), writer:String::new(), transcriber:String::new(), comments:String::new(),
@@ -93,7 +93,7 @@ impl Song {
     pub fn read_gp3(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
         self.read_version(data, &mut seek);
-        self.read_meta(data, &mut seek);
+        self.read_info(data, &mut seek);
         self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
         //println!("Triplet feel: {}", self.triplet_feel);
         self.tempo = read_int(data, &mut seek).to_i16().unwrap();
@@ -105,10 +105,10 @@ impl Song {
         //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
         for i in 1..measure_count + 1  {
-            //self.current_measure_number = Some(i.to_i16().unwrap());
+            self.current_measure_number = Some(i);
             self.read_measure_header(data, &mut seek, i);
         }
-        //self.current_measure_number = Some(0);
+        self.current_measure_number = Some(0);
         for i in 0..track_count {self.read_track(data, &mut seek, i);}
         self.read_measures(data, &mut seek);
     }
@@ -129,7 +129,7 @@ impl Song {
     pub fn read_gp4(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
         self.read_version(data, &mut seek);
-        self.read_meta(data, &mut seek);
+        self.read_info(data, &mut seek);
         self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
         //println!("Triplet feel: {}", self.triplet_feel);
         self.lyrics = read_lyrics(data, &mut seek); //read lyrics
@@ -150,19 +150,19 @@ impl Song {
         for i in 0..track_count {self.read_track(data, &mut seek, i);}
 
         self.read_measures(data, &mut seek);
-        if self.version.number == AppVersion::Version_4_0x {} //annotate error reading
+        if self.version.number == (4,0,0) {} //annotate error reading
     }
     pub fn read_gp5(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
         self.read_version(data, &mut seek);
-        self.read_meta(data, &mut seek);
+        self.read_info(data, &mut seek);
         //TODO: read_info()
         self.lyrics = read_lyrics(data, &mut seek); //read lyrics
         self.master_effect = self.read_rse_master_effect(data, &mut seek);
         self.read_page_setup(data, &mut seek);
         self.tempo_name = read_byte_size_string(data, &mut seek);
         self.tempo = read_int(data, &mut seek).to_i16().unwrap();
-        self.hide_tempo = if self.version.number != AppVersion::Version_5_00 {read_bool(data, &mut seek)} else {false};
+        self.hide_tempo = if self.version.number > (5,0,0) {read_bool(data, &mut seek)} else {false};
         self.key.key = read_byte(data, &mut seek).to_i8().unwrap();
         read_int(data, &mut seek); //octave
         self.read_midi_channels(data, &mut seek);
@@ -180,71 +180,8 @@ impl Song {
         self.read_measures(data, &mut seek);
     }
 
-    fn read_data(&mut self, data: &[u8]) {
-        let mut seek: usize = 0;
-        self.read_version(data, &mut seek);
-        self.read_meta(data, &mut seek);
-        
-        if self.version.number == AppVersion::Version_3_00 || self.version.number == AppVersion::Version_4_0x {
-            self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
-            //println!("Triplet feel: {}", self.triplet_feel);
-            if self.version.number == AppVersion::Version_4_0x {self.lyrics = read_lyrics(data, &mut seek);} //read lyrics
-            self.tempo = read_int(data, &mut seek).to_i16().unwrap();
-            self.key.key = read_int(data, &mut seek).to_i8().unwrap();
-            //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
-            if self.version.number == AppVersion::Version_4_0x {read_signed_byte(data, &mut seek);} //octave
-            self.read_midi_channels(data, &mut seek);
-            let measure_count = read_int(data, &mut seek).to_usize().unwrap();
-            let track_count = read_int(data, &mut seek).to_usize().unwrap();
-            //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
-            // Read measure headers. The *measures* are written one after another, their number have been specified previously.
-            for i in 1..measure_count + 1  {
-                //self.current_measure_number = Some(i.to_i16().unwrap());
-                self.read_measure_header(data, &mut seek, i);
-                if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {
-                    let directions = self.read_directions(data, &mut seek); //TODO: handle result
-                    for s in directions.0 {
-                        if s.1 > -1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0);}
-                    }
-                    for s in directions.1 {
-                        if s.1 > -1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0);}
-                    }
-                }
-            }
-            //self.current_measure_number = Some(0);
-            for i in 0..track_count {self.read_track(data, &mut seek, i);}
-            //Tracks in Guitar Pro 5 have almost the same format as in Guitar Pro 3. If it's Guitar Pro 5.0 then 2 blank bytes are read after `read_tracks()`.
-            //If format version is higher than 5.0, 1 blank byte is read.
-            if self.version.number == AppVersion::Version_5_00 {seek += 2;}
-            else if self.version.number == AppVersion::Version_5_10 {seek += 1;}
-
-            self.read_measures(data, &mut seek);
-            if self.version.number == AppVersion::Version_4_0x {} //annotate error reading
-        }
-        //read GP5 information
-        if self.version.number == AppVersion::Version_5_00 || self.version.number == AppVersion::Version_5_10 {
-            //self.lyrics = 
-            read_lyrics(data, &mut seek);
-            /*self.masterEffect = self.readRSEMasterEffect()
-            self.pageSetup = self.readPageSetup()
-            self.tempoName = self.readIntByteSizeString()
-            self.tempo = self.readInt()
-            self.hideTempo = self.readBool() if self.versionTuple > (5, 0, 0) else False
-            self.key = gp.KeySignature((self.readSignedByte(), 0))
-            self.readInt()  # octave
-            channels = self.readMidiChannels()
-            directions = self.readDirections()
-            self.masterEffect.reverb = self.readInt()
-            measureCount = self.readInt()
-            trackCount = self.readInt()
-            with self.annotateErrors('reading'):
-                self.readMeasureHeaders(self, measureCount, directions)
-                self.readTracks(self, trackCount, channels)
-                self.readMeasures(self) */
-        }
-    }
-    /// Read meta information (name, artist, ...)
-    fn read_meta(&mut self, data: &[u8], seek: &mut usize) {
+    /// Read information (name, artist, ...)
+    fn read_info(&mut self, data: &[u8], seek: &mut usize) {
         // read GP3 informations
         self.name        = read_int_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
         self.subtitle    = read_int_size_string(data, seek);
