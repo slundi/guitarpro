@@ -67,21 +67,25 @@ pub struct PitchClass {
 impl PitchClass {
     pub fn from(just: i8, accidental: Option<i8>, sharp: Option<bool>) -> PitchClass {
         let mut p = PitchClass {just, accidental:0, value:-1, sharp: true, note:String::with_capacity(2) };
-        p.value = p.just % 12;
         let pitch: i8;
+        let accidental2: i8;
         if accidental == None {
-            p.note=String::from(SHARP_NOTES[p.value as usize]); //try: note = SHARP_NOTES[p.value]; except KeyError: note = FLAT_NOTES[p.value];
+            let value = p.just % 12;
+            //println!("PitchClass(), value: {}", value);
+            p.note = if value >= 0 {String::from(SHARP_NOTES[value as usize])} else {String::from(SHARP_NOTES[(12 + value).to_usize().unwrap()])}; //try: note = SHARP_NOTES[p.value]; except KeyError: note = FLAT_NOTES[p.value];
             //if FLAT_NOTES[p.value]  == &note {note=String::from(FLAT_NOTES[p.value]);  p.sharp = false;} 
-            if p.note.ends_with('b')      {p.accidental = -1; p.sharp = false;}
-            else if p.note.ends_with('#') {p.accidental = 1;}
-            pitch = p.value - p.accidental;
+            if      p.note.ends_with('b') {accidental2 = -1; p.sharp = false;}
+            else if p.note.ends_with('#') {accidental2 = 1;}
+            else                          {accidental2 = 0;}
+            pitch = value - accidental2;
         } else {
-            pitch = p.value;
-            p.accidental = accidental.unwrap();
+            pitch = p.just;
+            accidental2 = accidental.unwrap();
         }
         //println!("VALUE: {} \t NOTE: {}", p.value, p.note);
         p.just = pitch % 12;
-        p.value = p.just + p.accidental;
+        p.accidental = accidental2;
+        p.value = p.just + accidental2;
         if sharp.is_none() { p.sharp = p.accidental >= 0; }
         p
     }
@@ -115,7 +119,7 @@ impl Song {
         c.new_format = Some(read_bool(data, seek));
         if c.new_format == Some(true) {
             if      self.version.number == (3,0,0) { self.read_new_format_chord_v3(data, seek, &mut c); }
-            else if self.version.number == (4,0,0) { self.read_new_format_chord_v4(data, seek, &mut c);}
+            else if self.version.number.0 == 4 { self.read_new_format_chord_v4(data, seek, &mut c);}
         }
         else {self.read_old_format_chord(data, seek, &mut c);}
         c
@@ -223,7 +227,9 @@ impl Song {
         chord.root = Some(PitchClass::from(read_byte(data, seek).to_i8().unwrap(), None, chord.sharp));
         chord.kind = Some(get_chord_type(read_byte(data, seek)));
         chord.extension = Some(get_chord_extension(read_byte(data, seek)));
-        chord.bass = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, chord.sharp));
+        let i = read_int(data, seek);
+        println!("{:?}", i);
+        chord.bass = Some(PitchClass::from(i.to_i8().unwrap(), None, chord.sharp));
         chord.tonality = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
         chord.add = Some(read_bool(data, seek));
         chord.name = read_byte_size_string(data, seek);

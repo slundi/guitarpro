@@ -33,7 +33,7 @@ pub struct MeasureHeader {
 	pub tempo: i32,
 	pub marker: Marker,
 	pub repeat_open: bool,
-	pub repeat_alternative: i8,
+	pub repeat_alternative: u8,
 	pub repeat_close: i8,
 	pub triplet_feel: TripletFeel,
     pub direction: Option<DirectionSign>,
@@ -183,17 +183,19 @@ impl Song {
         self.measure_headers[last].triplet_feel = get_triplet_feel(read_signed_byte(data, seek));
     }
 
-    fn read_repeat_alternative(&mut self, data: &[u8], seek: &mut usize) -> i8 {
+    fn read_repeat_alternative(&mut self, data: &[u8], seek: &mut usize) -> u8 {
         //println!("read_repeat_alternative()");
-        let value = read_byte(data, seek);
-        let mut existing_alternative = 0i8;
-        for i in self.measure_headers.len()-1 .. 0 {
+        let value = read_byte(data, seek).to_u16().unwrap();
+        let mut existing_alternative = 0u16;
+        for i in (0..self.measure_headers.len()).rev() {
             if self.measure_headers[i].repeat_open {break;}
-            existing_alternative |= self.measure_headers[i].repeat_alternative;
+            existing_alternative |= self.measure_headers[i].repeat_alternative.to_u16().unwrap();
         }
-        ((1 << value) - 1) ^ existing_alternative
+        //println!("read_repeat_alternative(), value:  {}, existing_alternative: {}", value, existing_alternative);
+        //println!("read_repeat_alternative(), return: {}", ((1 << value) - 1) ^ existing_alternative);
+        (((1 << value) - 1) ^ existing_alternative).to_u8().unwrap()
     }
-    fn read_repeat_alternative_v5(&mut self, data: &[u8], seek: &mut usize) -> i8 {read_byte(data, seek).to_i8().unwrap()}
+    fn read_repeat_alternative_v5(&mut self, data: &[u8], seek: &mut usize) -> u8 {read_byte(data, seek)}
 
     /// Read directions.  Directions is a list of 19 `ShortInts <short>` each pointing at the number of measure.
     /// 

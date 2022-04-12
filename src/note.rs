@@ -165,7 +165,7 @@ impl Song {
         }
         if (flags & 0x08) == 0x08 {
             if      self.version.number == (3,0,0) {self.read_note_effects_v3(data, seek, note);}
-            else if self.version.number == (4,0,0) {self.read_note_effects_v4(data, seek, note);}
+            else if self.version.number.0 == 4 {self.read_note_effects_v4(data, seek, note);}
             if note.effect.is_harmonic() && note.effect.harmonic.is_some() {
                 let mut h = note.effect.harmonic.take().unwrap();
                 if h.kind == HarmonicType::Tapped {h.fret = Some(note.value.to_i8().unwrap() + 12);}

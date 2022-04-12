@@ -158,7 +158,7 @@ impl Song {
         if (flags & 0x08) == 0x08 {
             let chord = voice.beats[b].effect.chord.clone();
             if      self.version.number == (3,0,0) {voice.beats[b].effect = self.read_beat_effects_v3(data, seek, &mut note_effect); }
-            else if self.version.number == (4,0,0) {voice.beats[b].effect = self.read_beat_effects_v4(data, seek, &mut note_effect);}
+            else if self.version.number.0 == 4 {voice.beats[b].effect = self.read_beat_effects_v4(data, seek, &mut note_effect);}
             voice.beats[b].effect.chord = chord;
         }
         if (flags & 0x10) == 0x10 {
@@ -275,7 +275,6 @@ impl Song {
         let mut be = BeatEffects::default();
         let flags1 = read_signed_byte(data, seek);
         let flags2 = read_signed_byte(data, seek);
-        note_effect.vibrato = (flags1 & 0x01) == 0x01 || note_effect.vibrato;
         be.vibrato = (flags1 & 0x02) == 0x02 || be.vibrato;
         be.fade_in = (flags1 & 0x10) == 0x10;
         if (flags1 & 0x20) == 0x20 {be.slap_effect = get_slap_effect(read_signed_byte(data, seek).to_u8().unwrap());}
@@ -283,6 +282,7 @@ impl Song {
         if (flags1 & 0x40) == 0x40 {be.stroke = self.read_beat_stroke(data, seek);}
         be.has_rasgueado = (flags2 &0x01) == 0x01;
         if (flags2 & 0x02) == 0x02 {be.pick_stroke = get_beat_stroke_direction(read_signed_byte(data, seek));}
+        //println!("Beat effect: {:?}", be);
         be
     }
     /// Read beat stroke. Beat stroke consists of two `Bytes <byte>` which correspond to stroke up

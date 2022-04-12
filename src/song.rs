@@ -150,7 +150,6 @@ impl Song {
         for i in 0..track_count {self.read_track(data, &mut seek, i);}
 
         self.read_measures(data, &mut seek);
-        if self.version.number == (4,0,0) {} //annotate error reading
     }
     pub fn read_gp5(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
