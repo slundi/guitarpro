@@ -48,10 +48,11 @@ impl Song {
     /// - 10-band equalizer. See `read_equalizer()`.
     pub(crate) fn read_rse_master_effect(&self, data: &[u8], seek: &mut usize) -> RseMasterEffect {
         let mut me = RseMasterEffect::default();
-        if self.version.number >= (5,0,0) {
+        if self.version.number > (5,0,0) {
             me.volume = read_int(data, seek).to_f32().unwrap();
             read_int(data, seek); //???
             me.equalizer = self.read_rse_equalizer(data, seek, 11);
+            println!("read_rse_master_effect(): {:?}", me);
         }
         me
     }

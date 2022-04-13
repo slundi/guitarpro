@@ -42,10 +42,22 @@ impl std::fmt::Display for Lyrics {
 pub fn read_lyrics(data: &[u8], seek: &mut usize) -> Lyrics {
     let mut lyrics = Lyrics{track_choice: read_int(data, seek).to_u8().unwrap(), ..Default::default()};
     //println!("Lyrics for track #{}", lyrics.track_choice);
-    lyrics.line1.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
-    lyrics.line2.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
-    lyrics.line3.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
-    lyrics.line4.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
-    lyrics.line5.insert(read_int(data, seek).try_into().unwrap(), read_int_size_string(data, seek));
+    let starting_measure = read_int(data, seek).to_u16().unwrap();
+    let text = read_int_size_string(data, seek);
+    println!("read_lyrics: {}, \"{}\"", starting_measure, text);
+    lyrics.line1.insert(starting_measure, text);
+    let starting_measure = read_int(data, seek).to_u16().unwrap();
+    let text = read_int_size_string(data, seek);
+    lyrics.line2.insert(starting_measure, text);
+    let starting_measure = read_int(data, seek).to_u16().unwrap();
+    let text = read_int_size_string(data, seek);
+    lyrics.line3.insert(starting_measure, text);
+    let starting_measure = read_int(data, seek).to_u16().unwrap();
+    let text = read_int_size_string(data, seek);
+    lyrics.line4.insert(starting_measure, text);
+    let starting_measure = read_int(data, seek).to_u16().unwrap();
+    let text = read_int_size_string(data, seek);
+    lyrics.line5.insert(starting_measure, text);
+    //println!("read_lyrics: {:?}", lyrics);
     lyrics
 }

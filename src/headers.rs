@@ -58,8 +58,8 @@ impl Default for MeasureHeader {
     }}
 }
 impl MeasureHeader {
-    pub fn length(&self) -> i64 {self.time_signature.numerator.to_i64().unwrap() * self.time_signature.denominator.time().to_i64().unwrap()}
-    pub fn end(&self) -> i64 {self.start + self.length()}
+    pub(crate) fn length(&self) -> i64 {self.time_signature.numerator.to_i64().unwrap() * self.time_signature.denominator.time().to_i64().unwrap()}
+    pub(crate) fn end(&self) -> i64 {self.start + self.length()}
 }
 
 /// A marker annotation for beats.
@@ -88,7 +88,7 @@ pub struct RepeatGroup {
 }
 //impl Default for RepeatGroup {fn default() -> Self { RepeatGroup {measure_headers: Vec::new(), closings: Vec::new(), openings: Vec::new(), is_closed: false, }}}
 impl RepeatGroup {
-    pub fn add_measure_header(&mut self, measure_header: &MeasureHeader) {
+    pub(crate) fn add_measure_header(&mut self, measure_header: &MeasureHeader) {
         let index = measure_header.number.to_usize().unwrap();
         if self.openings.is_empty() {self.openings.push(index);} //if not len(self.openings): self.openings.append(h)
         self.measure_headers.push(index);
@@ -104,23 +104,36 @@ impl RepeatGroup {
 
 impl Song {
     /// Read and process version
-    pub fn read_version(&mut self, data: &[u8], seek: &mut usize) {
+    pub(crate) fn read_version(&mut self, data: &[u8], seek: &mut usize) {
         self.version = read_version_string(data, seek);
-        //check for clipboard and read it
-        if self.version.number > (3,0,0) && self.version.clipboard { self.read_clipboard(data, seek); }
     }
-    fn read_clipboard(&mut self, data: &[u8], seek: &mut usize) -> Clipboard {
+    pub(crate) fn read_clipboard(&mut self, data: &[u8], seek: &mut usize) -> Option<Clipboard> {
+        if !self.version.clipboard {return None;}
         let mut c = Clipboard{start_measure: read_int(data, seek), ..Default::default()};
         c.stop_measure = read_int(data, seek);
         c.start_track = read_int(data, seek);
         c.stop_track = read_int(data, seek);
-        if self.version.number >= (5,0,0) {
+        if self.version.number.0 == 5 {
             c.start_beat = read_int(data, seek);
             c.stop_beat = read_int(data, seek);
             c.sub_bar_copy = read_int(data, seek) != 0;
         }
-        c
+        println!("read_clipboard(): {:?}", c);
+        Some(c)
     }
+
+    /// Read measure headers. The *measures* are written one after another, their number have been specified previously.
+    /// * `measure_count`: number of measures to expect.
+    pub(crate) fn read_measure_headers(&mut self, data: &[u8], seek: &mut usize, measure_count: usize) {
+        for i in 1..measure_count + 1  { self.read_measure_header(data, seek, i); }
+    }
+
+    pub(crate) fn read_measure_headers_v5(&mut self, data: &[u8], seek: &mut usize, measure_count: usize, directions: &(HashMap<DirectionSign, i16>, HashMap<DirectionSign, i16>)) {
+        for i in 1..measure_count + 1  { self.read_measure_header_v5(data, seek, i); }
+        for s in &directions.0 { if s.1 > &-1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0.clone());} }
+        for s in &directions.1 { if s.1 > &-1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0.clone());} }
+    }
+
     /// Read measure header. The first byte is the measure's flags. It lists the data given in the current measure.
     /// 
     /// | **Bit 7** | **Bit 6** | **Bit 5** | **Bit 4** | **Bit 3** | **Bit 2** | **Bit 1** | **Bit 0** |
@@ -138,10 +151,9 @@ impl Song {
     /// 1) First is written an `integer` equal to the marker's name length + 1
     /// 2) a string containing the marker's name. Finally the marker's color is written.
     /// * **Tonality of the measure**: `byte`. This value encodes a key (signature) change on the current piece. It is encoded as: `0: C`, `1: G (#)`, `2: D (##)`, `-1: F (b)`, ...
-    pub fn read_measure_header(&mut self, data: &[u8], seek: &mut usize, number: usize) -> u8 {
-        //println!("N={}\tmeasure_headers={}", number, song.measure_headers.len());
+    pub(crate) fn read_measure_header(&mut self, data: &[u8], seek: &mut usize, number: usize) -> u8 {
         let flag = read_byte(data, seek);
-        //println!("read_measure_header(), flags: {}", flag);
+        //println!("read_measure_header(), flags: {} \t N: {} \t Measure header count: {}", flag, number, self.measure_headers.len());
         let mut mh = MeasureHeader{number: number.to_u16().unwrap(), ..Default::default()};
         mh.start  = 0;
         mh.triplet_feel = self.triplet_feel.clone();
@@ -171,11 +183,12 @@ impl Song {
     /// - Time signature beams: 4 `Bytes <byte>`. Appears If time signature was set, i.e. flags *0x01* and *0x02* are both set.
     /// - Blank `byte` if flag at *0x10* is set.
     /// - Triplet feel: `byte`. See `TripletFeel`.
-    pub fn read_measure_header_v5(&mut self, data: &[u8], seek: &mut usize, number: usize, previous: Option<usize>) {
-        if previous.is_none() { *seek += 1; } //always
+    pub(crate) fn read_measure_header_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) {
+        if number > 1 { *seek += 1; } //always
         let flags = self.read_measure_header(data, seek, number);
+        //println!("read_measure_header_v5(), flags: {}", flags);
         let last = self.measure_headers.len()-1;
-        let prev = if previous.is_none() {0} else {previous.unwrap()};
+        let prev = if number == 1 {0} else {number-1};
         if self.measure_headers[self.measure_headers.len()-1].repeat_close == -1 {self.measure_headers[last].repeat_close -= 1;}
         if (flags & 0x03) == 0x03 {self.measure_headers[last].time_signature.beams = vec![read_byte(data, seek); 4]}
         else {self.measure_headers[last].time_signature.beams = self.measure_headers[prev].time_signature.beams.clone();}
@@ -219,7 +232,7 @@ impl Song {
     /// - Da Segno Segno al Fine
     /// - Da Coda
     /// - Da Double Coda
-    pub fn read_directions(&self, data: &[u8], seek: &mut usize) -> (HashMap<DirectionSign, i16>, HashMap<DirectionSign, i16>) {
+    pub(crate) fn read_directions(&self, data: &[u8], seek: &mut usize) -> (HashMap<DirectionSign, i16>, HashMap<DirectionSign, i16>) {
         let mut signs: HashMap<DirectionSign, i16> = HashMap::with_capacity(4);
         let mut from_signs: HashMap<DirectionSign, i16> = HashMap::with_capacity(15);
         //signs

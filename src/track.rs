@@ -165,8 +165,8 @@ impl Song {
     /// - MIDI bank: :ref:`byte`.
     /// - Track RSE. See `readTrackRSE`.
     pub fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) {
-        if self.tracks[number].number == 1 || self.version.number == (5,0,0) {*seek += 1;} //always 0
         let flags1 = read_byte(data, seek);
+        println!("read_track_v5(), flags1: {}", flags1);
         self.tracks[number].percussion_track = (flags1 & 0x01) == 0x01;
         self.tracks[number].banjo_track = (flags1 & 0x02) == 0x02;
         self.tracks[number].visible = (flags1 & 0x04) == 0x04;
