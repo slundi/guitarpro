@@ -100,7 +100,7 @@ mod test {
     #[test]
     fn test_gp5_unknown_chord_extension() {
         let mut song: Song = Song::default();
-        song.read_gp5(&read_file(String::from("test/Unknown Chords Extension.gp5")));
+        song.read_gp5(&read_file(String::from("test/Unknown Chord Extension.gp5")));
     }
     #[test]
     fn test_gp5_chord_without_notes() { //Read chord even if there's no fingering
@@ -215,11 +215,6 @@ mod test {
     fn test_gp4_vibrato() {
         let mut song: Song = Song::default();
         song.read_gp4(&read_file(String::from("test/Vibrato.gp4")));
-    }
-    #[test]
-    fn test_gp5_vibrato() {
-        let mut song: Song = Song::default();
-        song.read_gp5(&read_file(String::from("test/Vibrato.gp5")));
     }
 
     //voices
