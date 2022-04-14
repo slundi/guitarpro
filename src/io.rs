@@ -40,7 +40,7 @@ pub(crate) fn read_bool(data: &[u8], seek: &mut usize ) -> bool {
 /// * `seek` - start position to read
 /// * returns the short value
 pub(crate) fn read_short(data: &[u8], seek: &mut usize ) -> i16 {
-    if data.len() < *seek + 1 {panic!("End of file reached");}
+    if data.len() < *seek + 2 {panic!("End of file reached");}
     let n = i16::from_le_bytes([data[*seek], data[*seek+1]]);
     *seek += 2;
     n
@@ -91,6 +91,13 @@ pub(crate) fn read_int_size_string(data: &[u8], seek: &mut usize) -> String {
 /// Read length of the string increased by 1 and stored in 1 integer followed by length of the string in 1 byte and finally followed by character bytes.
 pub(crate) fn read_int_byte_size_string(data: &[u8], seek: &mut usize) -> String {
     //TODO: read_int_size_string is used instead, but it should be fixed
+    let s = read_int(data, seek).to_usize().unwrap() - 1;
+    let n = read_byte(data, seek).to_usize().unwrap();
+    let count = if s > 0 {s} else {n};
+    //println!("read_byte_size_string: n={}", n);
+    let parse = std::str::from_utf8(&data[*seek..*seek+count]);
+    if parse.is_err() {panic!("Unable to read string");}
+    *seek += count;
     String::new()
 }
 
@@ -147,3 +154,15 @@ pub(crate) fn read_color(data: &[u8], seek: &mut usize) -> i32 {
 }
 
 //writing functions
+fn write_placeholder(data: &mut Vec<u8>, count: usize, byte: u8) { for _ in 0..count {data.push(byte);} }
+
+pub(crate) fn write_placeholder_default(data: &mut Vec<u8>, count: usize) {write_placeholder(data, count, 0x00);}
+pub(crate) fn write_byte(data: &mut Vec<u8>, value: u8) {data.push(value);}
+pub(crate) fn write_signed_byte(data: &mut Vec<u8>, value: i8) {data.extend(value.to_le_bytes());}
+pub(crate) fn write_bool(data: &mut Vec<u8>, value: bool) {data.push(if value {0x01} else {0x00});}
+pub(crate) fn write_i32(data: &mut Vec<u8>, value: i32) {data.extend(value.to_le_bytes());}
+pub(crate) fn write_u32(data: &mut Vec<u8>, value: u32) {data.extend(value.to_le_bytes());}
+pub(crate) fn write_i16(data: &mut Vec<u8>, value: i16) {data.extend(value.to_le_bytes());}
+pub(crate) fn write_u16(data: &mut Vec<u8>, value: u16) {data.extend(value.to_le_bytes());}
+pub(crate) fn write_f32(data: &mut Vec<u8>, value: f32) {data.extend(value.to_le_bytes());}
+pub(crate) fn write_f64(data: &mut Vec<u8>, value: f64) {data.extend(value.to_le_bytes());}

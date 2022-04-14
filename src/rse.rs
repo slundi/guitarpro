@@ -1,6 +1,6 @@
 use fraction::ToPrimitive;
 
-use crate::{io::*, gp::*, enums::*};
+use crate::{io::*, gp::*, enums::*, track::*};
 
 /// Equalizer found in master effect and track effect.
 /// 
@@ -72,14 +72,15 @@ impl Song {
     /// - RSE instrument. See `readRSEInstrument`.
     /// - 3-band track equalizer. See `read_equalizer()`.
     /// - RSE instrument effect. See `read_rse_instrument_effect()`.
-    pub(crate) fn read_track_rse(&mut self, data: &[u8], seek: &mut usize, number: usize) {
-        self.tracks[number].rse.humanize = read_byte(data, seek);
-        *seek += 3;  //???
+    pub(crate) fn read_track_rse(&mut self, data: &[u8], seek: &mut usize, track: &mut Track) {
+        track.rse.humanize = read_byte(data, seek);
+        println!("read_track_rse(), humanize: {}", track.rse.humanize);
+        *seek += 12; //read_int(data, seek); read_int(data, seek); read_int(data, seek);  //??? 4 bytes*3
         *seek += 12; //???
-        self.read_rse_instrument(data, seek, number);
+        self.read_rse_instrument(data, seek, track);
         if self.version.number > (5,0,0) {
-            self.tracks[number].rse.equalizer = self.read_rse_equalizer(data, seek, 4);
-            self.read_rse_instrument_effect(data, seek, number);
+            track.rse.equalizer = self.read_rse_equalizer(data, seek, 4);
+            self.read_rse_instrument_effect(data, seek, track);
         }
     }
     /// Read RSE instrument.
@@ -87,22 +88,23 @@ impl Song {
     /// - Unknown `int`.
     /// - Sound bank: `int`.
     /// - Effect number: `int`. Vestige of Guitar Pro 5.0 format.
-    pub(crate) fn read_rse_instrument(&mut self, data: &[u8], seek: &mut usize, number: usize) {
-        self.tracks[number].rse.instrument.instrument = read_int(data, seek).to_i16().unwrap();
-        self.tracks[number].rse.instrument.unknown = read_int(data, seek).to_i16().unwrap(); //??? mostly 1
-        self.tracks[number].rse.instrument.sound_bank = read_int(data, seek).to_i16().unwrap();
+    pub(crate) fn read_rse_instrument(&mut self, data: &[u8], seek: &mut usize, track: &mut Track) {
+        track.rse.instrument.instrument = read_int(data, seek).to_i16().unwrap();
+        track.rse.instrument.unknown    = read_int(data, seek).to_i16().unwrap(); //??? mostly 1
+        track.rse.instrument.sound_bank = read_int(data, seek).to_i16().unwrap();
+        println!("read_rse_instrument(), instrument: {} {} {}", track.rse.instrument.instrument, track.rse.instrument.unknown, track.rse.instrument.sound_bank);
         if self.version.number == (5,0,0) {
-            self.tracks[number].rse.instrument.effect_number = read_short(data, seek);
+            track.rse.instrument.effect_number = read_short(data, seek);
             *seek += 1;
-        } else {self.tracks[number].rse.instrument.effect_number = read_int(data, seek).to_i16().unwrap();}
+        } else {track.rse.instrument.effect_number = read_int(data, seek).to_i16().unwrap();}
     }
     /// Read RSE instrument effect name. This feature was introduced in Guitar Pro 5.1.
     /// - Effect name: `int-byte-size-string`.
     /// - Effect category: `int-byte-size-string`.
-    pub(crate) fn read_rse_instrument_effect(&mut self, data: &[u8], seek: &mut usize, number: usize) {
+    pub(crate) fn read_rse_instrument_effect(&mut self, data: &[u8], seek: &mut usize, track: &mut Track) {
         if self.version.number > (5,0,0) {
-            self.tracks[number].rse.instrument.effect = read_int_size_string(data, seek);
-            self.tracks[number].rse.instrument.effect_category = read_int_size_string(data, seek);
+            track.rse.instrument.effect = read_int_byte_size_string(data, seek);
+            track.rse.instrument.effect_category = read_int_byte_size_string(data, seek);
         }
     }
 }

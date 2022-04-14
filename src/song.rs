@@ -173,102 +173,39 @@ impl Song {
 
     /// Read information (name, artist, ...)
     fn read_info(&mut self, data: &[u8], seek: &mut usize) {
-        self.name        = read_int_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
-        self.subtitle    = read_int_size_string(data, seek);
-        self.artist      = read_int_size_string(data, seek);
-        self.album       = read_int_size_string(data, seek);
-        self.words       = read_int_size_string(data, seek); //music
+        self.name        = read_int_byte_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
+        self.subtitle    = read_int_byte_size_string(data, seek);
+        self.artist      = read_int_byte_size_string(data, seek);
+        self.album       = read_int_byte_size_string(data, seek);
+        self.words       = read_int_byte_size_string(data, seek); //music
         self.author      = self.words.clone(); //GP3
-        self.copyright   = read_int_size_string(data, seek);
-        self.writer      = read_int_size_string(data, seek); //tabbed by
-        self.instructions= read_int_size_string(data, seek); //instructions
+        self.copyright   = read_int_byte_size_string(data, seek);
+        self.writer      = read_int_byte_size_string(data, seek); //tabbed by
+        self.instructions= read_int_byte_size_string(data, seek); //instructions
         //notices
         let nc = read_int(data, seek).to_usize().unwrap(); //notes count
-        if nc > 0 { for i in 0..nc { self.notice.push(read_int_size_string(data, seek)); println!("  {}\t\t{}",i, self.notice[self.notice.len()-1]); }}
+        if nc > 0 { for i in 0..nc { self.notice.push(read_int_byte_size_string(data, seek)); println!("  {}\t\t{}",i, self.notice[self.notice.len()-1]); }}
     }
 
     /// Read information (name, artist, ...)
     fn read_info_v5(&mut self, data: &[u8], seek: &mut usize) {
-        self.name        = read_int_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
-        self.subtitle    = read_int_size_string(data, seek);
-        self.artist      = read_int_size_string(data, seek);
-        self.album       = read_int_size_string(data, seek);
-        self.words       = read_int_size_string(data, seek); //music
-        self.author      = read_int_size_string(data, seek);
-        self.copyright   = read_int_size_string(data, seek);
-        self.writer      = read_int_size_string(data, seek); //tabbed by
-        self.instructions= read_int_size_string(data, seek); //instructions
+        self.name        = read_int_byte_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
+        self.subtitle    = read_int_byte_size_string(data, seek);
+        self.artist      = read_int_byte_size_string(data, seek);
+        self.album       = read_int_byte_size_string(data, seek);
+        self.words       = read_int_byte_size_string(data, seek); //music
+        self.author      = read_int_byte_size_string(data, seek);
+        self.copyright   = read_int_byte_size_string(data, seek);
+        self.writer      = read_int_byte_size_string(data, seek); //tabbed by
+        self.instructions= read_int_byte_size_string(data, seek); //instructions
         //notices
         let nc = read_int(data, seek); //notes count
         //println!("{}", nc);
-        if nc > 0 { for _ in 0..nc { self.notice.push(read_int_size_string(data, seek)); }}
+        if nc > 0 { for _ in 0..nc { self.notice.push(read_int_byte_size_string(data, seek)); }}
     }
 
-    /* INIT:
-    this.currentStart = measure.getStart();
-    this.voices = new TGVoiceData[TGBeat.MAX_VOICES];
-    for(int i = 0 ; i < this.voices.length ; i ++ ) this.voices[i] = new TGVoiceData(measure);
-    */
-
-
-    /*impl Default for VoiceData {
-        fn default() -> Self { VoiceData {
-            flags: 0,
-            duration_value: DURATION_QUARTER, duration_dotted: false, duration_double_dotted: false
-        }}
-    }*/
-    /* DEFAUT: 
-    this.flags = 0;
-    this.setStart(measure.getStart());
-    this.setVelocity(TGVelocities.DEFAULT);
-    */
-
-    pub const _MAX_STRINGS: i32 = 25;
+    /*pub const _MAX_STRINGS: i32 = 25;
     pub const _MIN_STRINGS: i32 = 1;
     pub const _MAX_OFFSET: i32 = 24;
-    pub const _MIN_OFFSET: i32 = -24;
-
-    /*
-    this.number = 0;
-    this.offset = 0;
-    this.channelId = -1;
-    this.solo = false;
-    this.mute = false;
-    this.name = new String();
-    this.measures = new ArrayList<TGMeasure>();
-    this.strings = new ArrayList<TGString>();
-    this.color = factory.newColor();
-    this.lyrics = factory.newLyric();
-        public void addMeasure(int index,TGMeasure measure){
-            measure.setTrack(this);
-            this.measures.add(index,measure);
-        }
-        
-        public TGMeasure getMeasure(int index){
-            if(index >= 0 && index < countMeasures()){
-                return this.measures.get(index);
-            }
-            return null;
-        }
-        public String[] getLyricBeats(){
-            String lyrics = getLyrics();
-            lyrics = lyrics.replaceAll("\n",REGEX); //REGEX = " "
-            lyrics = lyrics.replaceAll("\r",REGEX);
-            return lyrics.split(REGEX);
-        }
-    */
-
-    /* 
-    pub const DEFAULT_PERCUSSION_CHANNEL: i8 = 9;
-    pub const DEFAULT_PERCUSSION_PROGRAM: i8 = 0;
-    pub const DEFAULT_PERCUSSION_BANK: i16 = 128;
-
-    pub const DEFAULT_BANK: i8 = 0;
-    pub const DEFAULT_PROGRAM: i8 = 25;
-    pub const DEFAULT_VOLUME: i8 = 127;
-    pub const DEFAULT_BALANCE: i8 = 64;
-    pub const DEFAULT_CHORUS: i8 = 0;
-    pub const DEFAULT_REVERB: i8 = 0;
-    pub const DEFAULT_PHASER: i8 = 0;
-    pub const DEFAULT_TREMOLO: i8 = 0;*/
+    pub const _MIN_OFFSET: i32 = -24;*/
 }
