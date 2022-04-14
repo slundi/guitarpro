@@ -52,7 +52,7 @@ impl Song {
             me.volume = read_int(data, seek).to_f32().unwrap();
             read_int(data, seek); //???
             me.equalizer = self.read_rse_equalizer(data, seek, 11);
-            println!("read_rse_master_effect(): {:?}", me);
+            //println!("read_rse_master_effect(): {:?}", me);
         }
         me
     }

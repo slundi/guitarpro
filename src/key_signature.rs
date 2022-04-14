@@ -65,15 +65,15 @@ impl Default for Duration {
 impl Duration {
     //fn convert_time(&self, time: u64) -> u64 { time * self.division_times as u64 / self.division_enters as u64 }
 
-    pub fn is_supported(&self) -> bool { SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times))}
+    pub(crate) fn is_supported(&self) -> bool { SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times))}
 
-    pub fn convert_time(&self, time: u32) -> u32 {
+    pub(crate) fn convert_time(&self, time: u32) -> u32 {
         let result = fraction::Fraction::new(time * self.tuplet_enters.to_u32().unwrap(), self.tuplet_times.to_u32().unwrap());
         if *result.denom().unwrap() == 1 {(*result.numer().unwrap()).to_u32().unwrap()}
         else {result.trunc().to_u32().unwrap()}
     }
 
-    pub fn time(&self) -> u32 {
+    pub(crate) fn time(&self) -> u32 {
         let mut result = (f64::from(DURATION_QUARTER_TIME.to_i32().unwrap()) * 4f64 / f64::from(self.value)).trunc();
         //println!("\tDuration.time(): result: {}", result);
         if self.dotted { result += (result/2f64).trunc(); }
@@ -82,7 +82,7 @@ impl Duration {
         self.convert_time(result.to_u32().unwrap())
     }
 
-    pub fn index(&self) -> u8 {
+    pub(crate) fn index(&self) -> u8 {
         let mut index = 0u8;
         let mut value = self.value;
         loop {
@@ -105,7 +105,7 @@ impl Duration {
 /// * *3*: thirty-second note
 /// 
 /// If flag at *0x20* is true, the tuplet is read
-pub fn read_duration(data: &[u8], seek: &mut usize, flags: u8) -> Duration {
+pub(crate) fn read_duration(data: &[u8], seek: &mut usize, flags: u8) -> Duration {
     //println!("read_duration()");
     let mut d = Duration{value: 1 << (read_signed_byte(data, seek) + 2), ..Default::default()};
     //let b = read_signed_byte(data, seek); println!("B: {}", b); d.value = 1 << (b + 2);

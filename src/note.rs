@@ -23,7 +23,7 @@ impl Default for Note {fn default() -> Self {Note {
     kind: NoteType::Rest,
 }}}
 impl Note {
-    pub fn real_value(&self, strings:Vec<(i8,i8)>) -> i8 {
+    pub(crate) fn real_value(&self, strings:Vec<(i8,i8)>) -> i8 {
         if self.string > 0 {return self.value.to_i8().unwrap() + strings[self.string.to_usize().unwrap() -1].1;}
         panic!("Cannot get real value for the note.");
     }
@@ -70,12 +70,12 @@ impl Default for NoteEffect {
     }}
 }
 impl NoteEffect {
-    pub fn is_bend(&self) -> bool {self.bend.is_some()}
-    pub fn is_harmonic(&self) -> bool {self.harmonic.is_some()}
-    pub fn is_grace(&self) -> bool {self.grace.is_some()}
-    pub fn is_trill(&self) -> bool {self.trill.is_some()}
-    pub fn is_tremollo_picking(&self) -> bool {self.tremolo_picking.is_some()}
-    pub fn is_default(&self) -> bool {
+    pub(crate) fn is_bend(&self) -> bool {self.bend.is_some()}
+    pub(crate) fn is_harmonic(&self) -> bool {self.harmonic.is_some()}
+    pub(crate) fn is_grace(&self) -> bool {self.grace.is_some()}
+    pub(crate) fn is_trill(&self) -> bool {self.trill.is_some()}
+    pub(crate) fn is_tremollo_picking(&self) -> bool {self.tremolo_picking.is_some()}
+    pub(crate) fn is_default(&self) -> bool {
         let d = NoteEffect::default();
         self.left_hand_finger == d.left_hand_finger &&
         self.right_hand_finger == d.right_hand_finger &&
@@ -91,7 +91,7 @@ impl NoteEffect {
         self.staccato == d.staccato &&
         self.let_ring == d.let_ring
     }
-    pub fn is_fingering(&self) -> bool {self.left_hand_finger != Fingering::Open || self.right_hand_finger != Fingering::Open}
+    pub(crate) fn is_fingering(&self) -> bool {self.left_hand_finger != Fingering::Open || self.right_hand_finger != Fingering::Open}
 }
 
 impl Song {
@@ -104,7 +104,7 @@ impl Song {
     /// - *0x20*: 2th string
     /// - *0x40*: 1th string
     /// - *0x80*: *blank*
-    pub fn read_notes(&mut self, data: &[u8], seek: &mut usize, track_index: usize, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
+    pub(crate) fn read_notes(&mut self, data: &[u8], seek: &mut usize, track_index: usize, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
         let flags = read_byte(data, seek);
         //println!("read_notes(), flags: {}", flags);
         for i in 0..self.tracks[track_index].strings.len() {

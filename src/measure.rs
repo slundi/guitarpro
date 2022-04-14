@@ -55,7 +55,7 @@ impl Song {
     /// - measure n/track 2
     /// - ...
     /// - measure n/track m
-    pub fn read_measures(&mut self, data: &[u8], seek: &mut usize) {
+    pub(crate) fn read_measures(&mut self, data: &[u8], seek: &mut usize) {
         let mut start = DURATION_QUARTER_TIME;
         for h in 0..self.measure_headers.len() {
             self.measure_headers[h].start = start;

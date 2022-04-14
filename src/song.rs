@@ -104,12 +104,9 @@ impl Song {
         let track_count = read_int(data, &mut seek).to_usize().unwrap();
         //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
-        for i in 1..measure_count + 1  {
-            self.current_measure_number = Some(i);
-            self.read_measure_header(data, &mut seek, i);
-        }
+        self.read_measure_headers(data, &mut seek, measure_count);
         self.current_measure_number = Some(0);
-        for i in 0..track_count {self.read_track(data, &mut seek, i);}
+        self.read_tracks(data, &mut seek, track_count);
         self.read_measures(data, &mut seek);
     }
     /// Read the song. A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
@@ -145,7 +142,7 @@ impl Song {
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
         self.read_measure_headers(data, &mut seek, measure_count);
         //self.current_measure_number = Some(0);
-        for i in 0..track_count {self.read_track(data, &mut seek, i);}
+        self.read_tracks(data, &mut seek, track_count);
 
         self.read_measures(data, &mut seek);
     }
@@ -170,8 +167,7 @@ impl Song {
         //println!("{} {} {} {:?}", self.tempo_name, self.tempo, self.hide_tempo, self.key.key); //OK
         //println!("Track count: {} \t Measure count: {}", track_count, measure_count); //OK
         self.read_measure_headers_v5(data, &mut seek, measure_count, &directions);
-        for i in 0..track_count {self.read_track_v5(data, &mut seek, i);}
-        if self.version.number == (5,0,0) {seek += 2;} else {seek += 1;}
+        self.read_tracks_v5(data, &mut seek, track_count);
         self.read_measures(data, &mut seek);
     }
 
@@ -204,7 +200,7 @@ impl Song {
         self.instructions= read_int_size_string(data, seek); //instructions
         //notices
         let nc = read_int(data, seek); //notes count
-        println!("{}", nc);
+        //println!("{}", nc);
         if nc > 0 { for _ in 0..nc { self.notice.push(read_int_size_string(data, seek)); }}
     }
 

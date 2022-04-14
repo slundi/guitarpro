@@ -74,6 +74,21 @@ impl Default for Track {
     }}
 }
 impl Song {
+    /// Read tracks. The tracks are written one after another, their number having been specified previously in :meth:`GP3File.readSong`.
+    /// - `track_count`: number of tracks to expect.
+    pub(crate) fn read_tracks(&mut self, data: &[u8], seek: &mut usize, track_count: usize) {
+        //println!("read_tracks()");
+        for i in 0..track_count {self.read_track(data, seek, i);}
+    }
+
+    pub(crate) fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize) {
+        println!("read_tracks_v5(): {:?} {}", self.version.number, self.version.number == (5,1,0));
+        for i in 0..track_count {
+            //self.read_track_v5(data, seek, i);
+            *seek += if self.version.number == (5,0,0) {2} else {1};
+        }
+    }
+
     /// Read a  track. The first byte is the track's flags. It presides the track's attributes:
     /// 
     /// | **bit 7 to 3** | **bit 2**   | **bit 1**                | **bit 0**   |
@@ -91,8 +106,8 @@ impl Song {
     /// * **Number of frets**: `integer`. The number of frets of the instrument.
     /// * **Height of the capo**: `integer`. The number of the fret on which a capo is present. If no capo is used, the value is `0x00000000`.
     /// * **Track's color**: `color`. The track's displayed color in Guitar Pro.
-    pub fn read_track(&mut self, data: &[u8], seek: &mut usize, _number: usize) {
-        let mut track = Track::default();
+    fn read_track(&mut self, data: &[u8], seek: &mut usize, number: usize) {
+        let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
         //read the flag
         let flags = read_byte(data, seek);
         track.percussion_track = (flags & 0x01) == 0x01; //Drums track
@@ -164,48 +179,51 @@ impl Song {
     /// - Auto accentuation: :ref:`byte`. See :class:`guitarpro.models.Accentuation`.
     /// - MIDI bank: :ref:`byte`.
     /// - Track RSE. See `readTrackRSE`.
-    pub fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) {
+    fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) {
+        let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
+        if number == 0 || self.version.number == (5,0,0) {*seek += 1;} //always 0 //missing 3 skips?
         let flags1 = read_byte(data, seek);
         println!("read_track_v5(), flags1: {}", flags1);
-        self.tracks[number].percussion_track = (flags1 & 0x01) == 0x01;
-        self.tracks[number].banjo_track = (flags1 & 0x02) == 0x02;
-        self.tracks[number].visible = (flags1 & 0x04) == 0x04;
-        self.tracks[number].solo = (flags1 & 0x10) == 0x10;
-        self.tracks[number].mute = (flags1 & 0x20) == 0x20;
-        self.tracks[number].use_rse = (flags1 & 0x40) == 0x40;
-        self.tracks[number].indicate_tuning = (flags1 & 0x80) == 0x80;
-        self.tracks[number].name = read_byte_size_string(data, seek);
-        *seek += 40 - self.tracks[number].name.len();
+        track.percussion_track = (flags1 & 0x01) == 0x01;
+        track.banjo_track = (flags1 & 0x02) == 0x02;
+        track.visible = (flags1 & 0x04) == 0x04;
+        track.solo = (flags1 & 0x10) == 0x10;
+        track.mute = (flags1 & 0x20) == 0x20;
+        track.use_rse = (flags1 & 0x40) == 0x40;
+        track.indicate_tuning = (flags1 & 0x80) == 0x80;
+        track.name = read_byte_size_string(data, seek);
+        *seek += 40 - track.name.len();
         let string_count = read_int(data, seek).to_u8().unwrap();
-        self.tracks[number].strings.clear();
+        track.strings.clear();
         for i in 0i8..7i8 {
             let i_tuning = read_int(data, seek).to_i8().unwrap();
-            if string_count.to_i8().unwrap() > i { self.tracks[number].strings.push((i + 1, i_tuning)); }
+            if string_count.to_i8().unwrap() > i { track.strings.push((i + 1, i_tuning)); }
         }
-        self.tracks[number].port = read_int(data, seek).to_u8().unwrap();
+        track.port = read_int(data, seek).to_u8().unwrap();
         //TODO: 
-        self.read_midi_channel(data, seek, self.tracks[number].channel_index.to_u8().unwrap());
-        if self.channels[number].channel == 9 {self.tracks[number].percussion_track = true;}
-        self.tracks[number].fret_count = read_int(data, seek).to_u8().unwrap();
-        self.tracks[number].offset = read_int(data, seek);
-        self.tracks[number].color = read_color(data, seek);
+        self.read_midi_channel(data, seek, track.channel_index.to_u8().unwrap());
+        if self.channels[number].channel == 9 {track.percussion_track = true;}
+        track.fret_count = read_int(data, seek).to_u8().unwrap();
+        track.offset = read_int(data, seek);
+        track.color = read_color(data, seek);
 
         let flags2 = read_short(data, seek);
-        self.tracks[number].settings.tablature = (flags2 & 0x0001) == 0x0001;
-        self.tracks[number].settings.notation = (flags2 & 0x0002) == 0x0002;
-        self.tracks[number].settings.diagram_are_below = (flags2 & 0x0004) == 0x0004;
-        self.tracks[number].settings.show_rythm = (flags2 & 0x0008) == 0x0008;
-        self.tracks[number].settings.force_horizontal = (flags2 & 0x0010) == 0x0010;
-        self.tracks[number].settings.force_channels = (flags2 & 0x0020) == 0x0020;
-        self.tracks[number].settings.diagram_list = (flags2 & 0x0040) == 0x0040;
-        self.tracks[number].settings.diagram_in_score = (flags2 & 0x0080) == 0x0080;
+        track.settings.tablature = (flags2 & 0x0001) == 0x0001;
+        track.settings.notation = (flags2 & 0x0002) == 0x0002;
+        track.settings.diagram_are_below = (flags2 & 0x0004) == 0x0004;
+        track.settings.show_rythm = (flags2 & 0x0008) == 0x0008;
+        track.settings.force_horizontal = (flags2 & 0x0010) == 0x0010;
+        track.settings.force_channels = (flags2 & 0x0020) == 0x0020;
+        track.settings.diagram_list = (flags2 & 0x0040) == 0x0040;
+        track.settings.diagram_in_score = (flags2 & 0x0080) == 0x0080;
         //0x0100 ???
-        self.tracks[number].settings.auto_let_ring = (flags2 & 0x0200) == 0x0200;
-        self.tracks[number].settings.auto_brush = (flags2 & 0x0400) == 0x0400;
-        self.tracks[number].settings.extend_rythmic = (flags2 & 0x0800) == 0x0800;
+        track.settings.auto_let_ring = (flags2 & 0x0200) == 0x0200;
+        track.settings.auto_brush = (flags2 & 0x0400) == 0x0400;
+        track.settings.extend_rythmic = (flags2 & 0x0800) == 0x0800;
 
-        self.tracks[number].rse.auto_accentuation = get_accentuation(read_byte(data, seek));
+        track.rse.auto_accentuation = get_accentuation(read_byte(data, seek));
         self.channels[number].bank = read_byte(data, seek); //TODO:
         self.read_track_rse(data, seek, number);
+        self.tracks.push(track);
     }
 }

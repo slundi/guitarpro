@@ -58,21 +58,21 @@ impl Default for MidiChannel {
     fn default() -> Self { MidiChannel { channel: 0, effect_channel: 1, instrument: 25, volume: 104, balance: 64, chorus: 0, reverb: 0, phaser: 0, tremolo: 0, bank: 0, }}
 }
 impl MidiChannel {
-    pub fn is_percussion_channel(self) -> bool {
+    pub(crate) fn is_percussion_channel(self) -> bool {
         (self.channel % 16) == DEFAULT_PERCUSSION_CHANNEL
     }
-    pub fn set_instrument(mut self, instrument: i32) {
+    pub(crate) fn set_instrument(mut self, instrument: i32) {
         if instrument == -1 && self.is_percussion_channel() { self.instrument = 0; }
         else {self.instrument = instrument;}
     }
 
-    pub fn get_instrument(self) -> i32 {self.instrument}
-    pub fn get_instrument_name(&self) -> String {String::from(CHANNEL_DEFAULT_NAMES[self.instrument.to_usize().unwrap()])} //TODO: FIXME: does not seems OK
+    pub(crate) fn get_instrument(self) -> i32 {self.instrument}
+    pub(crate) fn get_instrument_name(&self) -> String {String::from(CHANNEL_DEFAULT_NAMES[self.instrument.to_usize().unwrap()])} //TODO: FIXME: does not seems OK
 }
 
 impl Song{
     /// Read all the MIDI channels
-    pub fn read_midi_channels(&mut self, data: &[u8], seek: &mut usize) { for i in 0u8..64u8 { self.channels.push(self.read_midi_channel(data, seek, i)); } }
+    pub(crate) fn read_midi_channels(&mut self, data: &[u8], seek: &mut usize) { for i in 0u8..64u8 { self.channels.push(self.read_midi_channel(data, seek, i)); } }
     /// Read MIDI channels. Guitar Pro format provides 64 channels (4 MIDI ports by 16 hannels), the channels are stored in this order:
     ///`port1/channel1`, `port1/channel2`, ..., `port1/channel16`, `port2/channel1`, ..., `port4/channel16`.
     ///
@@ -87,7 +87,7 @@ impl Song{
     /// * **Tremolo**: `byte`
     /// * **blank1**: `byte` => Backward compatibility with version 3.0
     /// * **blank2**: `byte` => Backward compatibility with version 3.0
-    pub fn read_midi_channel(&self, data: &[u8], seek: &mut usize, channel: u8) -> MidiChannel {
+    pub(crate) fn read_midi_channel(&self, data: &[u8], seek: &mut usize, channel: u8) -> MidiChannel {
         let instrument = read_int(data, seek);
         let mut c = MidiChannel{channel, effect_channel: channel, ..Default::default()};
         c.volume = read_signed_byte(data, seek); c.balance = read_signed_byte(data, seek);

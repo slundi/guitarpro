@@ -2,7 +2,7 @@
 /// An enumeration of different triplet feels.
 #[derive(Debug,Clone,PartialEq)]
 pub enum TripletFeel { None, Eighth, Sixteenth }
-pub fn get_triplet_feel(value: i8) -> TripletFeel {
+pub(crate) fn get_triplet_feel(value: i8) -> TripletFeel {
     match value {
         0 => TripletFeel::None,
         1 => TripletFeel::Eighth,
@@ -18,7 +18,7 @@ pub enum MeasureClef { Treble, Bass, Tenor, Alto }
 /// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
 #[derive(Debug,Clone)]
 pub enum LineBreak { None, Break, Protect }
-pub fn get_line_break(value: u8) -> LineBreak {
+pub(crate) fn get_line_break(value: u8) -> LineBreak {
     match value {
         1 => LineBreak::Break,
         2 => LineBreak::Protect,
@@ -37,7 +37,7 @@ pub enum SlideType {
     OutDownwards,
     OutUpWards
 }
-pub fn get_slide_type(value: i8) -> SlideType {
+pub(crate) fn get_slide_type(value: i8) -> SlideType {
     match value {
         -2 => SlideType::IntoFromAbove,
         -1 => SlideType::IntoFromBelow,
@@ -56,7 +56,7 @@ pub enum NoteType {
     Rest, //0
     Normal, Tie, Dead,
 }
-pub fn get_note_type(value: u8) -> NoteType {
+pub(crate) fn get_note_type(value: u8) -> NoteType {
     match value {
         0 => NoteType::Rest,
         1 => NoteType::Normal,
@@ -68,7 +68,7 @@ pub fn get_note_type(value: u8) -> NoteType {
 
 #[derive(Debug,Clone,PartialEq)]
 pub enum BeatStatus {Empty, Normal, Rest}
-pub fn get_beat_status(value: u8) -> BeatStatus {
+pub(crate) fn get_beat_status(value: u8) -> BeatStatus {
     match value {
         0 => BeatStatus::Empty,
         1 => BeatStatus::Normal,
@@ -83,7 +83,7 @@ pub enum TupletBracket {None, Start, End}
 /// Octave signs
 #[derive(Debug,Clone,PartialEq)]
 pub enum Octave { None, Ottava, Quindicesima, OttavaBassa, QuindicesimaBassa }
-pub fn get_octave_number(value: Octave) -> i8 {
+pub(crate) fn get_octave_number(value: Octave) -> i8 {
     match value {
         Octave::Ottava => 1,
         Octave::Quindicesima => 2,
@@ -92,7 +92,7 @@ pub fn get_octave_number(value: Octave) -> i8 {
         _ => 0,
     }
 }
-pub fn get_octave(value: u8) -> Octave {
+pub(crate) fn get_octave(value: u8) -> Octave {
     match value {
         0 => Octave::None,
         1 => Octave::Ottava,
@@ -106,7 +106,7 @@ pub fn get_octave(value: u8) -> Octave {
 /// All beat stroke directions
 #[derive(Debug,Clone,PartialEq)]
 pub enum BeatStrokeDirection { None, Up, Down }
-pub fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
+pub(crate) fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
     match value {
         0 => BeatStrokeDirection::None,
         1 => BeatStrokeDirection::Up,
@@ -117,7 +117,7 @@ pub fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
 /// Characteristic of articulation
 #[derive(Debug,Clone,PartialEq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }
-pub fn get_slap_effect(value: u8) -> SlapEffect {
+pub(crate) fn get_slap_effect(value: u8) -> SlapEffect {
     match value {
         0 => SlapEffect::None,
         1 => SlapEffect::Tapping,
@@ -166,7 +166,7 @@ pub enum ChordType {
     /// Power chord.
     Power,
 }
-pub fn get_chord_type(value: u8) -> ChordType {
+pub(crate) fn get_chord_type(value: u8) -> ChordType {
     match value {
         0  => ChordType::Major,
         1  => ChordType::Seventh,
@@ -197,7 +197,7 @@ pub enum ChordAlteration {
     /// Augmented.
     Augmented,
 }
-pub fn get_chord_alteration(value: u8) -> ChordAlteration {
+pub(crate) fn get_chord_alteration(value: u8) -> ChordAlteration {
     match value {
         0 => ChordAlteration::Perfect,
         1 => ChordAlteration::Diminished,
@@ -217,7 +217,7 @@ pub enum ChordExtension {
     /// Thirteenth chord.
     Thirteenth
 }
-pub fn get_chord_extension(value: u8) -> ChordExtension {
+pub(crate) fn get_chord_extension(value: u8) -> ChordExtension {
     match value {
         0 => ChordExtension::None,
         1 => ChordExtension::Ninth,
@@ -245,7 +245,7 @@ pub enum Fingering {
     Little,
 }
 
-pub fn get_fingering(value: i8) -> Fingering {
+pub(crate) fn get_fingering(value: i8) -> Fingering {
     match value {
         -1 => Fingering::Open,
         0  => Fingering::Thumb,
@@ -289,7 +289,7 @@ pub enum BendType {
     /// Release the bar down.
     ReleaseDown
 }
-pub fn get_bend_type(value: i8) -> BendType {
+pub(crate) fn get_bend_type(value: i8) -> BendType {
     match value {
         0 => BendType::None,
         1 => BendType::Bend,
@@ -319,7 +319,7 @@ pub enum GraceEffectTransition {
     ///Perform a hammer on.
     Hammer
 }
-pub fn get_grace_effect_transition(value: i8) -> GraceEffectTransition {
+pub(crate) fn get_grace_effect_transition(value: i8) -> GraceEffectTransition {
     match value {
         0 => GraceEffectTransition::None,
         1 => GraceEffectTransition::Slide,
@@ -341,7 +341,7 @@ pub enum HarmonicType {
 /// Values of auto-accentuation on the beat found in track RSE settings
 #[derive(Debug,Clone)]
 pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
-pub fn get_accentuation(value: u8) -> Accentuation {
+pub(crate) fn get_accentuation(value: u8) -> Accentuation {
     match value {
         0 => Accentuation::None,
         1 => Accentuation::VerySoft,

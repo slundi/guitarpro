@@ -65,7 +65,7 @@ pub struct PitchClass {
     pub sharp: bool,
 }
 impl PitchClass {
-    pub fn from(just: i8, accidental: Option<i8>, sharp: Option<bool>) -> PitchClass {
+    pub(crate) fn from(just: i8, accidental: Option<i8>, sharp: Option<bool>) -> PitchClass {
         let mut p = PitchClass {just, accidental:0, value:-1, sharp: true, note:String::with_capacity(2) };
         let pitch: i8;
         let accidental2: i8;
@@ -89,7 +89,7 @@ impl PitchClass {
         if sharp.is_none() { p.sharp = p.accidental >= 0; }
         p
     }
-    pub fn from_note(note: String) -> PitchClass {
+    pub(crate) fn from_note(note: String) -> PitchClass {
         let mut p = PitchClass {note, just:0, accidental:0, value:-1, sharp: true,};
         if p.note.ends_with('b')      {p.accidental = -1; p.sharp = false;}
         else if p.note.ends_with('#') {p.accidental = 1;}
@@ -113,7 +113,7 @@ impl std::fmt::Display for PitchClass {
 impl Song {
     /// Read chord diagram. First byte is chord header. If it's set to 0, then following chord is written in 
     /// default (GP3) format. If chord header is set to 1, then chord diagram in encoded in more advanced (GP4) format.
-    pub fn read_chord(&self, data: &[u8], seek: &mut usize, string_count: u8) -> Chord {
+    pub(crate) fn read_chord(&self, data: &[u8], seek: &mut usize, string_count: u8) -> Chord {
         let mut c = Chord {length: string_count, strings: vec![-1; string_count.into()], ..Default::default()};
         for _ in 0..string_count {c.strings.push(-1);}
         c.new_format = Some(read_bool(data, seek));
@@ -228,7 +228,7 @@ impl Song {
         chord.kind = Some(get_chord_type(read_byte(data, seek)));
         chord.extension = Some(get_chord_extension(read_byte(data, seek)));
         let i = read_int(data, seek);
-        println!("{:?}", i);
+        //println!("{:?}", i);
         chord.bass = Some(PitchClass::from(i.to_i8().unwrap(), None, chord.sharp));
         chord.tonality = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
         chord.add = Some(read_bool(data, seek));

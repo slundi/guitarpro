@@ -39,12 +39,12 @@ impl std::fmt::Display for Lyrics {
 ///
 /// First, read an `i32` that points to the track lyrics are bound to. Then it is followed by 5 lyric lines. Each one consists of
 /// number of starting measure encoded in`i32` and`int-size-string` holding text of the lyric line.
-pub fn read_lyrics(data: &[u8], seek: &mut usize) -> Lyrics {
+pub(crate) fn read_lyrics(data: &[u8], seek: &mut usize) -> Lyrics {
     let mut lyrics = Lyrics{track_choice: read_int(data, seek).to_u8().unwrap(), ..Default::default()};
     //println!("Lyrics for track #{}", lyrics.track_choice);
     let starting_measure = read_int(data, seek).to_u16().unwrap();
     let text = read_int_size_string(data, seek);
-    println!("read_lyrics: {}, \"{}\"", starting_measure, text);
+    //println!("read_lyrics: {}, \"{}\"", starting_measure, text);
     lyrics.line1.insert(starting_measure, text);
     let starting_measure = read_int(data, seek).to_u16().unwrap();
     let text = read_int_size_string(data, seek);

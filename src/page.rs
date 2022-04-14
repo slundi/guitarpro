@@ -84,7 +84,7 @@ impl Song {
     ///   * copyright1, e.g. *"Copyright %copyright%"*
     ///   * copyright2, e.g. *"All Rights Reserved - International Copyright Secured"*
     ///   * pageNumber
-    pub fn read_page_setup(&mut self, data: &[u8], seek: &mut usize) {
+    pub(crate) fn read_page_setup(&mut self, data: &[u8], seek: &mut usize) {
         self.page_setup.page_size.x = read_int(data, seek).to_u16().unwrap();
         self.page_setup.page_size.y = read_int(data, seek).to_u16().unwrap();
         self.page_setup.page_margin.left   = read_int(data, seek).to_u16().unwrap();
