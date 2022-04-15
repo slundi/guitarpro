@@ -136,7 +136,7 @@ impl Song {
     /// - Mix table change effect. See `MixTableChange::read()`.
     pub(crate) fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
         let flags = read_byte(data, seek);
-        //println!("read_beat(), flags: {}", flags);
+        println!("read_beat(), flags: {}", flags);
         //get a beat
         let mut b = 0;
         let mut new_beat = true;
@@ -183,8 +183,8 @@ impl Song {
     /// - *0x1000*: break secondary tuplet
     /// - *0x2000*: force tuplet bracket
     /// - Break secondary beams: `byte`. Appears if flag at *0x0800* is set. Signifies how much beams should be broken.
-    pub(crate) fn read_beat_v5(&mut self, data: &[u8], seek: &mut usize, start: &mut i64, voice: &mut Voice) -> i64 {
-        //TODO: let duration = self.read_beat(data, seek, voice, start, track_index);
+    pub(crate) fn read_beat_v5(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: &mut i64, track_index: usize) -> i64 {
+        let duration = self.read_beat(data, seek, voice, *start, track_index);
         //get a beat
         let mut b = 0;
         let mut new_beat = true;
@@ -199,6 +199,7 @@ impl Song {
         }
 
         let flags2 = read_short(data, seek);
+        println!("read_beat_v5(), flags2: {}", flags2);
         if (flags2 & 0x0010) == 0x0010 {voice.beats[b].octave = Octave::Ottava;}
         if (flags2 & 0x0020) == 0x0020 {voice.beats[b].octave = Octave::OttavaBassa;}
         if (flags2 & 0x0040) == 0x0040 {voice.beats[b].octave = Octave::Quindicesima;}
@@ -213,7 +214,7 @@ impl Song {
         if (flags2 & 0x0400) == 0x0400 {voice.beats[b].display.tuple_bracket = TupletBracket::Start;}
         if (flags2 & 0x0800) == 0x0800 {voice.beats[b].display.tuple_bracket = TupletBracket::End;}
 
-        0//duration
+        duration
     }
 
     /// Read beat effects. The first byte is effects flags:

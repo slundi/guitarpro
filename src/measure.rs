@@ -63,7 +63,7 @@ impl Song {
                 self.current_track = Some(t);
                 let mut m = Measure{track_index:t, header_index:h, ..Default::default()};
                 self.current_measure_number = Some(m.number);
-                self.read_measure(data, seek, &mut m, t);
+                if self.version.number < (5,0,0) {self.read_measure(data, seek, &mut m, t);} else {self.read_measure_v5(data, seek, &mut m, t);}
                 self.tracks[t].measures.push(m);
             }
             //println!("read_measures(), start: {} \t numerator: {} \t denominator: {} \t length: {}", start, self.measure_headers[h].time_signature.numerator, self.measure_headers[h].time_signature.denominator.value, self.measure_headers[h].length());
@@ -75,6 +75,7 @@ impl Song {
 
     /// Read measure. The measure is written as number of beats followed by sequence of beats.
     fn read_measure(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
+        println!("read_measure()");
         let mut voice = Voice::default();
         self.current_voice_number = Some(1);
         self.read_voice(data, seek, &mut voice, &mut measure.start, track_index);
@@ -99,9 +100,11 @@ impl Song {
     /// 
     /// Sub-measures are followed by a  `LineBreak` stored in `byte`.
     fn read_measure_v5(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
+        println!("read_measure_v5()");
         let mut start = measure.start;
         for number in 0..MAX_VOICES {
             self.current_voice_number = Some(number + 1);
+            //println!("read_measure_v5() {:?}",self.current_voice_number);
             let mut voice = Voice::default();
             self.read_voice(data, seek, &mut voice, &mut start, track_index);
             measure.voices.push(voice);
@@ -115,7 +118,7 @@ impl Song {
         for i in 0..beats {
             self.current_beat_number = Some(i + 1);
             //println!("read_measure() read_voice(), start: {}", measure.start);
-            *start += self.read_beat(data, seek, voice, *start, track_index);
+            *start += if self.version.number < (5,0,0) {self.read_beat(data, seek, voice, *start, track_index)} else {self.read_beat_v5(data, seek, voice, &mut *start, track_index)};
             //println!("read_measure() read_voice(), start: {}", measure.start);
         }
         self.current_beat_number = None;

@@ -143,7 +143,6 @@ impl Song {
         self.read_measure_headers(data, &mut seek, measure_count);
         //self.current_measure_number = Some(0);
         self.read_tracks(data, &mut seek, track_count);
-
         self.read_measures(data, &mut seek);
     }
     pub fn read_gp5(&mut self, data: &[u8]) {

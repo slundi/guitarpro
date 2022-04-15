@@ -116,7 +116,7 @@ impl Song {
 
         track.name = read_byte_size_string(data, seek);
         *seek += 40 - track.name.len();
-        println!("Track: {}", track.name);
+        //println!("Track: {}", track.name);
         let string_count = read_int(data, seek).to_u8().unwrap();
         track.strings.clear();
         for i in 0i8..7i8 {
@@ -183,7 +183,7 @@ impl Song {
         let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
         if number == 0 || self.version.number == (5,0,0) {*seek += 1;} //always 0 //missing 3 skips?
         let flags1 = read_byte(data, seek);
-        println!("read_track_v5(), flags1: {}", flags1);
+        //println!("read_track_v5(), flags1: {}", flags1);
         track.percussion_track  = (flags1 & 0x01) == 0x01;
         track.banjo_track       = (flags1 & 0x02) == 0x02;
         track.visible           = (flags1 & 0x04) == 0x04;
@@ -206,10 +206,8 @@ impl Song {
         track.offset        = read_int(data, seek);
         track.color         = read_color(data, seek);
 
-        println!("read_track_v5(), FC: {}", track.fret_count);
-
         let flags2 = read_short(data, seek);
-        println!("read_track_v5(), flags2: {}", flags2);
+        //println!("read_track_v5(), flags2: {}", flags2);
         track.settings.tablature            = (flags2 & 0x0001) == 0x0001;
         track.settings.notation             = (flags2 & 0x0002) == 0x0002;
         track.settings.diagram_are_below    = (flags2 & 0x0004) == 0x0004;
@@ -224,7 +222,7 @@ impl Song {
         track.settings.extend_rythmic       = (flags2 & 0x0800) == 0x0800;
 
         track.rse.auto_accentuation = get_accentuation(read_byte(data, seek));
-        self.channels[number].bank = read_byte(data, seek); //TODO:
+        self.channels[number].bank = read_byte(data, seek);
         self.read_track_rse(data, seek, &mut track);
         self.tracks.push(track);
     }

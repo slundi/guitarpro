@@ -74,7 +74,7 @@ impl Song {
     /// - RSE instrument effect. See `read_rse_instrument_effect()`.
     pub(crate) fn read_track_rse(&mut self, data: &[u8], seek: &mut usize, track: &mut Track) {
         track.rse.humanize = read_byte(data, seek);
-        println!("read_track_rse(), humanize: {}", track.rse.humanize);
+        //println!("read_track_rse(), humanize: {}", track.rse.humanize);
         *seek += 12; //read_int(data, seek); read_int(data, seek); read_int(data, seek);  //??? 4 bytes*3
         *seek += 12; //???
         self.read_rse_instrument(data, seek, track);
@@ -92,7 +92,7 @@ impl Song {
         track.rse.instrument.instrument = read_int(data, seek).to_i16().unwrap();
         track.rse.instrument.unknown    = read_int(data, seek).to_i16().unwrap(); //??? mostly 1
         track.rse.instrument.sound_bank = read_int(data, seek).to_i16().unwrap();
-        println!("read_rse_instrument(), instrument: {} {} {}", track.rse.instrument.instrument, track.rse.instrument.unknown, track.rse.instrument.sound_bank);
+        //println!("read_rse_instrument(), instrument: {} {} {}", track.rse.instrument.instrument, track.rse.instrument.unknown, track.rse.instrument.sound_bank);
         if self.version.number == (5,0,0) {
             track.rse.instrument.effect_number = read_short(data, seek);
             *seek += 1;
