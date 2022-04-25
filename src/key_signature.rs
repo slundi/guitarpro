@@ -2,12 +2,11 @@ use fraction::ToPrimitive;
 use crate::io::*;
 
 pub const DURATION_QUARTER_TIME: i64 = 960;
-pub const DURATION_WHOLE: u8 = 1;
-pub const DURATION_HALF: u8 = 2;
+//pub const DURATION_WHOLE: u8 = 1;
+//pub const DURATION_HALF: u8 = 2;
 pub const DURATION_QUARTER: u8 = 4;
 pub const DURATION_EIGHTH: u8 = 8;
 pub const DURATION_SIXTEENTH: u8 = 16;
-pub const DURATION_TWENTY_FOURTH: u8 = 24;
 pub const DURATION_THIRTY_SECOND: u8 = 32;
 pub const DURATION_SIXTY_FOURTH: u8 = 64;
 pub const DURATION_HUNDRED_TWENTY_EIGHTH: u8 = 128;

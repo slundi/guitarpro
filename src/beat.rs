@@ -9,7 +9,7 @@ pub struct BeatDisplay {
     force_beam: bool,
     beam_direction: VoiceDirection,
     tuple_bracket: TupletBracket,
-    break_secondary: u16,
+    break_secondary: u8,
     break_secondary_tuplet: bool,
     force_bracket: bool,
 }
@@ -136,7 +136,7 @@ impl Song {
     /// - Mix table change effect. See `MixTableChange::read()`.
     pub(crate) fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
         let flags = read_byte(data, seek);
-        println!("read_beat(), flags: {}", flags);
+        println!("read_beat(), flags: {} \t seek: {}", flags, *seek);
         //get a beat
         let mut b = 0;
         let mut new_beat = true;
@@ -154,11 +154,11 @@ impl Song {
         let duration = read_duration(data, seek, flags);
         let mut note_effect = NoteEffect::default();
         if (flags & 0x02) == 0x02 {voice.beats[b].effect.chord = Some(self.read_chord(data, seek, self.tracks[track_index].strings.len().to_u8().unwrap()));}
-        if (flags & 0x04) == 0x04 {voice.beats[b].text = read_int_size_string(data, seek);}
+        if (flags & 0x04) == 0x04 {voice.beats[b].text = read_int_byte_size_string(data, seek);}
         if (flags & 0x08) == 0x08 {
             let chord = voice.beats[b].effect.chord.clone();
-            if      self.version.number == (3,0,0) {voice.beats[b].effect = self.read_beat_effects_v3(data, seek, &mut note_effect); }
-            else if self.version.number.0 == 4 {voice.beats[b].effect = self.read_beat_effects_v4(data, seek, &mut note_effect);}
+            if   self.version.number.0 == 3 {voice.beats[b].effect = self.read_beat_effects_v3(data, seek, &mut note_effect); }
+            else                            {voice.beats[b].effect = self.read_beat_effects_v4(data, seek, &mut note_effect);}
             voice.beats[b].effect.chord = chord;
         }
         if (flags & 0x10) == 0x10 {
@@ -185,21 +185,11 @@ impl Song {
     /// - Break secondary beams: `byte`. Appears if flag at *0x0800* is set. Signifies how much beams should be broken.
     pub(crate) fn read_beat_v5(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: &mut i64, track_index: usize) -> i64 {
         let duration = self.read_beat(data, seek, voice, *start, track_index);
-        //get a beat
-        let mut b = 0;
-        let mut new_beat = true;
-        for i in (0usize..voice.beats.len()).rev() {if voice.beats[i].start == Some(*start) {
-            b = i;
-            new_beat = false;
-            break;
-        }}
-        if new_beat {
-            voice.beats.push(Beat{start: Some(*start), ..Default::default() });
-            b = voice.beats.len() - 1;
-        }
+        //get the beat used in read_beat()
+        let b = voice.beats.len() - 1;
 
         let flags2 = read_short(data, seek);
-        println!("read_beat_v5(), flags2: {}", flags2);
+        println!("read_beat_v5(), flags2: {} \t seek: {}", flags2, *seek);
         if (flags2 & 0x0010) == 0x0010 {voice.beats[b].octave = Octave::Ottava;}
         if (flags2 & 0x0020) == 0x0020 {voice.beats[b].octave = Octave::OttavaBassa;}
         if (flags2 & 0x0040) == 0x0040 {voice.beats[b].octave = Octave::Quindicesima;}
@@ -211,8 +201,9 @@ impl Song {
         voice.beats[b].display.break_secondary_tuplet = (flags2 & 0x1000) == 0x1000;
         if (flags2 & 0x0002) == 0x0002 {voice.beats[b].display.beam_direction = VoiceDirection::Down;}
         if (flags2 & 0x0008) == 0x0008 {voice.beats[b].display.beam_direction = VoiceDirection::Up;}
-        if (flags2 & 0x0400) == 0x0400 {voice.beats[b].display.tuple_bracket = TupletBracket::Start;}
-        if (flags2 & 0x0800) == 0x0800 {voice.beats[b].display.tuple_bracket = TupletBracket::End;}
+        if (flags2 & 0x0200) == 0x0200 {voice.beats[b].display.tuple_bracket = TupletBracket::Start;}
+        if (flags2 & 0x0400) == 0x0400 {voice.beats[b].display.tuple_bracket = TupletBracket::End;}
+        if (flags2 & 0x0800) == 0x0800 {voice.beats[b].display.break_secondary = read_byte(data, seek);}
 
         duration
     }

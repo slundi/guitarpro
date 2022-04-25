@@ -40,13 +40,13 @@ impl Default for BendEffect { fn default() -> Self { BendEffect { kind: BendType
 //A collection of velocities / dynamics
 pub const MIN_VELOCITY: i16 = 15;
 pub const VELOCITY_INCREMENT: i16 = 16;
-pub const PIANO_PIANISSIMO: i16 = MIN_VELOCITY * VELOCITY_INCREMENT;
-pub const PIANO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 2;
-pub const MEZZO_PIANO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 3;
-pub const MEZZO_FORTE: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 4;
+//pub const PIANO_PIANISSIMO: i16 = MIN_VELOCITY * VELOCITY_INCREMENT;
+//pub const PIANO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 2;
+//pub const MEZZO_PIANO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 3;
+//pub const MEZZO_FORTE: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 4;
 pub const FORTE: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 5;
-pub const FORTISSIMO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 6;
-pub const FORTE_FORTISSIMO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 7;
+//pub const FORTISSIMO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 6;
+//pub const FORTE_FORTISSIMO: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 7;
 pub const DEFAULT_VELOCITY: i16 = FORTE;
 /// Convert Guitar Pro dynamic value to raw MIDI velocity
 pub(crate) fn unpack_velocity(v: i16) -> i16 {

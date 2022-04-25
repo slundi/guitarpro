@@ -102,13 +102,23 @@ pub(crate) fn read_int_byte_size_string(data: &[u8], seek: &mut usize) -> String
 }
 
 /// Read length of the string stored in 1 byte and followed by character bytes.
-pub(crate) fn read_byte_size_string(data: &[u8], seek: &mut usize) -> String {
+pub(crate) fn read_byte_size_string(data: &[u8], seek: &mut usize, size: Option<usize>) -> String {
     let n = read_byte(data, seek).to_usize().unwrap();
-    //println!("read_byte_size_string: n={}", n);
-    let parse = std::str::from_utf8(&data[*seek..*seek+n]);
-    if parse.is_err() {panic!("Unable to read string");}
-    *seek += n;
-    parse.unwrap().to_string()
+    if size.is_none() {
+        //println!("read_byte_size_string: n={}", n);
+        let parse = std::str::from_utf8(&data[*seek..*seek+n]);
+        if parse.is_err() {panic!("Unable to read string");}
+        *seek += n;
+        parse.unwrap().to_string()
+    } else {
+        let s = size.unwrap();
+        let l = if n>s {s} else {n};
+        //println!("read_byte_size_string: n={}", n);
+        let parse = std::str::from_utf8(&data[*seek..*seek+l]);
+        if parse.is_err() {panic!("Unable to read string");}
+        *seek += s;
+        parse.unwrap().to_string()
+    }
 }
 
 const VERSIONS: [((u8,u8,u8), bool, &str); 10] = [((3, 0, 0), false, "FICHIER GUITAR PRO v3.00"),
@@ -129,9 +139,8 @@ const VERSIONS: [((u8,u8,u8), bool, &str); 10] = [((3, 0, 0), false, "FICHIER GU
 /// * `seek` - cursor that will be incremented
 /// * returns version
 pub(crate) fn read_version_string(data: &[u8], seek: &mut usize) -> crate::headers::Version {
-    let mut v = crate::headers::Version {data: read_byte_size_string(data, seek), number: (5,2,0), clipboard: false};
+    let mut v = crate::headers::Version {data: read_byte_size_string(data, seek, Some(30)), number: (5,2,0), clipboard: false};
     //println!("Version {} {}", n, s);
-    *seek = 31;
     //get the version
     for x in VERSIONS {
         if v.data == x.2 {
@@ -166,3 +175,17 @@ pub(crate) fn write_i16(data: &mut Vec<u8>, value: i16) {data.extend(value.to_le
 pub(crate) fn write_u16(data: &mut Vec<u8>, value: u16) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_f32(data: &mut Vec<u8>, value: f32) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_f64(data: &mut Vec<u8>, value: f64) {data.extend(value.to_le_bytes());}
+pub(crate) fn write_byte_string(data: &mut Vec<u8>, value: &str) {
+    write_byte(data, value.len().to_u8().unwrap());
+    data.extend(value.as_bytes());
+}
+
+pub(crate) fn write_version(data: &mut Vec<u8>, version: (u8,u8,u8)) {
+    for v in VERSIONS {
+        if version == v.0 {
+            write_byte_string(data, v.2);
+            write_placeholder_default(data, 30 - v.2.len());
+            break;
+        }
+    }
+}

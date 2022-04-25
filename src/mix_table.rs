@@ -21,10 +21,10 @@ pub struct WahEffect {
     value: i8,
     display: bool,
 }
-impl Default for WahEffect { fn default() -> Self { WahEffect { value:-1, display: false }}}
+impl Default for WahEffect { fn default() -> Self { WahEffect { value: WAH_EFFECT_NONE, display: false }}}
 impl WahEffect {
     pub(crate) fn check_value(value: i8) {
-        if !(-2 <= value && value <= 100) {panic!("Value for a wah effect must be in range from -2 to 100")}
+        if !(WAH_EFFECT_OFF <= value && value <= 100) {panic!("Value for a wah effect must be in range from -2 to 100")}
     }
     pub(crate) fn is_on(&self) -> bool {self.value <= 0 && self.value <= 100}
     pub(crate) fn is_off(&self) -> bool {self.value == WAH_EFFECT_OFF}
@@ -68,15 +68,16 @@ impl Song {
     /// Mix table change was modified to support RSE instruments. It is read as in Guitar Pro 3 and is followed by:
     /// - Wah effect. See :meth:`read_wah_effect()`.
     /// - RSE instrument effect. See :meth:`read_rse_instrument_effect()`.
-    pub(crate) fn read_mix_table_change(&self, data: &[u8], seek: &mut usize) -> MixTableChange {
+    pub(crate) fn read_mix_table_change(&mut self, data: &[u8], seek: &mut usize) -> MixTableChange {
         let mut tc = MixTableChange::default();
         self.read_mix_table_change_values(data, seek, &mut tc);
         self.read_mix_table_change_durations(data, seek, &mut tc);
-        if self.version.number != (3,0,0) {
+        //println!("read_mix_table_change()");
+        if self.version.number > (3,0,0) {
             let flags = self.read_mix_table_change_flags(data, seek, &mut tc);
             if self.version.number >= (5,0,0) {
                 tc.wah = Some(self.read_wah_effect(data, seek, flags));
-                //TODO: self.read_rse_instrument_effect(data, seek, &mut tc.rse);
+                self.read_rse_instrument_effect(data, seek, &mut tc.rse);
             }
         }
         tc
@@ -94,50 +95,52 @@ impl Song {
     /// - tempo
     /// 
     /// If signed byte is *-1* then corresponding parameter hasn't changed.
-    fn read_mix_table_change_values(&self, data: &[u8], seek: &mut usize, mte: &mut MixTableChange) {
+    fn read_mix_table_change_values(&mut self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) {
         //instrument
         let b = read_signed_byte(data, seek);
-        if b >= 0 {mte.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {mtc.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //RSE instrument GP5
-        //TODO: if self.version.number != AppVersion::Version_5_00 || self.version.number != AppVersion::Version_5_10 {tc.rse = self.read_rse_instrument(data, seek);}
+        if self.version.number.0 == 5 {mtc.rse = self.read_rse_instrument(data, seek);}
         if self.version.number == (5,0,0)  { *seek += 1; }
         //volume
         let b = read_signed_byte(data, seek);
-        if b >= 0 {mte.volume = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {mtc.volume = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //balance
         let b = read_signed_byte(data, seek);
-        if b >= 0 {mte.balance = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {mtc.balance = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //chorus
         let b = read_signed_byte(data, seek);
-        if b >= 0 {mte.chorus = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {mtc.chorus = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //reverb
         let b = read_signed_byte(data, seek);
-        if b >= 0 {mte.reverb = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {mtc.reverb = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //phaser
         let b = read_signed_byte(data, seek);
-        if b >= 0 {mte.phaser = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {mtc.phaser = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //tremolo
         let b = read_signed_byte(data, seek);
-        if b >= 0 {mte.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {mtc.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //tempo
-        if self.version.number >= (5,0,0) {mte.tempo_name = read_byte_size_string(data, seek);}
+        if self.version.number >= (5,0,0) {mtc.tempo_name = read_byte_size_string(data, seek, None);}
         let b = read_int(data, seek);
-        if b >= 0 {mte.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {mtc.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
     }
     /// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
     /// 
     /// If tempo did change, then one :ref:`bool` is read. If it's true, then tempo change won't be displayed on the score.
-    fn read_mix_table_change_durations(&self, data: &[u8], seek: &mut usize, mte: &mut MixTableChange) {
-        if mte.volume.is_some()  {mte.volume.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-        if mte.balance.is_some() {mte.balance.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
-        if mte.chorus.is_some()  {mte.chorus.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-        if mte.reverb.is_some()  {mte.reverb.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-        if mte.phaser.is_some()  {mte.phaser.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
-        if mte.tremolo.is_some() {mte.tremolo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
-        if mte.tempo.is_some()   {
-            mte.tempo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();
-            mte.hide_tempo = false;
-            if self.version.number == (5,0,10) {mte.hide_tempo = read_bool(data, seek);}
+    fn read_mix_table_change_durations(&self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) {
+        if mtc.volume.is_some()  {mtc.volume.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mtc.balance.is_some() {mtc.balance.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mtc.chorus.is_some()  {mtc.chorus.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mtc.reverb.is_some()  {mtc.reverb.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mtc.phaser.is_some()  {mtc.phaser.take().unwrap().duration  = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mtc.tremolo.is_some() {mtc.tremolo.take().unwrap().duration = read_signed_byte(data, seek).to_u8().unwrap();}
+        if mtc.tempo.is_some()   {
+            let mut t = mtc.tempo.take().unwrap();
+            t.duration = read_signed_byte(data, seek).to_u8().unwrap();
+            mtc.tempo = Some(t);
+            mtc.hide_tempo = false;
+            if self.version.number >= (5,0,0) {mtc.hide_tempo = read_bool(data, seek);}
         }
     }
 
@@ -152,39 +155,40 @@ impl Song {
     /// In GP5, there is one additional flag:
     /// - *0x40*: use RSE
     /// - *0x80*: show wah-wah
-    fn read_mix_table_change_flags(&self, data: &[u8], seek: &mut usize, mte: &mut MixTableChange) -> i8 {
+    fn read_mix_table_change_flags(&self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) -> i8 {
         let flags = read_signed_byte(data, seek);
-        if mte.volume.is_some() {
-            let mut e = mte.volume.take().unwrap();
+        //println!("read_mix_table_change_flags(), flags:  {}", flags);
+        if mtc.volume.is_some() {
+            let mut e = mtc.volume.take().unwrap();
             e.all_tracks = (flags & 0x01) == 0x01;
-            mte.volume = Some(e);
+            mtc.volume = Some(e);
         }
-        if mte.balance.is_some() {
-            let mut e = mte.balance.take().unwrap();
+        if mtc.balance.is_some() {
+            let mut e = mtc.balance.take().unwrap();
             e.all_tracks = (flags & 0x01) == 0x01;
-            mte.balance = Some(e);
+            mtc.balance = Some(e);
         }
-        if mte.chorus.is_some() {
-            let mut e = mte.chorus.take().unwrap();
+        if mtc.chorus.is_some() {
+            let mut e = mtc.chorus.take().unwrap();
             e.all_tracks = (flags & 0x01) == 0x01;
-            mte.chorus = Some(e);
+            mtc.chorus = Some(e);
         }
-        if mte.reverb.is_some() {
-            let mut e = mte.reverb.take().unwrap();
+        if mtc.reverb.is_some() {
+            let mut e = mtc.reverb.take().unwrap();
             e.all_tracks = (flags & 0x01) == 0x01;
-            mte.reverb = Some(e);
+            mtc.reverb = Some(e);
         }
-        if mte.phaser.is_some() {
-            let mut e = mte.phaser.take().unwrap();
+        if mtc.phaser.is_some() {
+            let mut e = mtc.phaser.take().unwrap();
             e.all_tracks = (flags & 0x01) == 0x01;
-            mte.phaser = Some(e);
+            mtc.phaser = Some(e);
         }
-        if mte.tremolo.is_some() {
-            let mut e = mte.tremolo.take().unwrap();
+        if mtc.tremolo.is_some() {
+            let mut e = mtc.tremolo.take().unwrap();
             e.all_tracks = (flags & 0x01) == 0x01;
-            mte.tremolo = Some(e);
+            mtc.tremolo = Some(e);
         }
-        if self.version.number >= (5,0,0) {mte.use_rse = (flags & 0x40) == 0x40;}
+        if self.version.number >= (5,0,0) {mtc.use_rse = (flags & 0x40) == 0x40;}
         flags
     }
 

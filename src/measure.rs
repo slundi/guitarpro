@@ -63,7 +63,7 @@ impl Song {
                 self.current_track = Some(t);
                 let mut m = Measure{track_index:t, header_index:h, ..Default::default()};
                 self.current_measure_number = Some(m.number);
-                if self.version.number < (5,0,0) {self.read_measure(data, seek, &mut m, t);} else {self.read_measure_v5(data, seek, &mut m, t);}
+                if self.version.number < (5,0,0) {self.read_measure(data, seek, &mut m, t);}else {self.read_measure_v5(data, seek, &mut m, t);}
                 self.tracks[t].measures.push(m);
             }
             //println!("read_measures(), start: {} \t numerator: {} \t denominator: {} \t length: {}", start, self.measure_headers[h].time_signature.numerator, self.measure_headers[h].time_signature.denominator.value, self.measure_headers[h].length());
@@ -110,7 +110,7 @@ impl Song {
             measure.voices.push(voice);
         }
         self.current_voice_number = None;
-        measure.line_break = get_line_break(read_byte(data, seek));
+        if *seek < data.len() {measure.line_break = get_line_break(read_byte(data, seek));} else {measure.line_break = get_line_break(0);}
     }
 
     fn read_voice(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: &mut i64, track_index: usize) {
