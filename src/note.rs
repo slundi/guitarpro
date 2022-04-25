@@ -142,8 +142,8 @@ impl Song {
         //println!("read_note(), flags: {} \t string: {} \t ghost note: {}", flags, guitar_string.0, note.effect.ghost_note);
         if (flags & 0x20) == 0x20 {note.kind = get_note_type(read_byte(data, seek)); }
         if (flags & 0x01) == 0x01 {
-            let duration = read_signed_byte(data, seek);
-            let tuplet = read_signed_byte(data, seek);
+            let _duration = read_signed_byte(data, seek);
+            let _tuplet = read_signed_byte(data, seek);
             //println!("read_note(), duration: {} \t tuplet: {}",duration, tuplet);
             //note.duration = read_signed_byte(data, seek);
             //note.tuplet = read_signed_byte(data, seek);

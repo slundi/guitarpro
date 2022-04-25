@@ -183,7 +183,7 @@ impl Song {
         let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
         if number == 0 || self.version.number == (5,0,0) {*seek += 1;} //always 0 //missing 3 skips?
         let flags1 = read_byte(data, seek);
-        //println!("read_track_v5(), flags1: {}", flags1);
+        println!("read_track_v5(), flags1: {} \t seek: {}", flags1, *seek);
         track.percussion_track  = (flags1 & 0x01) == 0x01;
         track.banjo_track       = (flags1 & 0x02) == 0x02;
         track.visible           = (flags1 & 0x04) == 0x04;

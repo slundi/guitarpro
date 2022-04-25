@@ -167,7 +167,9 @@ impl Song {
         //println!("Track count: {} \t Measure count: {}", track_count, measure_count); //OK
         self.read_measure_headers_v5(data, &mut seek, measure_count, &directions);
         self.read_tracks_v5(data, &mut seek, track_count);
+        println!("read_info_v5(), seek: {}", seek);
         self.read_measures(data, &mut seek);
+        println!("read_info_v5(), seek: {}", seek);
     }
 
     /// Read information (name, artist, ...)
@@ -207,4 +209,12 @@ impl Song {
     pub const _MIN_STRINGS: i32 = 1;
     pub const _MAX_OFFSET: i32 = 24;
     pub const _MIN_OFFSET: i32 = -24;*/
+
+    /// Write data to a Vec<u8>, you are free to use the encoded data to write it in a file or in a database or do something else.
+    pub fn write(&self, version: (u8,u8,u8), clipboard: Option<bool>) ->Vec<u8> {
+        let mut data: Vec<u8> = Vec::with_capacity(8388608); //capacity of 8MB, should be sufficient
+        write_version(&mut data, version);
+        if clipboard.is_some() && clipboard.unwrap() {}
+        data
+    }
 }
