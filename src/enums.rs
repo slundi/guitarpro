@@ -55,6 +55,7 @@ pub(crate) fn get_slide_type(value: i8) -> SlideType {
 pub enum NoteType {
     Rest, //0
     Normal, Tie, Dead,
+    Unknown(u8),
 }
 pub(crate) fn get_note_type(value: u8) -> NoteType {
     match value {
@@ -62,7 +63,7 @@ pub(crate) fn get_note_type(value: u8) -> NoteType {
         1 => NoteType::Normal,
         2 => NoteType::Tie,
         3 => NoteType::Dead,
-        _ => panic!("Cannot read note type"),
+        _ => NoteType::Unknown(value), //panic!("Cannot read note type"),
     }
 }
 
@@ -165,6 +166,8 @@ pub enum ChordType {
     Augmented,
     /// Power chord.
     Power,
+
+    Unknown(u8),
 }
 pub(crate) fn get_chord_type(value: u8) -> ChordType {
     match value {
@@ -183,7 +186,7 @@ pub(crate) fn get_chord_type(value: u8) -> ChordType {
         12 => ChordType::Diminished,
         13 => ChordType::Augmented,
         14 => ChordType::Power,
-        _  => panic!("Cannot read chord type (new format)"),
+        _  => ChordType::Unknown(value), //panic!("Cannot read chord type (new format)"),
     }
 }
 
@@ -215,7 +218,8 @@ pub enum ChordExtension {
     /// Eleventh chord.
     Eleventh,
     /// Thirteenth chord.
-    Thirteenth
+    Thirteenth,
+    Unknown(u8)
 }
 pub(crate) fn get_chord_extension(value: u8) -> ChordExtension {
     match value {
@@ -223,7 +227,7 @@ pub(crate) fn get_chord_extension(value: u8) -> ChordExtension {
         1 => ChordExtension::Ninth,
         2 => ChordExtension::Eleventh,
         3 => ChordExtension::Thirteenth,
-        _ => panic!("Cannot read chord type (new format)"),
+        _ => ChordExtension::Unknown(value), //panic!("Cannot read chord type (new format)"),
     }
 
 }
@@ -243,6 +247,8 @@ pub enum Fingering {
     Annular,
     /// Little finger.
     Little,
+
+    Unknown(i8),
 }
 
 pub(crate) fn get_fingering(value: i8) -> Fingering {
@@ -253,7 +259,7 @@ pub(crate) fn get_fingering(value: i8) -> Fingering {
         2  => Fingering::Middle,
         3  => Fingering::Annular,
         4  => Fingering::Little,
-        _  => panic!("Cannot get fingering! How can you have more than 5 fingers per hand?!?"),
+        _  => Fingering::Unknown(value), //panic!("Cannot get fingering! How can you have more than 5 fingers per hand?!?"),
     }
 }
 
