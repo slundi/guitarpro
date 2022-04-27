@@ -81,65 +81,57 @@ pub(crate) fn read_double(data: &[u8], seek: &mut usize ) -> f64 {
 
 /// Read length of the string stored in 1 integer and followed by character bytes.
 pub(crate) fn read_int_size_string(data: &[u8], seek: &mut usize) -> String {
-    let n = read_int(data, seek).to_usize().unwrap();
-    let parse = std::str::from_utf8(&data[*seek..*seek+n]);
-    if parse.is_err() {panic!("Unable to read string");}
-    *seek += n;
-    parse.unwrap().to_string()
+    let size = read_int(data, seek).to_usize().unwrap();
+    read_string(data, seek, size, None)
 }
 
 /// Read length of the string increased by 1 and stored in 1 integer followed by length of the string in 1 byte and finally followed by character bytes.
 pub(crate) fn read_int_byte_size_string(data: &[u8], seek: &mut usize) -> String {
-    //TODO: read_int_size_string is used instead, but it should be fixed
-    let s = read_int(data, seek).to_usize().unwrap() - 1;
-    let n = read_byte(data, seek).to_usize().unwrap();
-    let count = if s > 0 {s} else {n};
-    //println!("read_byte_size_string: n={}", n);
-    let parse = std::str::from_utf8(&data[*seek..*seek+count]);
-    if parse.is_err() {panic!("Unable to read string");}
-    *seek += count;
-    String::new()
+    let s = (read_int(data, seek) - 1).to_usize().unwrap();
+    //println!("read_int_byte_size_string(), d={}",s);
+    read_byte_size_string(data, seek, s)
 }
 
 /// Read length of the string stored in 1 byte and followed by character bytes.
-pub(crate) fn read_byte_size_string(data: &[u8], seek: &mut usize, size: Option<usize>) -> String {
-    let n = read_byte(data, seek).to_usize().unwrap();
-    if size.is_none() {
-        //println!("read_byte_size_string: n={}", n);
-        let parse = std::str::from_utf8(&data[*seek..*seek+n]);
-        if parse.is_err() {panic!("Unable to read string");}
-        *seek += n;
-        parse.unwrap().to_string()
-    } else {
-        let s = size.unwrap();
-        let l = if n>s {s} else {n};
-        //println!("read_byte_size_string: n={}", n);
-        let parse = std::str::from_utf8(&data[*seek..*seek+l]);
-        if parse.is_err() {panic!("Unable to read string");}
-        *seek += s;
-        parse.unwrap().to_string()
-    }
+/// * `size`: string length that we should attempt to read.
+pub(crate) fn read_byte_size_string(data: &[u8], seek: &mut usize, size: usize) -> String {
+    //println!("read_int_byte_size_string(), size={}", size);
+    let length = read_byte(data, seek).to_usize().unwrap();
+    read_string(data, seek, size, Some(length))
+}
+
+/// Read a string
+/// * `size`:   real string length
+/// * `length`: optionnal provided length (in case of blank chars after the string)
+fn read_string(data: &[u8], seek: &mut usize, size: usize, length: Option<usize>) -> String {
+    //println!("read_string(), size={} \t length={:?}", size, length);
+    let length = length.unwrap_or(size);
+    //let count = if size > 0 {size} else {length};
+    let parse = std::str::from_utf8(&data[*seek..*seek+length]);
+    if parse.is_err() {panic!("Unable to read string");}
+    *seek += size;
+    parse.unwrap().to_string()
 }
 
 const VERSIONS: [((u8,u8,u8), bool, &str); 10] = [((3, 0, 0), false, "FICHIER GUITAR PRO v3.00"),
 
                                                   ((4, 0, 0), false, "FICHIER GUITAR PRO v4.00"),
                                                   ((4, 0, 6), false, "FICHIER GUITAR PRO v4.06"),
-                                                  ((4, 0, 6), true, "CLIPBOARD GUITAR PRO 4.0 [c6]"),
+                                                  ((4, 0, 6), true,  "CLIPBOARD GUITAR PRO 4.0 [c6]"),
 
                                                   ((5, 0, 0), false, "FICHIER GUITAR PRO v5.00"),
                                                   ((5, 1, 0), false, "FICHIER GUITAR PRO v5.10"),
                                                   ((5, 2, 0), false, "FICHIER GUITAR PRO v5.10"),  // sic
-                                                  ((5, 0, 0), true, "CLIPBOARD GP 5.0"),
-                                                  ((5, 1, 0), true, "CLIPBOARD GP 5.1"),
-                                                  ((5, 2, 0), true, "CLIPBOARD GP 5.2")];
+                                                  ((5, 0, 0), true,  "CLIPBOARD GP 5.0"),
+                                                  ((5, 1, 0), true,  "CLIPBOARD GP 5.1"),
+                                                  ((5, 2, 0), true,  "CLIPBOARD GP 5.2")];
 
 /// Read the file version. It is on the first 31 bytes (1st byte is the real length, the following 30 bytes contain the version string) of the file.
 /// * `data` - array of bytes
 /// * `seek` - cursor that will be incremented
 /// * returns version
 pub(crate) fn read_version_string(data: &[u8], seek: &mut usize) -> crate::headers::Version {
-    let mut v = crate::headers::Version {data: read_byte_size_string(data, seek, Some(30)), number: (5,2,0), clipboard: false};
+    let mut v = crate::headers::Version {data: read_byte_size_string(data, seek, 30), number: (5,2,0), clipboard: false};
     //println!("Version {} {}", n, s);
     //get the version
     for x in VERSIONS {

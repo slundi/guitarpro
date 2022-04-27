@@ -121,7 +121,7 @@ impl Song {
         let b = read_signed_byte(data, seek);
         if b >= 0 {mtc.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
         //tempo
-        if self.version.number >= (5,0,0) {mtc.tempo_name = read_byte_size_string(data, seek, None);}
+        if self.version.number >= (5,0,0) {mtc.tempo_name = read_int_byte_size_string(data, seek);}
         let b = read_int(data, seek);
         if b >= 0 {mtc.tempo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
     }

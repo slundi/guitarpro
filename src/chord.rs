@@ -172,7 +172,7 @@ impl Song {
         chord.bass = Some(PitchClass::from(read_int(data, seek).to_i8().unwrap(), None, chord.sharp));
         chord.tonality = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
         chord.add = Some(read_bool(data, seek));
-        chord.name = read_byte_size_string(data, seek, Some(22));
+        chord.name = read_byte_size_string(data, seek, 22);
         chord.fifth = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
         chord.ninth = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
         chord.eleventh = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
@@ -231,7 +231,7 @@ impl Song {
         chord.bass = Some(PitchClass::from(i.to_i8().unwrap(), None, chord.sharp));
         chord.tonality = Some(get_chord_alteration(read_int(data, seek).to_u8().unwrap()));
         chord.add = Some(read_bool(data, seek));
-        chord.name = read_byte_size_string(data, seek, Some(22));
+        chord.name = read_byte_size_string(data, seek, 22);
         chord.fifth = Some(get_chord_alteration(read_byte(data, seek)));
         chord.ninth = Some(get_chord_alteration(read_byte(data, seek)));
         chord.eleventh = Some(get_chord_alteration(read_byte(data, seek)));

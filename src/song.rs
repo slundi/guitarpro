@@ -164,7 +164,7 @@ impl Song {
         let measure_count = read_int(data, &mut seek).to_usize().unwrap();
         let track_count = read_int(data, &mut seek).to_usize().unwrap();
         //println!("{} {} {} {:?}", self.tempo_name, self.tempo, self.hide_tempo, self.key.key); //OK
-        //println!("Track count: {} \t Measure count: {}", track_count, measure_count); //OK
+        println!("Track count: {} \t Measure count: {}", track_count, measure_count); //OK
         self.read_measure_headers_v5(data, &mut seek, measure_count, &directions);
         self.read_tracks_v5(data, &mut seek, track_count);
         println!("read_info_v5(), seek: {}", seek);

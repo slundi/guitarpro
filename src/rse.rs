@@ -74,8 +74,8 @@ impl Song {
     /// - RSE instrument effect. See `read_rse_instrument_effect()`.
     pub(crate) fn read_track_rse(&mut self, data: &[u8], seek: &mut usize, track: &mut Track) {
         track.rse.humanize = read_byte(data, seek);
-        //println!("read_track_rse(), humanize: {}", track.rse.humanize);
-        *seek += 12; //read_int(data, seek); read_int(data, seek); read_int(data, seek);  //??? 4 bytes*3
+        //println!("read_track_rse(), humanize: {} \t\t seek: {}", track.rse.humanize, *seek);
+        *seek += 12; //read_int(data, seek); read_int(data, seek); read_int(data, seek);  //??? 4 bytes*3 //*seek += 12;
         *seek += 12; //???
         track.rse.instrument = self.read_rse_instrument(data, seek);
         if self.version.number > (5,0,0) {
@@ -92,11 +92,12 @@ impl Song {
         let mut instrument = RseInstrument{instrument: read_int(data, seek).to_i16().unwrap(), ..Default::default()};
         instrument.unknown    = read_int(data, seek).to_i16().unwrap(); //??? mostly 1
         instrument.sound_bank = read_int(data, seek).to_i16().unwrap();
-        //println!("read_rse_instrument(), instrument: {} {} {}", track.rse.instrument.instrument, track.rse.instrument.unknown, track.rse.instrument.sound_bank);
+        //println!("read_rse_instrument(), instrument: {} {} {} \t\t seek: {}", instrument.instrument, instrument.unknown, instrument.sound_bank, *seek);
         if self.version.number == (5,0,0) {
             instrument.effect_number = read_short(data, seek);
             *seek += 1;
         } else {instrument.effect_number = read_int(data, seek).to_i16().unwrap();}
+        //println!("read_rse_instrument(), instrument.effect_number: {} \t\t seek: {}", instrument.effect_number, *seek);
         instrument
     }
     /// Read RSE instrument effect name. This feature was introduced in Guitar Pro 5.1.
@@ -104,7 +105,7 @@ impl Song {
     /// - Effect category: `int-byte-size-string`.
     pub(crate) fn read_rse_instrument_effect(&mut self, data: &[u8], seek: &mut usize, instrument: &mut RseInstrument) {
         if self.version.number > (5,0,0) {
-            instrument.effect = read_int_byte_size_string(data, seek);
+            instrument.effect =          read_int_byte_size_string(data, seek);
             instrument.effect_category = read_int_byte_size_string(data, seek);
         }
     }

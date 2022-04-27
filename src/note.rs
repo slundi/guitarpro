@@ -277,10 +277,19 @@ impl Song {
         note.effect.palm_mute = (flags2 & 0x02) == 0x02;
         note.effect.vibrato = (flags2 & 0x40) == 0x40 || note.effect.vibrato;
         if (flags1 & 0x01) == 0x01 {note.effect.bend = self.read_bend_effect(data, seek);}
-        if (flags1 & 0x10) == 0x10 {note.effect.grace = Some(self.read_grace_effect(data, seek));}
+        if (flags1 & 0x10) == 0x10 {
+            if self.version.number >= (5,0,0) {note.effect.grace = Some(self.read_grace_effect_v5(data,seek));}
+            else                              {note.effect.grace = Some(self.read_grace_effect(data, seek));}
+        }
         if (flags2 & 0x04) == 0x04 {note.effect.tremolo_picking = Some(self.read_tremolo_picking(data, seek));}
-        if (flags2 & 0x08) == 0x08 {note.effect.slides.push(get_slide_type(read_signed_byte(data, seek)));}
-        if (flags2 & 0x10) == 0x10 {note.effect.harmonic = Some(self.read_harmonic(data, seek, note));}
+        if (flags2 & 0x08) == 0x08 {
+            if self.version.number >= (5,0,0) {note.effect.slides.extend(self.read_slides_v5(data, seek));}
+            else                              {note.effect.slides.push(get_slide_type(read_signed_byte(data, seek)));}
+        }
+        if (flags2 & 0x10) == 0x10 {
+            if self.version.number >= (5,0,0) {note.effect.harmonic = Some(self.read_harmonic_v5(data, seek, note));}
+            else                              {note.effect.harmonic = Some(self.read_harmonic(data, seek, note));}
+        }
         if (flags2 & 0x20) == 0x20 {note.effect.trill = Some(self.read_trill(data, seek));}
     }
 

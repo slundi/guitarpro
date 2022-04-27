@@ -172,7 +172,7 @@ impl Song {
     /// - Flags: `byte`.
     ///   - *0x01*: grace note is muted (dead)
     ///   - *0x02*: grace note is on beat
-    pub(crate) fn read_grace_effect_v5(data: &[u8], seek: &mut usize) -> GraceEffect {
+    pub(crate) fn read_grace_effect_v5(&self, data: &[u8], seek: &mut usize) -> GraceEffect {
         let mut g = GraceEffect{fret: read_byte(data, seek).to_i8().unwrap(), ..Default::default()};
         g.velocity = unpack_velocity(read_byte(data, seek).to_i16().unwrap());
         g.transition = get_grace_effect_transition(read_byte(data, seek).to_i8().unwrap());
@@ -189,8 +189,8 @@ impl Song {
         read_signed_byte(data, seek);//TODO: tp.duration = from_tremolo_value(read_signed_byte(data, seek));
         tp
     }
-    /// Read slides. Slide is encoded in `signed-byte`. See `SlideType` for value mapping.
-    fn read_slides(&self, data: &[u8], seek: &mut usize) -> SlideType { get_slide_type(read_signed_byte(data, seek)) }
+    ///// Read slides. Slide is encoded in `signed-byte`. See `SlideType` for value mapping.
+    //pub(crate) fn read_slides(&self, data: &[u8], seek: &mut usize) -> SlideType { get_slide_type(read_signed_byte(data, seek)) }
 
     /// Read slides. First `byte` stores slide types:
     /// - *0x01*: shift slide
@@ -199,7 +199,7 @@ impl Song {
     /// - *0x08*: slide out upwards
     /// - *0x10*: slide into from below
     /// - *0x20*: slide into from above
-    fn read_slides_v5(&self, data: &[u8], seek: &mut usize) -> Vec<SlideType> {
+    pub(crate) fn read_slides_v5(&self, data: &[u8], seek: &mut usize) -> Vec<SlideType> {
         let t = read_byte(data, seek);
         let mut v: Vec<SlideType> = Vec::with_capacity(6);
         if (t & 0x01) == 0x01 {v.push(SlideType::ShiftSlideTo);}
@@ -259,7 +259,7 @@ impl Song {
     /// 
     /// If harmonic type is tapped:
     /// - Fret: `byte`.
-    pub(crate) fn read_harmonic_v5(&mut self, data: &[u8], seek: &mut usize, note: &mut crate::note::Note) {
+    pub(crate) fn read_harmonic_v5(&mut self, data: &[u8], seek: &mut usize, note: &mut crate::note::Note) -> HarmonicEffect {
         let mut he = HarmonicEffect::default();
         match read_signed_byte(data, seek) {
             1 => he.kind = HarmonicType::Natural,
@@ -281,7 +281,7 @@ impl Song {
             5 => he.kind = HarmonicType::Semi,
             _ => panic!("Cannot read harmonic type"),
         };
-        note.effect.harmonic = Some(he);
+        he
     }
     /// Read trill.
     /// - Fret: `signed-byte`.

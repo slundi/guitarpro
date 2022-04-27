@@ -114,7 +114,7 @@ impl Song {
         track.twelve_stringed_guitar_track = (flags & 0x02) == 0x02; //12 stringed guitar track
         track.banjo_track = (flags & 0x04) == 0x04; //Banjo track
 
-        track.name = read_byte_size_string(data, seek, Some(40));
+        track.name = read_byte_size_string(data, seek, 40);
         let string_count = read_int(data, seek).to_u8().unwrap();
         track.strings.clear();
         for i in 0i8..7i8 {
@@ -189,8 +189,11 @@ impl Song {
         track.mute              = (flags1 & 0x20) == 0x20;
         track.use_rse           = (flags1 & 0x40) == 0x40;
         track.indicate_tuning   = (flags1 & 0x80) == 0x80;
-        track.name              = read_byte_size_string(data, seek, Some(40));
-        let string_count = read_int(data, seek).to_u8().unwrap();
+        track.name              = read_byte_size_string(data, seek, 40);
+        //let string_count = read_int(data, seek).to_u8().unwrap();
+        let sc = read_int(data, seek);
+        println!("read_track_v5(), track:name: \"{}\", string count: {}", track.name, sc);
+        let string_count = sc.to_u8().unwrap();
         track.strings.clear();
         for i in 0i8..7i8 {
             let i_tuning = read_int(data, seek).to_i8().unwrap();
