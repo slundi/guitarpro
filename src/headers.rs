@@ -108,10 +108,7 @@ impl Song {
         //TODO: if header.repeat_open or self.current_repeat_group.is_closed && header.repeat_alternative <= 0 {self.current_repeat_group = RepeatGroup::default();}
         self.measure_headers.push(header);
     }
-    /// Read and process version
-    pub(crate) fn read_version(&mut self, data: &[u8], seek: &mut usize) {
-        self.version = read_version_string(data, seek);
-    }
+
     pub(crate) fn read_clipboard(&mut self, data: &[u8], seek: &mut usize) -> Option<Clipboard> {
         if !self.version.clipboard {return None;}
         let mut c = Clipboard{start_measure: read_int(data, seek), ..Default::default()};

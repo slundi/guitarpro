@@ -35,10 +35,10 @@ pub struct Chord {
         first_fret: None, strings:Vec::new(), barres:Vec::new(), omissions:Vec::new(), fingerings:Vec::new(),
         show:None, new_format:None,
     }}
-}*/
+}
 impl Chord {
     //TODO: @property def notes(self): return [string for string in self.strings if string >= 0]
-}
+}*/
 
 
 /// A single barre

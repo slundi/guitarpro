@@ -186,7 +186,7 @@ impl Song {
     /// Read tremolo picking. Tremolo constists of picking speed encoded in `signed-byte`. For value mapping refer to `from_tremolo_value()`.
     pub(crate) fn read_tremolo_picking(&self, data: &[u8], seek: &mut usize) -> TremoloPickingEffect {
         let mut tp = TremoloPickingEffect::default();
-        read_signed_byte(data, seek);//TODO: tp.duration = from_tremolo_value(read_signed_byte(data, seek));
+        tp.duration.value = from_tremolo_value(read_signed_byte(data, seek)).to_u16().unwrap();
         tp
     }
     ///// Read slides. Slide is encoded in `signed-byte`. See `SlideType` for value mapping.

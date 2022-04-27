@@ -72,7 +72,7 @@ impl Song {
         self.read_mix_table_change_values(data, seek, &mut tc);
         self.read_mix_table_change_durations(data, seek, &mut tc);
         //println!("read_mix_table_change()");
-        if self.version.number > (3,0,0) {
+        if self.version.number >= (4,0,0) {
             let flags = self.read_mix_table_change_flags(data, seek, &mut tc);
             if self.version.number >= (5,0,0) {
                 tc.wah = Some(self.read_wah_effect(data, seek, flags));

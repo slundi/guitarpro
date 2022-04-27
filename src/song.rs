@@ -92,7 +92,7 @@ impl Song {
     /// - Measures. See `read_measures()`.
     pub fn read_gp3(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
-        self.read_version(data, &mut seek);
+        self.version = read_version_string(data, &mut seek);
         self.read_info(data, &mut seek);
         self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
         //println!("Triplet feel: {}", self.triplet_feel);
@@ -125,7 +125,7 @@ impl Song {
     /// - Measures. See `read_measures()`.
     pub fn read_gp4(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
-        self.read_version(data, &mut seek);
+        self.version = read_version_string(data, &mut seek);
         self.read_clipboard(data, &mut seek);
         self.read_info(data, &mut seek);
         self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
@@ -147,7 +147,7 @@ impl Song {
     }
     pub fn read_gp5(&mut self, data: &[u8]) {
         let mut seek: usize = 0;
-        self.read_version(data, &mut seek);
+        self.version = read_version_string(data, &mut seek);
         self.read_clipboard(data, &mut seek);
         self.read_info_v5(data, &mut seek);
         self.lyrics = read_lyrics(data, &mut seek); //read lyrics
