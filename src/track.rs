@@ -83,10 +83,8 @@ impl Song {
 
     pub(crate) fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize) {
         //println!("read_tracks_v5(): {:?} {}", self.version.number, self.version.number == (5,1,0));
-        for i in 0..track_count {
-            self.read_track_v5(data, seek, i);
-            *seek += if self.version.number == (5,0,0) {2} else {1};
-        }
+        for i in 0..track_count { self.read_track_v5(data, seek, i); }
+        *seek += if self.version.number == (5,0,0) {2} else {1};
     }
 
     /// Read a  track. The first byte is the track's flags. It presides the track's attributes:
@@ -110,6 +108,7 @@ impl Song {
         let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
         //read the flag
         let flags = read_byte(data, seek);
+        //println!("read_track(), flags: {}", flags);
         track.percussion_track = (flags & 0x01) == 0x01; //Drums track
         track.twelve_stringed_guitar_track = (flags & 0x02) == 0x02; //12 stringed guitar track
         track.banjo_track = (flags & 0x04) == 0x04; //Banjo track
@@ -181,7 +180,7 @@ impl Song {
         let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
         if number == 0 || self.version.number == (5,0,0) {*seek += 1;} //always 0 //missing 3 skips?
         let flags1 = read_byte(data, seek);
-        println!("read_track_v5(), flags1: {} \t seek: {}", flags1, *seek);
+        //println!("read_track_v5(), flags1: {} \t seek: {}", flags1, *seek);
         track.percussion_track  = (flags1 & 0x01) == 0x01;
         track.banjo_track       = (flags1 & 0x02) == 0x02;
         track.visible           = (flags1 & 0x04) == 0x04;
@@ -192,7 +191,7 @@ impl Song {
         track.name              = read_byte_size_string(data, seek, 40);
         //let string_count = read_int(data, seek).to_u8().unwrap();
         let sc = read_int(data, seek);
-        println!("read_track_v5(), track:name: \"{}\", string count: {}", track.name, sc);
+        //println!("read_track_v5(), track:name: \"{}\", string count: {}", track.name, sc);
         let string_count = sc.to_u8().unwrap();
         track.strings.clear();
         for i in 0i8..7i8 {

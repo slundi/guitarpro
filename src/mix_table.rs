@@ -1,6 +1,5 @@
 use fraction::ToPrimitive;
 
-use crate::enums::*;
 use crate::rse::*;
 use crate::io::*;
 use crate::gp::*;

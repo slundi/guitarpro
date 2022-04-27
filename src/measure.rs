@@ -75,7 +75,7 @@ impl Song {
 
     /// Read measure. The measure is written as number of beats followed by sequence of beats.
     fn read_measure(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
-        println!("read_measure()");
+        //println!("read_measure()");
         let mut voice = Voice::default();
         self.current_voice_number = Some(1);
         self.read_voice(data, seek, &mut voice, &mut measure.start, track_index);
@@ -100,7 +100,7 @@ impl Song {
     /// 
     /// Sub-measures are followed by a  `LineBreak` stored in `byte`.
     fn read_measure_v5(&mut self, data: &[u8], seek: &mut usize, measure: &mut Measure, track_index: usize) {
-        println!("read_measure_v5()");
+        //println!("read_measure_v5()");
         let mut start = measure.start;
         for number in 0..MAX_VOICES {
             self.current_voice_number = Some(number + 1);

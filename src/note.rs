@@ -106,7 +106,7 @@ impl Song {
     /// - *0x80*: *blank*
     pub(crate) fn read_notes(&mut self, data: &[u8], seek: &mut usize, track_index: usize, beat: &mut Beat, duration: &Duration, note_effect: NoteEffect) {
         let flags = read_byte(data, seek);
-        println!("read_notes(), flags: {}", flags);
+        //println!("read_notes(), flags: {}", flags);
         for i in 0..self.tracks[track_index].strings.len() {
             if (flags & 1 << (7 - self.tracks[track_index].strings[i].0)) > 0 {
                 let mut note = Note{effect: note_effect.clone(), ..Default::default()};
@@ -195,6 +195,7 @@ impl Song {
     /// - Note effects. See `read_note_effects()`.
     fn read_note_v5(&mut self, data: &[u8], seek: &mut usize, note: &mut Note, guitar_string: (i8,i8), track_index: usize) {
         let flags = read_byte(data, seek);
+        //println!("read_note_v5(), flags: {}", flags);
         note.string = guitar_string.0;
         note.effect.heavy_accentuated_note = (flags &0x02) == 0x02;
         note.effect.ghost_note = (flags &0x04) == 0x04;

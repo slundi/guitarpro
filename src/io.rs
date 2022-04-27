@@ -57,23 +57,21 @@ pub(crate) fn read_int(data: &[u8], seek: &mut usize ) -> i32 {
     n
 }
 
-/// Read a float and increase the cursor position by 4 (4 little-endian bytes)
+/*/// Read a float and increase the cursor position by 4 (4 little-endian bytes)
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns the float value
 pub(crate) fn read_float(data: &[u8], seek: &mut usize ) -> f32 {
-    if data.len() < *seek + 8 {panic!("End of file reached");}
     let n = f32::from_le_bytes([data[*seek], data[*seek+1], data[*seek+2], data[*seek+3]]);
     *seek += 4;
     n
-}
+}*/
 
 /// Read a double and increase the cursor position by 8 (8 little-endian bytes)
 /// * `data` - array of bytes
 /// * `seek` - start position to read
 /// * returns the float value
 pub(crate) fn read_double(data: &[u8], seek: &mut usize ) -> f64 {
-    if data.len() >= *seek {panic!("End of file reached");}
     let n = f64::from_le_bytes([data[*seek], data[*seek+1], data[*seek+2], data[*seek+3], data[*seek+4], data[*seek+5], data[*seek+6], data[*seek+7]]);
     *seek += 8;
     n

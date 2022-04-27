@@ -136,7 +136,7 @@ impl Song {
     /// - Mix table change effect. See `MixTableChange::read()`.
     pub(crate) fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
         let flags = read_byte(data, seek);
-        println!("read_beat(), flags: {} \t seek: {}", flags, *seek);
+        //println!("read_beat(), flags: {} \t seek: {}", flags, *seek);
         //get a beat
         let mut b = 0;
         let mut new_beat = true;
@@ -189,7 +189,7 @@ impl Song {
         let b = voice.beats.len() - 1;
 
         let flags2 = read_short(data, seek);
-        println!("read_beat_v5(), flags2: {} \t seek: {}", flags2, *seek);
+        //println!("read_beat_v5(), flags2: {} \t seek: {}", flags2, *seek);
         if (flags2 & 0x0010) == 0x0010 {voice.beats[b].octave = Octave::Ottava;}
         if (flags2 & 0x0020) == 0x0020 {voice.beats[b].octave = Octave::OttavaBassa;}
         if (flags2 & 0x0040) == 0x0040 {voice.beats[b].octave = Octave::Quindicesima;}

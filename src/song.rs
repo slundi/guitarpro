@@ -167,9 +167,9 @@ impl Song {
         println!("Track count: {} \t Measure count: {}", track_count, measure_count); //OK
         self.read_measure_headers_v5(data, &mut seek, measure_count, &directions);
         self.read_tracks_v5(data, &mut seek, track_count);
-        println!("read_info_v5(), seek: {}", seek);
+        println!("read_info_v5(), after tracks   \t seek: {}", seek);
         self.read_measures(data, &mut seek);
-        println!("read_info_v5(), seek: {}", seek);
+        println!("read_info_v5(), after measures \t seek: {}", seek);
     }
 
     /// Read information (name, artist, ...)
