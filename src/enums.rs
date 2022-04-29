@@ -13,6 +13,7 @@ pub(crate) fn get_triplet_feel(value: i8) -> TripletFeel {
 
 
 /// An enumeration of available clefs
+#[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub enum MeasureClef { Treble, Bass, Tenor, Alto }
 /// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.

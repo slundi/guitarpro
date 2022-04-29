@@ -149,7 +149,7 @@ impl Song {
         let mut seek: usize = 0;
         self.version = read_version_string(data, &mut seek);
         self.read_clipboard(data, &mut seek);
-        self.read_info_v5(data, &mut seek);
+        self.read_info(data, &mut seek);
         self.lyrics = read_lyrics(data, &mut seek); //read lyrics
         self.master_effect = self.read_rse_master_effect(data, &mut seek);
         self.read_page_setup(data, &mut seek);
@@ -167,9 +167,9 @@ impl Song {
         println!("Track count: {} \t Measure count: {}", track_count, measure_count); //OK
         self.read_measure_headers_v5(data, &mut seek, measure_count, &directions);
         self.read_tracks_v5(data, &mut seek, track_count);
-        println!("read_info_v5(), after tracks   \t seek: {}", seek);
+        println!("read_gp5(), after tracks   \t seek: {}", seek);
         self.read_measures(data, &mut seek);
-        println!("read_info_v5(), after measures \t seek: {}", seek);
+        println!("read_gp5(), after measures \t seek: {}", seek);
     }
 
     /// Read information (name, artist, ...)
@@ -179,30 +179,13 @@ impl Song {
         self.artist      = read_int_byte_size_string(data, seek);
         self.album       = read_int_byte_size_string(data, seek);
         self.words       = read_int_byte_size_string(data, seek); //music
-        self.author      = self.words.clone(); //GP3
+        self.author      = if self.version.number.0 < 5 {self.words.clone()} else {read_int_byte_size_string(data, seek)};
         self.copyright   = read_int_byte_size_string(data, seek);
         self.writer      = read_int_byte_size_string(data, seek); //tabbed by
         self.instructions= read_int_byte_size_string(data, seek); //instructions
         //notices
         let nc = read_int(data, seek).to_usize().unwrap(); //notes count
         if nc > 0 { for i in 0..nc { self.notice.push(read_int_byte_size_string(data, seek)); println!("  {}\t\t{}",i, self.notice[self.notice.len()-1]); }}
-    }
-
-    /// Read information (name, artist, ...)
-    fn read_info_v5(&mut self, data: &[u8], seek: &mut usize) {
-        self.name        = read_int_byte_size_string(data, seek);//.replace("\r", " ").replace("\n", " ").trim().to_owned();
-        self.subtitle    = read_int_byte_size_string(data, seek);
-        self.artist      = read_int_byte_size_string(data, seek);
-        self.album       = read_int_byte_size_string(data, seek);
-        self.words       = read_int_byte_size_string(data, seek); //music
-        self.author      = read_int_byte_size_string(data, seek);
-        self.copyright   = read_int_byte_size_string(data, seek);
-        self.writer      = read_int_byte_size_string(data, seek); //tabbed by
-        self.instructions= read_int_byte_size_string(data, seek); //instructions
-        //notices
-        let nc = read_int(data, seek); //notes count
-        //println!("{}", nc);
-        if nc > 0 { for _ in 0..nc { self.notice.push(read_int_byte_size_string(data, seek)); }}
     }
 
     /*pub const _MAX_STRINGS: i32 = 25;
@@ -215,6 +198,43 @@ impl Song {
         let mut data: Vec<u8> = Vec::with_capacity(8388608); //capacity of 8MB, should be sufficient
         write_version(&mut data, version);
         if clipboard.is_some() && clipboard.unwrap() {}
+        self.write_info(&mut data, version);
+        write_bool(&mut data, self.triplet_feel != TripletFeel::None);
+        write_i32(&mut data, self.tempo.to_i32().unwrap());
+        write_i32(&mut data, self.key.key.to_i32().unwrap());
+        self.write_midi_channels(&mut data);
+        write_i32(&mut data, self.tracks[0].measures.len().to_i32().unwrap());
+        write_i32(&mut data, self.tracks.len().to_i32().unwrap());
         data
+    }
+    fn write_info(&self, data: &mut Vec<u8>, version: (u8,u8,u8)) {
+        write_int_byte_size_string(data, &self.name);
+        write_int_byte_size_string(data, &self.subtitle);
+        write_int_byte_size_string(data, &self.artist);
+        write_int_byte_size_string(data, &self.album);
+        if version.0 < 5 {write_int_byte_size_string(data, &self.pack_author());}
+        else {
+            write_int_byte_size_string(data, &self.words);
+            write_int_byte_size_string(data, &self.author);
+        }
+        write_int_byte_size_string(data, &self.copyright);
+        write_int_byte_size_string(data, &self.writer);
+        write_int_byte_size_string(data, &self.instructions);
+        write_i32(data, self.notice.len().to_i32().unwrap());
+        for i in 0..self.notice.len() {write_int_byte_size_string(data, &self.notice[i]);}
+    }
+    fn pack_author(&self) -> String {
+        if !self.words.is_empty() && !self.author.is_empty() {
+            if self.words != self.author {
+                let mut s = self.words.clone();
+                s.push_str(", ");
+                s.push_str(&self.author);
+                s
+            } else {self.words.clone()}
+        } else {
+            let mut s = self.words.clone();
+            s.push_str(&self.author);
+            s
+        }
     }
 }

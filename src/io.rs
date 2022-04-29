@@ -111,18 +111,18 @@ fn read_string(data: &[u8], seek: &mut usize, size: usize, length: Option<usize>
     parse.unwrap().to_string()
 }
 
-const VERSIONS: [((u8,u8,u8), bool, &str); 10] = [((3, 0, 0), false, "FICHIER GUITAR PRO v3.00"),
+pub const VERSIONS: [((u8,u8,u8), bool, &str); 10] = [((3, 0, 0), false, "FICHIER GUITAR PRO v3.00"),
 
-                                                  ((4, 0, 0), false, "FICHIER GUITAR PRO v4.00"),
-                                                  ((4, 0, 6), false, "FICHIER GUITAR PRO v4.06"),
-                                                  ((4, 0, 6), true,  "CLIPBOARD GUITAR PRO 4.0 [c6]"),
+                                                      ((4, 0, 0), false, "FICHIER GUITAR PRO v4.00"),
+                                                      ((4, 0, 6), false, "FICHIER GUITAR PRO v4.06"),
+                                                      ((4, 0, 6), true,  "CLIPBOARD GUITAR PRO 4.0 [c6]"),
 
-                                                  ((5, 0, 0), false, "FICHIER GUITAR PRO v5.00"),
-                                                  ((5, 1, 0), false, "FICHIER GUITAR PRO v5.10"),
-                                                  ((5, 2, 0), false, "FICHIER GUITAR PRO v5.10"),  // sic
-                                                  ((5, 0, 0), true,  "CLIPBOARD GP 5.0"),
-                                                  ((5, 1, 0), true,  "CLIPBOARD GP 5.1"),
-                                                  ((5, 2, 0), true,  "CLIPBOARD GP 5.2")];
+                                                      ((5, 0, 0), false, "FICHIER GUITAR PRO v5.00"),
+                                                      ((5, 1, 0), false, "FICHIER GUITAR PRO v5.10"),
+                                                      ((5, 2, 0), false, "FICHIER GUITAR PRO v5.10"),  // sic
+                                                      ((5, 0, 0), true,  "CLIPBOARD GP 5.0"),
+                                                      ((5, 1, 0), true,  "CLIPBOARD GP 5.1"),
+                                                      ((5, 2, 0), true,  "CLIPBOARD GP 5.2")];
 
 /// Read the file version. It is on the first 31 bytes (1st byte is the real length, the following 30 bytes contain the version string) of the file.
 /// * `data` - array of bytes
@@ -168,6 +168,10 @@ pub(crate) fn write_f64(data: &mut Vec<u8>, value: f64) {data.extend(value.to_le
 pub(crate) fn write_byte_string(data: &mut Vec<u8>, value: &str) {
     write_byte(data, value.len().to_u8().unwrap());
     data.extend(value.as_bytes());
+}
+
+pub(crate) fn write_int_byte_size_string(data: &mut Vec<u8>, value: &str) {
+    
 }
 
 pub(crate) fn write_version(data: &mut Vec<u8>, version: (u8,u8,u8)) {

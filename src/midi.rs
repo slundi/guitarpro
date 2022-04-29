@@ -107,4 +107,20 @@ impl Song{
             if !self.channels[index.to_usize().unwrap()].is_percussion_channel() {self.channels[index.to_usize().unwrap()].effect_channel =  effect_channel.to_u8().unwrap();}
         }
     }
+
+    pub(crate) fn write_midi_channels(&self, data: &mut Vec<u8>) {
+        for i in 0..self.channels.len() {
+            if self.channels[i].is_percussion_channel() && self.channels[i].instrument == 0 {write_i32(data, -1);}
+            else                                                                            {write_i32(data, self.channels[i].instrument);}
+            write_signed_byte(data, self.from_channel_short(self.channels[i].volume));
+            write_signed_byte(data, self.from_channel_short(self.channels[i].balance));
+            write_signed_byte(data, self.from_channel_short(self.channels[i].chorus));
+            write_signed_byte(data, self.from_channel_short(self.channels[i].reverb));
+            write_signed_byte(data, self.from_channel_short(self.channels[i].phaser));
+            write_signed_byte(data, self.from_channel_short(self.channels[i].tremolo));
+            write_placeholder_default(data, 2); //Backward compatibility with version 3.0
+        }
+    }
+
+    fn from_channel_short(&self, data: i8) -> i8 { std::cmp::max(-128, std::cmp::min(127, (data >> 3) - 1)) + 1 }
 }
