@@ -205,6 +205,7 @@ impl Song {
         self.write_midi_channels(&mut data);
         write_i32(&mut data, self.tracks[0].measures.len().to_i32().unwrap());
         write_i32(&mut data, self.tracks.len().to_i32().unwrap());
+        self.write_measure_headers(&mut data);
         data
     }
     fn write_info(&self, data: &mut Vec<u8>, version: (u8,u8,u8)) {

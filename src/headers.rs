@@ -31,7 +31,7 @@ pub struct MeasureHeader {
 	pub start: i64,
 	pub time_signature: TimeSignature,
 	pub tempo: i32,
-	pub marker: Marker,
+	pub marker: Option<Marker>,
 	pub repeat_open: bool,
 	pub repeat_alternative: u8,
 	pub repeat_close: i8,
@@ -53,7 +53,7 @@ impl Default for MeasureHeader {
         direction: None,
         key_signature: KeySignature::default(),
         double_bar: false,
-        marker: Marker::default(),
+        marker: None,
         time_signature: TimeSignature {numerator: 4, denominator: Duration::default(), beams: vec![2, 2, 2, 2]},
     }}
 }
@@ -72,9 +72,10 @@ impl Default for Marker {fn default() -> Self { Marker {title: "Section".to_owne
 /// Read a marker. The markers are written in two steps:
 /// - first is written an integer equal to the marker's name length + 1
 /// - then a string containing the marker's name. Finally the marker's color is written.
-fn read_marker(data: &[u8], seek: &mut usize, marker: &mut Marker) {
-    marker.title = read_int_size_string(data, seek);
+fn read_marker(data: &[u8], seek: &mut usize) -> Marker {
+    let mut marker = Marker{title: read_int_size_string(data, seek), ..Default::default()};
     marker.color = read_color(data, seek);
+    marker
 }
 
 /// This class can store the information about a group of measures which are repeated.
@@ -182,7 +183,7 @@ impl Song {
         mh.repeat_open = (flag & 0x04) == 0x04; //Beginning of repeat
         if (flag & 0x08) == 0x08 {mh.repeat_close = read_signed_byte(data, seek);} //End of repeat
         if (flag & 0x10) == 0x10 {mh.repeat_alternative = if self.version.number.0 == 5 {self.read_repeat_alternative_v5(data, seek)} else {self.read_repeat_alternative(data, seek)};} //Number of alternate ending
-        if (flag & 0x20) == 0x20 {read_marker(data, seek, &mut mh.marker);} //Presence of a marker
+        if (flag & 0x20) == 0x20 {mh.marker = Some(read_marker(data, seek));} //Presence of a marker
         if (flag & 0x40) == 0x40 { //Tonality of the measure 
             mh.key_signature.key      = read_signed_byte(data, seek);
             mh.key_signature.is_minor = read_signed_byte(data, seek) != 0;
@@ -273,5 +274,51 @@ impl Song {
         from_signs.insert(DirectionSign::DaCoda, read_short(data, seek));
         from_signs.insert(DirectionSign::DaDoubleCoda, read_short(data, seek));
         (signs, from_signs)
+    }
+
+    pub(crate) fn write_measure_headers(&self, data: &mut Vec<u8>) {
+        let mut previous: Option<usize> = None;
+        for i in 0..self.measure_headers.len() {
+            //self.current_measure_number = Some(self.tracks[0].measures[i].number);
+            self.write_measure_header(data, i, previous);
+            previous = Some(i);
+        }
+    }
+
+    fn write_measure_header(&self, data: &mut Vec<u8>, header: usize, previous: Option<usize>) {
+        //pack measure header flags
+        let mut flags: u8 = 0x00;
+        if let Some(p) = previous {
+            if self.measure_headers[header].time_signature.numerator != self.measure_headers[p].time_signature.numerator {flags |= 0x01;}
+            if self.measure_headers[header].time_signature.denominator.value != self.measure_headers[p].time_signature.denominator.value {flags |= 0x02;}
+        } else {
+            flags |= 0x01;
+            flags |= 0x02;
+            if self.measure_headers[header].repeat_open {flags |= 0x04;}
+            if self.measure_headers[header].repeat_close > -1 {flags |= 0x08;}
+            if self.measure_headers[header].repeat_alternative > 0 {flags |= 0x10;}
+            if self.measure_headers[header].marker.is_some() {flags |= 0x20;}
+        }
+        write_byte(data, flags);
+        //end pack
+        if (flags & 0x01) == 0x01 {write_signed_byte(data, self.measure_headers[header].time_signature.numerator);}
+        if (flags & 0x02) == 0x02 {write_signed_byte(data, self.measure_headers[header].time_signature.denominator.value.to_i8().unwrap());}
+        if (flags & 0x08) == 0x08 {write_signed_byte(data, self.measure_headers[header].repeat_close);}
+        if (flags & 0x10) == 0x10 { //write repeat alternative
+            let mut first_one = false;
+            let mut ra:u8 = 0;
+            for i in 0u8..9-self.measure_headers[header].repeat_alternative.leading_zeros().to_u8().unwrap() {
+                ra = i;
+                if (self.measure_headers[header].repeat_alternative & 1 << i) > 0 {first_one = true;}
+                else if first_one {break;}
+            }
+            write_byte(data, ra);
+        }
+        if (flags & 0x20) == 0x20 { //write marker
+            if let Some(marker) = &self.measure_headers[header].marker {
+                write_int_byte_size_string(data, &marker.title);
+                write_color(data, marker.color);
+            }
+        }
     }
 }

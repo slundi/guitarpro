@@ -165,6 +165,15 @@ pub(crate) fn write_i16(data: &mut Vec<u8>, value: i16) {data.extend(value.to_le
 pub(crate) fn write_u16(data: &mut Vec<u8>, value: u16) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_f32(data: &mut Vec<u8>, value: f32) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_f64(data: &mut Vec<u8>, value: f64) {data.extend(value.to_le_bytes());}
+pub(crate) fn write_color(data: &mut Vec<u8>, value: i32) {
+    let r: u8 = ((value & 0xff0000) >> 16).to_u8().unwrap();
+    let g: u8 = ((value & 0x00ff00) >> 8).to_u8().unwrap();
+    let b: u8 = (value & 0x0000ff).to_u8().unwrap();
+    write_byte(data, r);
+    write_byte(data, g);
+    write_byte(data, b);
+    write_placeholder_default(data, 1);
+}
 pub(crate) fn write_byte_string(data: &mut Vec<u8>, value: &str) {
     write_byte(data, value.len().to_u8().unwrap());
     data.extend(value.as_bytes());
