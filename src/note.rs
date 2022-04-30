@@ -12,6 +12,8 @@ pub struct Note {
     pub duration_percent: f32,
     pub swap_accidentals: bool,
     pub kind: NoteType,
+    duration: Option<i8>,
+    tuplet: Option<i8,>
 }
 impl Default for Note {fn default() -> Self {Note {
     value: 0,
@@ -21,6 +23,7 @@ impl Default for Note {fn default() -> Self {Note {
     duration_percent:1.0,
     swap_accidentals: false,
     kind: NoteType::Rest,
+    duration: None, tuplet: None,
 }}}
 impl Note {
     pub(crate) fn real_value(&self, strings:Vec<(i8,i8)>) -> i8 {
@@ -142,11 +145,9 @@ impl Song {
         //println!("read_note(), flags: {} \t string: {} \t ghost note: {}", flags, guitar_string.0, note.effect.ghost_note);
         if (flags & 0x20) == 0x20 {note.kind = get_note_type(read_byte(data, seek)); }
         if (flags & 0x01) == 0x01 {
-            let _duration = read_signed_byte(data, seek);
-            let _tuplet = read_signed_byte(data, seek);
             //println!("read_note(), duration: {} \t tuplet: {}",duration, tuplet);
-            //note.duration = read_signed_byte(data, seek);
-            //note.tuplet = read_signed_byte(data, seek);
+            note.duration = Some(read_signed_byte(data, seek));
+            note.tuplet = Some(read_signed_byte(data, seek));
         }
         if (flags & 0x10) == 0x10 {
             let v = read_signed_byte(data, seek);
@@ -309,5 +310,50 @@ impl Song {
             }
         }
         -1
+    }
+
+    pub(crate) fn write_notes(&self, data: &mut Vec<u8>, beat: &Beat) {
+        let mut string_flags: u8 = 0;
+        for i in 0..beat.notes.len() {string_flags |= 1 << (7 - beat.notes[i].string);}
+        write_byte(data, string_flags);
+        let mut notes = beat.notes.clone();
+        notes.sort_by_key(|k|k.string);
+        for note in &notes {self.write_note(data, note);}
+    }
+    fn write_note(&self, data: &mut Vec<u8>, note: &Note) {
+        let flags: u8 = self.pack_note_flags(note);
+        write_byte(data, flags);
+        if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(note.kind));}
+        if (flags & 0x01) == 0x01 {
+            write_signed_byte(data, note.duration.unwrap());
+            write_signed_byte(data, note.tuplet.unwrap());
+        }
+        if (flags & 0x10) == 0x10 {write_signed_byte(data, crate::effects::pack_velocity(note.velocity));}
+        if (flags & 0x20) == 0x20 {
+            if note.kind != NoteType::Rest {write_signed_byte(data, note.value.to_i8().unwrap());}
+            else {write_signed_byte(data, 0);}
+        }
+        if (flags & 0x08) == 0x08 {self.write_note_effects(data, note);}
+    }
+    fn pack_note_flags(&self, note: &Note) -> u8 {
+        let mut flags: u8 = 0u8;
+        if note.duration.is_some() && note.tuplet.is_some() {flags |= 0x01;}
+        if note.effect.heavy_accentuated_note {flags |= 0x02;}
+        if note.effect.ghost_note {flags |= 0x04;}
+        if note.effect.is_default() {flags |= 0x08;}
+        if note.velocity != DEFAULT_VELOCITY {flags |= 0x10;}
+        flags |= 0x20;
+        flags
+    }
+    fn write_note_effects(&self, data: &mut Vec<u8>, note: &Note) {
+        let mut flags1 = 0u8;
+        if note.effect.is_bend() {flags1 |= 0x01;}
+        if note.effect.hammer {flags1 |= 0x02;}
+        if note.effect.slides.contains(&SlideType::ShiftSlideTo) || note.effect.slides.contains(&SlideType::LegatoSlideTo) {flags1 |= 0x04;}
+        if note.effect.let_ring {flags1 |= 0x08;}
+        if note.effect.is_grace() {flags1 |= 0x10;}
+        write_byte(data, flags1);
+        if (flags1 & 0x01) == 0x01 {self.write_bend(data, &note.effect.bend);}
+        if (flags1 & 0x10) == 0x10 {self.write_grace(data, &note.effect.grace);}
     }
 }

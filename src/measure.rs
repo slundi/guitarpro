@@ -129,22 +129,22 @@ impl Song {
             //self.current_track = Some(i);
             for m in 0..self.tracks[i].measures.len() {
                 //self.current_measure_number = Some(self.tracks[i].measure.number);
-                self.write_measure(data, i, m);
+                self.write_measure(data, &self.tracks[i].measures[m]);
             }
         }
         //self.current_track = None;
         //self.current_measure_number = None;
     }
-    fn write_measure(&self, data: &mut Vec<u8>, track: usize, measure: usize) {
+    fn write_measure(&self, data: &mut Vec<u8>, measure: &Measure) {
         //self.current_voice_number = Some(1);
-        self.write_voice(data, track, measure, 0);
+        self.write_voice(data, &measure.voices[0]);
         //self.current_voice_number = None;
     }
-    fn write_voice(&self, data: &mut Vec<u8>, track: usize, measure: usize, voice: usize) {
-        write_i32(data, self.tracks[track].measures[measure].voices[voice].beats.len().to_i32().unwrap());
-        for b in 0..self.tracks[track].measures[measure].voices[voice].beats.len() {
+    fn write_voice(&self, data: &mut Vec<u8>, voice: &Voice) {
+        write_i32(data, voice.beats.len().to_i32().unwrap());
+        for b in 0..voice.beats.len() {
             //self.current_beat_number = Some(b+1);
-            self.write_beat(data, track, measure, voice, b);
+            self.write_beat(data, &voice.beats[b]);
             //self.current_beat_number = None;
         }
     }

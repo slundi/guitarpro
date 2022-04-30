@@ -54,6 +54,8 @@ pub(crate) fn unpack_velocity(v: i16) -> i16 {
     MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT
 }
 
+pub(crate) fn pack_velocity(velocity: i16) -> i8 { ((velocity + VELOCITY_INCREMENT - MIN_VELOCITY).to_f32().unwrap()/ VELOCITY_INCREMENT.to_f32().unwrap()).ceil().to_i8().unwrap() }
+
 /// A grace note effect
 #[derive(Debug,Clone, PartialEq)]
 pub struct GraceEffect {
@@ -298,5 +300,16 @@ impl Song {
             3 => DURATION_SIXTY_FOURTH,
             _ => panic!("Cannot get trill period"),
         }.to_u16().unwrap()
+    }
+
+    pub(crate) fn write_bend(&self, data: &mut Vec<u8>, bend: &Option<BendEffect>) {
+        //TODO: 
+    }
+    pub(crate) fn write_grace(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) {
+        let g = grace.clone().unwrap();
+        write_signed_byte(data, g.fret);
+        write_byte(data, pack_velocity(g.velocity).to_u8().unwrap());
+        write_byte(data, g.duration.leading_zeros().to_u8().unwrap()); //8 - grace.duration.bit_length()
+        write_signed_byte(data, from_grace_effect_transition(g.transition));
     }
 }

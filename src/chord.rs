@@ -255,8 +255,8 @@ impl Song {
         chord.show = Some(read_bool(data, seek));
     }
 
-    pub(crate) fn write_chord(&self, data: &mut  Vec<u8>, track: usize, measure: usize, voice: usize, beat: usize) {
-        if let Some(c) = &self.tracks[track].measures[measure].voices[voice].beats[beat].effect.chord {
+    pub(crate) fn write_chord(&self, data: &mut  Vec<u8>, beat: &crate::beat::Beat) {
+        if let Some(c) = &beat.effect.chord {
             write_bool(data, c.new_format == Some(true));
             if c.new_format == Some(true) {self.write_new_format_chord(data, c);}
             else {self.write_old_format_chord(data, c);}

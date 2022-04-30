@@ -67,6 +67,15 @@ pub(crate) fn get_note_type(value: u8) -> NoteType {
         _ => NoteType::Unknown(value), //panic!("Cannot read note type"),
     }
 }
+pub(crate) fn from_note_type(value: NoteType) -> u8 {
+    match value {
+        NoteType::Rest             => 0,
+        NoteType::Normal           => 1,
+        NoteType::Tie              => 2,
+        NoteType::Dead             => 3,
+        NoteType::Unknown(value)   => value, //panic!("Cannot read note type"),
+    }
+}
 
 #[derive(Debug,Copy,Clone,PartialEq)]
 pub enum BeatStatus {Empty, Normal, Rest}
@@ -133,6 +142,14 @@ pub(crate) fn get_slap_effect(value: u8) -> SlapEffect {
         2 => SlapEffect::Slapping,
         3 => SlapEffect::Popping,
         _ => panic!("Cannot read slap effect for the beat effects"),
+    }
+}
+pub(crate) fn from_slap_effect(value: SlapEffect) -> u8 {
+    match value {
+        SlapEffect::None     => 0,
+        SlapEffect::Tapping  => 1,
+        SlapEffect::Slapping => 2,
+        SlapEffect::Popping  => 3,
     }
 }
 
@@ -375,6 +392,14 @@ pub(crate) fn get_grace_effect_transition(value: i8) -> GraceEffectTransition {
         2 => GraceEffectTransition::Bend,
         3 => GraceEffectTransition::Hammer,
         _ => panic!("Cannot get transition for the grace effect"),
+    }
+}
+pub(crate) fn from_grace_effect_transition(value: GraceEffectTransition) -> i8 {
+    match value {
+        GraceEffectTransition::None   => 0,
+        GraceEffectTransition::Slide  => 1,
+        GraceEffectTransition::Bend   => 2,
+        GraceEffectTransition::Hammer => 3,
     }
 }
 
