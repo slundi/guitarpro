@@ -292,13 +292,40 @@ impl Song {
         else {write_i32(data, 0);}
         if let Some(e) = chord.eleventh {write_i32(data, from_chord_alteration(e).to_i32().unwrap());}
         else {write_i32(data, 0);}
-        //TODO:
+        //first fret
+        if let Some(ff) = chord.first_fret {write_i32(data, ff.to_i32().unwrap());}
+        else {write_i32(data, 0);}
+        //strings
+        for i in 0..6 {
+            if i < chord.strings.len() {write_i32(data, chord.strings[i].to_i32().unwrap());}
+            else {write_i32(data, -1);}
+        }
+        //barre
+        let mut barres: Vec<Barre> = Vec::with_capacity(2);
+        for i in 0..2usize {
+            if i < chord.barres.len() {barres.push(chord.barres[i].clone());}
+            else {break;}
+        }
+        write_i32(data, barres.len().to_i32().unwrap());
+        while barres.len() < 2 {barres.push(Barre{fret:0, start:0, end:0});}
+        for b in barres.iter().take(2) {write_i32(data, b.fret.to_i32().unwrap());}
+        for b in barres.iter().take(2) {write_i32(data, b.start.to_i32().unwrap());}
+        for b in barres.iter().take(2) {write_i32(data, b.end.to_i32().unwrap());}
+        //omissions
+        for i in 0..7usize {
+            if i < chord.omissions.len() {write_bool(data, chord.omissions[i]);}
+            else {write_bool(data, true);}
+        }
+        write_placeholder_default(data, 1);
     }
     fn write_old_format_chord(&self, data: &mut Vec<u8>, chord: &Chord) {
         write_int_byte_size_string(data, &chord.name);
         if let Some(ff) = chord.first_fret {write_i32(data, ff.to_i32().unwrap());}
         else {write_i32(data, 0);} //TODO: check
-        //TODO: for fret in {write_i32(data, fret);}
+        for i in 0..6 {
+            if i < chord.strings.len() {write_i32(data, chord.strings[i].to_i32().unwrap());}
+            else {write_i32(data, -1);}
+        }
     }
 }
 
