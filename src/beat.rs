@@ -320,4 +320,29 @@ impl Song {
         be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION, value: 0, ..Default::default() });
         be
     }
+
+    pub(crate) fn write_beat(&self, data: &mut Vec<u8>, track: usize, measure: usize, voice: usize, beat: usize) {
+        let mut flags = 0u8;
+        if self.tracks[track].measures[measure].voices[voice].beats[beat].duration.dotted {flags |= 0x01;}
+        if self.tracks[track].measures[measure].voices[voice].beats[beat].effect.is_chord() {flags |= 0x02;}
+        if !self.tracks[track].measures[measure].voices[voice].beats[beat].text.is_empty() {flags |= 0x04;}
+        if self.tracks[track].measures[measure].voices[voice].beats[beat].effect.is_default() {flags |= 0x08;}
+        if let Some(mtc) = &self.tracks[track].measures[measure].voices[voice].beats[beat].effect.mix_table_change {
+            if mtc.is_just_wah() {flags |= 0x02;}
+        }
+        if !self.tracks[track].measures[measure].voices[voice].beats[beat].duration.is_default_tuplet() {flags |= 0x20;}
+        if self.tracks[track].measures[measure].voices[voice].beats[beat].status != BeatStatus::Normal {flags |= 0x40;}
+        write_byte(data, flags);
+        if (flags & 0x40) == 0x40 {write_byte(data, from_beat_status(self.tracks[track].measures[measure].voices[voice].beats[beat].status));}
+        self.tracks[track].measures[measure].voices[voice].beats[beat].duration.write_duration(data, flags);
+        if (flags & 0x02) == 0x02 {self.write_chord(data, track, measure, voice, beat);}
+        if (flags & 0x04) == 0x04 {write_int_byte_size_string(data, &self.tracks[track].measures[measure].voices[voice].beats[beat].text);}
+        if (flags & 0x08) == 0x08 {self.write_beat_effect(data, &self.tracks[track].measures[measure].voices[voice].beats[beat].effect);}
+        if (flags & 0x10) == 0x10 {self.write_mix_table_change(data, &self.tracks[track].measures[measure].voices[voice].beats[beat].effect.mix_table_change);}
+        //TODO: self.write_notes(data, track, measure, voice, beat);
+    }
+
+    pub(crate) fn write_beat_effect(&self, data: &mut  Vec<u8>, effects: &BeatEffects) {
+        
+    }
 }

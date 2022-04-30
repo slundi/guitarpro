@@ -1,6 +1,6 @@
 
 /// An enumeration of different triplet feels.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum TripletFeel { None, Eighth, Sixteenth }
 pub(crate) fn get_triplet_feel(value: i8) -> TripletFeel {
     match value {
@@ -14,10 +14,10 @@ pub(crate) fn get_triplet_feel(value: i8) -> TripletFeel {
 
 /// An enumeration of available clefs
 #[allow(dead_code)]
-#[derive(Debug,Clone)]
+#[derive(Debug,Copy,Clone)]
 pub enum MeasureClef { Treble, Bass, Tenor, Alto }
 /// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
-#[derive(Debug,Clone)]
+#[derive(Debug,Copy,Clone)]
 pub enum LineBreak { None, Break, Protect }
 pub(crate) fn get_line_break(value: u8) -> LineBreak {
     match value {
@@ -28,7 +28,7 @@ pub(crate) fn get_line_break(value: u8) -> LineBreak {
 }
 
 /// An enumeration of all supported slide types.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum SlideType {
     IntoFromAbove, //-2
     IntoFromBelow, //-1
@@ -52,7 +52,7 @@ pub(crate) fn get_slide_type(value: i8) -> SlideType {
 }
 
 /// An enumeration of all supported slide types.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum NoteType {
     Rest, //0
     Normal, Tie, Dead,
@@ -68,7 +68,7 @@ pub(crate) fn get_note_type(value: u8) -> NoteType {
     }
 }
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum BeatStatus {Empty, Normal, Rest}
 pub(crate) fn get_beat_status(value: u8) -> BeatStatus {
     match value {
@@ -78,8 +78,15 @@ pub(crate) fn get_beat_status(value: u8) -> BeatStatus {
         _ => BeatStatus::Normal, //panic!("Cannot get beat status"),
     }
 }
+pub(crate) fn from_beat_status(value: BeatStatus) -> u8 {
+    match value {
+        BeatStatus::Empty => 0,
+        BeatStatus::Normal => 1,
+        BeatStatus::Rest => 2,
+    }
+}
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum TupletBracket {None, Start, End}
 
 /// Octave signs
@@ -106,7 +113,7 @@ pub(crate) fn get_octave(value: u8) -> Octave {
 }
 
 /// All beat stroke directions
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum BeatStrokeDirection { None, Up, Down }
 pub(crate) fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
     match value {
@@ -117,7 +124,7 @@ pub(crate) fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
     }
 }
 /// Characteristic of articulation
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }
 pub(crate) fn get_slap_effect(value: u8) -> SlapEffect {
     match value {
@@ -131,11 +138,11 @@ pub(crate) fn get_slap_effect(value: u8) -> SlapEffect {
 
 
 /// Voice directions indicating the direction of beams
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum VoiceDirection { None, Up, Down }
 
 /// Type of the chord.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum ChordType {
     /// Major chord.
     Major,
@@ -190,9 +197,29 @@ pub(crate) fn get_chord_type(value: u8) -> ChordType {
         _  => ChordType::Unknown(value), //panic!("Cannot read chord type (new format)"),
     }
 }
+pub(crate) fn from_chord_type(value: ChordType) -> u8 {
+    match value {
+        ChordType::Major                    => 0,
+        ChordType::Seventh                  => 1,
+        ChordType::MajorSeventh             => 2,
+        ChordType::Sixth                    => 3,
+        ChordType::Minor                    => 4,
+        ChordType::MinorSeventh             => 5,
+        ChordType::MinorMajor               => 6,
+        ChordType::MinorSixth               => 7,
+        ChordType::SuspendedSecond          => 8,
+        ChordType::SuspendedFourth          => 9,
+        ChordType::SeventhSuspendedSecond   => 10,
+        ChordType::SeventhSuspendedFourth   => 11,
+        ChordType::Diminished               => 12,
+        ChordType::Augmented                => 13,
+        ChordType::Power                    => 14,
+        ChordType::Unknown(value) => value,
+    }
+}
 
 /// Tonality of the chord
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum ChordAlteration {
     /// Perfect.
     Perfect,
@@ -209,9 +236,16 @@ pub(crate) fn get_chord_alteration(value: u8) -> ChordAlteration {
         _ => panic!("Cannot read chord fifth (new format)"),
     }
 }
+pub(crate) fn from_chord_alteration(value: ChordAlteration) -> u8 {
+    match value {
+        ChordAlteration::Perfect    => 0,
+        ChordAlteration::Diminished => 1,
+        ChordAlteration::Augmented  => 2,
+    }
+}
 
 /// Extension type of the chord
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum ChordExtension {
     None,
     /// Ninth chord.
@@ -230,11 +264,19 @@ pub(crate) fn get_chord_extension(value: u8) -> ChordExtension {
         3 => ChordExtension::Thirteenth,
         _ => ChordExtension::Unknown(value), //panic!("Cannot read chord type (new format)"),
     }
-
+}
+pub(crate) fn from_chord_extension(value: ChordExtension) -> u8 {
+    match value {
+        ChordExtension::None              => 0,
+        ChordExtension::Ninth             => 1,
+        ChordExtension::Eleventh          => 2,
+        ChordExtension::Thirteenth        => 3,
+        ChordExtension::Unknown(value) => value, //panic!("Cannot read chord type (new format)"),
+    }
 }
 
 /// Left and right hand fingering used in tabs and chord diagram editor.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum Fingering {
     /// Open or muted.
     Open, //-1?
@@ -265,7 +307,7 @@ pub(crate) fn get_fingering(value: i8) -> Fingering {
 }
 
 /// All Bend presets
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum BendType {
     /// No Preset.
     None,
@@ -315,7 +357,7 @@ pub(crate) fn get_bend_type(value: i8) -> BendType {
 }
 
 /// All transition types for grace notes.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum GraceEffectTransition {
     ///No transition
     None,
@@ -336,7 +378,7 @@ pub(crate) fn get_grace_effect_transition(value: i8) -> GraceEffectTransition {
     }
 }
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub enum HarmonicType {
     Natural, //1
     Artificial,
@@ -346,7 +388,7 @@ pub enum HarmonicType {
 }
 
 /// Values of auto-accentuation on the beat found in track RSE settings
-#[derive(Debug,Clone)]
+#[derive(Debug,Copy,Clone)]
 pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
 pub(crate) fn get_accentuation(value: u8) -> Accentuation {
     match value {
@@ -361,7 +403,7 @@ pub(crate) fn get_accentuation(value: u8) -> Accentuation {
 }
 
 /// A navigation sign like *Coda* (𝄌: U+1D10C) or *Segno* (𝄋 or 𝄉: U+1D10B or U+1D109).
-#[derive(Debug,Clone,PartialEq,Eq,Hash)]
+#[derive(Debug,Copy,Clone,PartialEq,Eq,Hash)]
 pub enum DirectionSign {
     Coda, DoubleCoda,
     Segno, SegnoSegno,

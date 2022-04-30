@@ -254,6 +254,52 @@ impl Song {
         for _ in 0u8..7u8 {chord.fingerings.push(get_fingering(read_signed_byte(data, seek)));}
         chord.show = Some(read_bool(data, seek));
     }
+
+    pub(crate) fn write_chord(&self, data: &mut  Vec<u8>, track: usize, measure: usize, voice: usize, beat: usize) {
+        if let Some(c) = &self.tracks[track].measures[measure].voices[voice].beats[beat].effect.chord {
+            write_bool(data, c.new_format == Some(true));
+            if c.new_format == Some(true) {self.write_new_format_chord(data, c);}
+            else {self.write_old_format_chord(data, c);}
+        }
+    }
+
+    fn write_new_format_chord(&self, data: &mut Vec<u8>, chord: &Chord) {
+        write_bool(data, chord.sharp == Some(true));
+        write_placeholder_default(data, 3);
+        //root
+        if let Some(r) = &chord.root {write_i32(data, r.value.to_i32().unwrap());}
+        else {write_i32(data, 0);}
+        //chord type
+        if let Some(t) = chord.kind {write_i32(data, from_chord_type(t).to_i32().unwrap());} 
+        else {write_i32(data, 0);}
+        //chord extension
+        if let Some(e) = chord.extension {write_i32(data, from_chord_extension(e).to_i32().unwrap());}
+        else {write_i32(data, 0);}
+        //bass
+        if let Some(b) = &chord.bass {write_i32(data, b.value.to_i32().unwrap());}
+        else {write_i32(data, 0);}
+        //tonality
+        if let Some(t) = chord.tonality {write_i32(data, from_chord_alteration(t).to_i32().unwrap());}
+        else {write_i32(data, 0);}
+        //
+        write_bool(data, chord.add == Some(true));
+        write_byte_size_string(data, &chord.name);
+        write_placeholder_default(data, 22 - chord.name.len());
+        //fifth, ninth, eleventh
+        if let Some(f) = chord.fifth    {write_i32(data, from_chord_alteration(f).to_i32().unwrap());}
+        else {write_i32(data, 0);}
+        if let Some(n) = chord.ninth    {write_i32(data, from_chord_alteration(n).to_i32().unwrap());}
+        else {write_i32(data, 0);}
+        if let Some(e) = chord.eleventh {write_i32(data, from_chord_alteration(e).to_i32().unwrap());}
+        else {write_i32(data, 0);}
+        //TODO:
+    }
+    fn write_old_format_chord(&self, data: &mut Vec<u8>, chord: &Chord) {
+        write_int_byte_size_string(data, &chord.name);
+        if let Some(ff) = chord.first_fret {write_i32(data, ff.to_i32().unwrap());}
+        else {write_i32(data, 0);} //TODO: check
+        //TODO: for fret in {write_i32(data, fret);}
+    }
 }
 
 #[cfg(test)]

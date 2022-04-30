@@ -91,7 +91,17 @@ impl Duration {
         }
         index
     }
+    pub(crate) fn is_default_tuplet(&self) -> bool { self.tuplet_times == 1 && self.tuplet_enters == 1}
     //@classmethod def fromFraction(cls, frac): return cls(frac.denominator, frac.numerator)
+
+    pub(crate) fn write_duration(&self, data: &mut Vec<u8>, flags: u8) {
+        let value = (16 - self.value.leading_zeros()).to_i8().unwrap() - 3; //value = duration.value.bit_length() - 3
+        write_signed_byte(data, value);
+        if (flags & 0x20) == 0x20 {
+            if !self.is_supported() {return;}
+            write_i32(data, self.tuplet_enters.to_i32().unwrap()); //write iTuplet
+        }
+    }
 }
 /// Read beat duration.
 /// Duration is composed of byte signifying duration and an integer that maps to `Tuplet`. The byte maps to following values:

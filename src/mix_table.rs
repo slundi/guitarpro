@@ -194,4 +194,60 @@ impl Song {
     /// Read wah-wah.
     /// - Wah value: :ref:`signed-byte`. See `WahEffect` for value mapping.
     fn read_wah_effect(&self, data: &[u8], seek: &mut usize, flags: i8) -> WahEffect {WahEffect{value: read_signed_byte(data, seek), display: (flags & -0x80) == -0x80 /*(flags & 0x80) == 0x80*/}}
+
+    pub(crate) fn write_mix_table_change(&self, data: &mut Vec<u8>, mix_table_change: &Option<MixTableChange>) {
+        if let Some(mtc) = mix_table_change {
+            self.write_mix_table_change_values(data, mtc);
+            self.write_mix_table_change_durations(data, mtc);
+        }
+    }
+    fn write_mix_table_change_values(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange) {
+        //instrument
+        if let Some(i) = &mix_table_change.instrument {write_signed_byte(data, i.value.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //volume
+        if let Some(i) = &mix_table_change.volume {write_signed_byte(data, i.value.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //balance
+        if let Some(i) = &mix_table_change.balance {write_signed_byte(data, i.value.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //chorus
+        if let Some(i) = &mix_table_change.chorus {write_signed_byte(data, i.value.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //reverb
+        if let Some(i) = &mix_table_change.reverb {write_signed_byte(data, i.value.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //phaser
+        if let Some(i) = &mix_table_change.phaser {write_signed_byte(data, i.value.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //tremolo
+        if let Some(i) = &mix_table_change.tremolo {write_signed_byte(data, i.value.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //tempo
+        if let Some(i) = &mix_table_change.tempo {write_signed_byte(data, i.value.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+    }
+    fn write_mix_table_change_durations(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange) {
+        //volume
+        if let Some(i) = &mix_table_change.volume {write_signed_byte(data, i.duration.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //balance
+        if let Some(i) = &mix_table_change.balance {write_signed_byte(data, i.duration.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //chorus
+        if let Some(i) = &mix_table_change.chorus {write_signed_byte(data, i.duration.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //reverb
+        if let Some(i) = &mix_table_change.reverb {write_signed_byte(data, i.duration.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //phaser
+        if let Some(i) = &mix_table_change.phaser {write_signed_byte(data, i.duration.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //tremolo
+        if let Some(i) = &mix_table_change.tremolo {write_signed_byte(data, i.duration.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+        //tempo
+        if let Some(i) = &mix_table_change.tempo {write_signed_byte(data, i.duration.to_i8().unwrap());}
+        else {write_signed_byte(data, -1);}
+    }
 }

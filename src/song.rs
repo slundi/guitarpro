@@ -206,6 +206,9 @@ impl Song {
         write_i32(&mut data, self.tracks[0].measures.len().to_i32().unwrap());
         write_i32(&mut data, self.tracks.len().to_i32().unwrap());
         self.write_measure_headers(&mut data);
+        self.write_tracks(&mut data);
+        self.write_measures(&mut data);
+        write_i32(&mut data, 0);
         data
     }
     fn write_info(&self, data: &mut Vec<u8>, version: (u8,u8,u8)) {

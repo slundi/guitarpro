@@ -116,7 +116,7 @@ impl Song {
         track.name = read_byte_size_string(data, seek, 40);
         let string_count = read_int(data, seek).to_u8().unwrap();
         track.strings.clear();
-        for i in 0i8..7i8 {
+        for i in 0..7i8 {
             let i_tuning = read_int(data, seek).to_i8().unwrap();
             if string_count.to_i8().unwrap() > i { track.strings.push((i + 1, i_tuning)); }
         }
@@ -224,5 +224,36 @@ impl Song {
         self.channels[number].bank = read_byte(data, seek);
         self.read_track_rse(data, seek, &mut track);
         self.tracks.push(track);
+    }
+
+    pub(crate) fn write_tracks(&self, data: &mut Vec<u8>) {
+        for i in 0..self.tracks.len() {
+            //self.current_track = Some(i);
+            self.write_track(data, i);
+        }
+        //self.current_track = None;
+    }
+    fn write_track(&self, data: &mut Vec<u8>, number: usize) {
+        let mut flags = 0x00;
+        if self.tracks[number].percussion_track {flags |= 0x01;}
+        if self.tracks[number].twelve_stringed_guitar_track {flags |= 0x02;}
+        if self.tracks[number].banjo_track {flags |= 0x04;}
+        write_byte(data, flags);
+        write_byte_size_string(data, &self.tracks[number].name);
+        write_placeholder_default(data, 30 - self.tracks[number].name.len());
+        write_i32(data, self.tracks[number].strings.len().to_i32().unwrap());
+        for i in 0..7usize {
+            let mut tuning = 0i8;
+            if i < self.tracks[number].strings.len() { tuning = self.tracks[number].strings[i].1;}
+            write_i32(data, tuning.to_i32().unwrap());
+        }
+        write_i32(data, self.tracks[number].port.to_i32().unwrap());
+        //write channel
+        write_i32(data, self.channels[self.tracks[number].channel_index].channel.to_i32().unwrap() + 1);
+        write_i32(data, self.channels[self.tracks[number].channel_index].effect_channel.to_i32().unwrap() + 1);
+        //end write channel
+        write_i32(data, self.tracks[number].fret_count.to_i32().unwrap());
+        write_i32(data, self.tracks[number].offset);
+        write_color(data, self.tracks[number].color);
     }
 }

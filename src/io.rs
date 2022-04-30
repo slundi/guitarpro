@@ -174,7 +174,7 @@ pub(crate) fn write_color(data: &mut Vec<u8>, value: i32) {
     write_byte(data, b);
     write_placeholder_default(data, 1);
 }
-pub(crate) fn write_byte_string(data: &mut Vec<u8>, value: &str) {
+pub(crate) fn write_byte_size_string(data: &mut Vec<u8>, value: &str) {
     write_byte(data, value.len().to_u8().unwrap());
     data.extend(value.as_bytes());
 }
@@ -186,7 +186,7 @@ pub(crate) fn write_int_byte_size_string(data: &mut Vec<u8>, value: &str) {
 pub(crate) fn write_version(data: &mut Vec<u8>, version: (u8,u8,u8)) {
     for v in VERSIONS {
         if version == v.0 {
-            write_byte_string(data, v.2);
+            write_byte_size_string(data, v.2);
             write_placeholder_default(data, 30 - v.2.len());
             break;
         }
