@@ -372,6 +372,22 @@ pub(crate) fn get_bend_type(value: i8) -> BendType {
         _ => panic!("Cannot read bend type"),
     }
 }
+pub(crate) fn from_bend_type(value: BendType) -> i8 {
+    match value {
+        BendType::None             => 0,
+        BendType::Bend             => 1,
+        BendType::BendRelease      => 2,
+        BendType::BendReleaseBend  => 3,
+        BendType::Prebend          => 4,
+        BendType::PrebendRelease   => 5,
+        BendType::Dip              => 6,
+        BendType::Dive             => 7,
+        BendType::ReleaseUp        => 8,
+        BendType::InvertedDip      => 9,
+        BendType::Return          => 10,
+        BendType::ReleaseDown     => 11,
+    }
+}
 
 /// All transition types for grace notes.
 #[derive(Debug,Copy,Clone,PartialEq)]

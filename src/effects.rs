@@ -22,6 +22,7 @@ pub const BEND_EFFECT_MAX_POSITION: u8 =12;
 
 pub const GP_BEND_SEMITONE: f32 = 25.0;
 pub const GP_BEND_POSITION: f32 = 60.0;
+pub const GP_BEND_SEMITONE_LENGTH: f32 = 1.0;
 /// This effect is used to describe string bends and tremolo bars
 #[derive(Debug,Clone, PartialEq)]
 pub struct BendEffect {
@@ -303,7 +304,16 @@ impl Song {
     }
 
     pub(crate) fn write_bend(&self, data: &mut Vec<u8>, bend: &Option<BendEffect>) {
-        //TODO: 
+        if let Some(b) = bend {
+            write_signed_byte(data, from_bend_type(b.kind));
+            write_i32(data, b.value.to_i32().unwrap());
+            write_i32(data, b.points.len().to_i32().unwrap());
+            for i in 0..b.points.len() {
+                write_i32(data, (b.points[i].position.to_f32().unwrap() * GP_BEND_POSITION / BEND_EFFECT_MAX_POSITION.to_f32().unwrap()).round().to_i32().unwrap());
+                write_i32(data, (b.points[i].value.to_f32().unwrap() * GP_BEND_SEMITONE / GP_BEND_SEMITONE_LENGTH).round().to_i32().unwrap());
+                write_bool(data, b.points[i].vibrato);
+            }
+        }
     }
     pub(crate) fn write_grace(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) {
         let g = grace.clone().unwrap();
