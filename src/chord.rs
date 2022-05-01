@@ -327,6 +327,70 @@ impl Song {
             else {write_i32(data, -1);}
         }
     }
+
+    pub(crate) fn write_chord_v4(&self, data: &mut  Vec<u8>, beat: &crate::beat::Beat) {
+        if let Some(c) = &beat.effect.chord {
+            write_signed_byte(data, 1); //signify GP4 chord format
+            write_bool(data, c.sharp == Some(true));
+            write_placeholder_default(data, 3);
+            //root
+            if let Some(r) = &c.root {write_i32(data, r.value.to_i32().unwrap());}
+            else {write_i32(data, 0);}
+            //chord type
+            if let Some(t) = c.kind {write_i32(data, from_chord_type(t).to_i32().unwrap());} 
+            else {write_i32(data, 0);}
+            //chord extension
+            if let Some(e) = c.extension {write_i32(data, from_chord_extension(e).to_i32().unwrap());}
+            else {write_i32(data, 0);}
+            //bass
+            if let Some(b) = &c.bass {write_i32(data, b.value.to_i32().unwrap());}
+            else {write_i32(data, 0);}
+            //tonality
+            if let Some(t) = c.tonality {write_i32(data, from_chord_alteration(t).to_i32().unwrap());}
+            else {write_i32(data, 0);}
+            //
+            write_bool(data, c.add == Some(true));
+            write_byte_size_string(data, &c.name);
+            write_placeholder_default(data, 22 - c.name.len());
+            //fifth, ninth, eleventh
+            if let Some(f) = c.fifth    {write_i32(data, from_chord_alteration(f).to_i32().unwrap());}
+            else {write_i32(data, 0);}
+            if let Some(n) = c.ninth    {write_i32(data, from_chord_alteration(n).to_i32().unwrap());}
+            else {write_i32(data, 0);}
+            if let Some(e) = c.eleventh {write_i32(data, from_chord_alteration(e).to_i32().unwrap());}
+            else {write_i32(data, 0);}
+            //first fret
+            if let Some(ff) = c.first_fret {write_i32(data, ff.to_i32().unwrap());}
+            else {write_i32(data, 0);}
+            //strings
+            for i in 0..6 {
+                if i < c.strings.len() {write_i32(data, c.strings[i].to_i32().unwrap());}
+                else {write_i32(data, -1);}
+            }
+            //barre
+            let mut barres: Vec<Barre> = Vec::with_capacity(2);
+            for i in 0..2usize {
+                if i < c.barres.len() {barres.push(c.barres[i].clone());}
+                else {break;}
+            }
+            write_i32(data, barres.len().to_i32().unwrap());
+            while barres.len() < 5 {barres.push(Barre{fret:0, start:0, end:0});}
+            for b in barres.iter().take(5) {write_i32(data, b.fret.to_i32().unwrap());}
+            for b in barres.iter().take(5) {write_i32(data, b.start.to_i32().unwrap());}
+            for b in barres.iter().take(5) {write_i32(data, b.end.to_i32().unwrap());}
+            //omissions
+            for i in 0..7usize {
+                if i < c.omissions.len() {write_bool(data, c.omissions[i]);}
+                else {write_bool(data, true);}
+            }
+            write_placeholder_default(data, 1);
+            for i in 0..7 {
+                if i < c.fingerings.len() {write_signed_byte(data, from_fingering(c.fingerings[i]));}
+                else {write_signed_byte(data, -2);}
+            }
+            write_bool(data, c.show == Some(true));
+        }
+    }
 }
 
 #[cfg(test)]

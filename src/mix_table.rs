@@ -195,10 +195,11 @@ impl Song {
     /// - Wah value: :ref:`signed-byte`. See `WahEffect` for value mapping.
     fn read_wah_effect(&self, data: &[u8], seek: &mut usize, flags: i8) -> WahEffect {WahEffect{value: read_signed_byte(data, seek), display: (flags & -0x80) == -0x80 /*(flags & 0x80) == 0x80*/}}
 
-    pub(crate) fn write_mix_table_change(&self, data: &mut Vec<u8>, mix_table_change: &Option<MixTableChange>) {
+    pub(crate) fn write_mix_table_change(&self, data: &mut Vec<u8>, mix_table_change: &Option<MixTableChange>, version: &(u8,u8,u8)) {
         if let Some(mtc) = mix_table_change {
             self.write_mix_table_change_values(data, mtc);
             self.write_mix_table_change_durations(data, mtc);
+            if version.0 >= 4 {self.write_mix_table_change_flags(data, mtc);}
         }
     }
     fn write_mix_table_change_values(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange) {
@@ -249,5 +250,15 @@ impl Song {
         //tempo
         if let Some(i) = &mix_table_change.tempo {write_signed_byte(data, i.duration.to_i8().unwrap());}
         else {write_signed_byte(data, -1);}
+    }
+    fn write_mix_table_change_flags(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange) {
+        let mut flags = 0i8;
+        if let Some(i) = &mix_table_change.volume  {if i.all_tracks {flags |= 0x01;}}
+        if let Some(i) = &mix_table_change.balance {if i.all_tracks {flags |= 0x02;}}
+        if let Some(i) = &mix_table_change.chorus  {if i.all_tracks {flags |= 0x04;}}
+        if let Some(i) = &mix_table_change.reverb  {if i.all_tracks {flags |= 0x08;}}
+        if let Some(i) = &mix_table_change.phaser  {if i.all_tracks {flags |= 0x10;}}
+        if let Some(i) = &mix_table_change.tremolo {if i.all_tracks {flags |= 0x20;}}
+        write_signed_byte(data, flags);
     }
 }

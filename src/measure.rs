@@ -124,27 +124,28 @@ impl Song {
         self.current_beat_number = None;
     }
 
-    pub(crate) fn write_measures(&self, data: &mut Vec<u8>) {
+    pub(crate) fn write_measures(&self, data: &mut Vec<u8>, version: &(u8,u8,u8)) {
         for i in 0..self.tracks.len() {
             //self.current_track = Some(i);
             for m in 0..self.tracks[i].measures.len() {
                 //self.current_measure_number = Some(self.tracks[i].measure.number);
-                self.write_measure(data, &self.tracks[i].measures[m]);
+                self.write_measure(data, i, m, version);
             }
         }
         //self.current_track = None;
         //self.current_measure_number = None;
     }
-    fn write_measure(&self, data: &mut Vec<u8>, measure: &Measure) {
+    fn write_measure(&self, data: &mut Vec<u8>, track: usize, measure: usize, version: &(u8,u8,u8)) {
         //self.current_voice_number = Some(1);
-        self.write_voice(data, &measure.voices[0]);
+        self.write_voice(data, track, measure,0, version);
         //self.current_voice_number = None;
     }
-    fn write_voice(&self, data: &mut Vec<u8>, voice: &Voice) {
-        write_i32(data, voice.beats.len().to_i32().unwrap());
-        for b in 0..voice.beats.len() {
+    fn write_voice(&self, data: &mut Vec<u8>, track: usize, measure: usize, voice: usize, version: &(u8,u8,u8)) {
+        write_i32(data, self.tracks[track].measures[measure].voices[voice].beats.len().to_i32().unwrap());
+        for b in 0..self.tracks[track].measures[measure].voices[voice].beats.len() {
             //self.current_beat_number = Some(b+1);
-            self.write_beat(data, &voice.beats[b]);
+            if version.0 ==3 {self.write_beat_v3(data, &self.tracks[track].measures[measure].voices[voice].beats[b]);}
+            else             {self.write_beat(data, &self.tracks[track].measures[measure].voices[voice].beats[b], &self.tracks[track].strings, version);}
             //self.current_beat_number = None;
         }
     }

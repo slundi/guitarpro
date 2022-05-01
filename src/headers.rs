@@ -276,16 +276,16 @@ impl Song {
         (signs, from_signs)
     }
 
-    pub(crate) fn write_measure_headers(&self, data: &mut Vec<u8>) {
+    pub(crate) fn write_measure_headers(&self, data: &mut Vec<u8>, version: &(u8,u8,u8)) {
         let mut previous: Option<usize> = None;
         for i in 0..self.measure_headers.len() {
             //self.current_measure_number = Some(self.tracks[0].measures[i].number);
-            self.write_measure_header(data, i, previous);
+            self.write_measure_header(data, i, previous, version);
             previous = Some(i);
         }
     }
 
-    fn write_measure_header(&self, data: &mut Vec<u8>, header: usize, previous: Option<usize>) {
+    fn write_measure_header(&self, data: &mut Vec<u8>, header: usize, previous: Option<usize>, version: &(u8,u8,u8)) {
         //pack measure header flags
         let mut flags: u8 = 0x00;
         if let Some(p) = previous {
@@ -299,8 +299,14 @@ impl Song {
             if self.measure_headers[header].repeat_alternative > 0 {flags |= 0x10;}
             if self.measure_headers[header].marker.is_some() {flags |= 0x20;}
         }
-        write_byte(data, flags);
+        if version.0 >= 4 {
+            if previous.is_none() {flags |= 0x40;}
+            else if let Some(p) = previous {if self.measure_headers[header].key_signature ==  self.measure_headers[p].key_signature {flags |= 0x40;}}
+            if self.measure_headers[header].double_bar {flags |= 0x80;}
+        }
         //end pack
+        //write measure header values
+        write_byte(data, flags);
         if (flags & 0x01) == 0x01 {write_signed_byte(data, self.measure_headers[header].time_signature.numerator);}
         if (flags & 0x02) == 0x02 {write_signed_byte(data, self.measure_headers[header].time_signature.denominator.value.to_i8().unwrap());}
         if (flags & 0x08) == 0x08 {write_signed_byte(data, self.measure_headers[header].repeat_close);}
@@ -319,6 +325,10 @@ impl Song {
                 write_int_byte_size_string(data, &marker.title);
                 write_color(data, marker.color);
             }
+        }
+        if version.0 >= 4 {
+            write_signed_byte(data, self.measure_headers[header].key_signature.key);
+            write_signed_byte(data, if self.measure_headers[header].key_signature.is_minor {1} else {0});
         }
     }
 

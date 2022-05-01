@@ -136,7 +136,7 @@ impl Song {
     /// - Mix table change effect. See `MixTableChange::read()`.
     pub(crate) fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
         let flags = read_byte(data, seek);
-        println!("read_beat(),    flags: {} \t seek: {}", flags, *seek);
+        //println!("read_beat(),    flags: {} \t seek: {}", flags, *seek);
         //get a beat
         let mut b = 0;
         let mut new_beat = true;
@@ -189,7 +189,7 @@ impl Song {
         let b = voice.beats.len() - 1;
 
         let flags2 = read_short(data, seek);
-        println!("read_beat_v5(), flags2: {} \t seek: {}", flags2, *seek);
+        //println!("read_beat_v5(), flags2: {} \t seek: {}", flags2, *seek);
         if (flags2 & 0x0010) == 0x0010 {voice.beats[b].octave = Octave::Ottava;}
         if (flags2 & 0x0020) == 0x0020 {voice.beats[b].octave = Octave::OttavaBassa;}
         if (flags2 & 0x0040) == 0x0040 {voice.beats[b].octave = Octave::Quindicesima;}
@@ -321,14 +321,14 @@ impl Song {
         be
     }
 
-    pub(crate) fn write_beat(&self, data: &mut Vec<u8>, beat: &Beat) {
+    pub(crate) fn write_beat_v3(&self, data: &mut Vec<u8>, beat: &Beat) {
         let mut flags = 0u8;
         if beat.duration.dotted {flags |= 0x01;}
         if beat.effect.is_chord() {flags |= 0x02;}
         if !beat.text.is_empty() {flags |= 0x04;}
         if beat.effect.is_default() {flags |= 0x08;}
         if let Some(mtc) = &beat.effect.mix_table_change {
-            if mtc.is_just_wah() {flags |= 0x02;}
+            if mtc.is_just_wah() {flags |= 0x10;}
         }
         if !beat.duration.is_default_tuplet() {flags |= 0x20;}
         if beat.status != BeatStatus::Normal {flags |= 0x40;}
@@ -337,12 +337,33 @@ impl Song {
         beat.duration.write_duration(data, flags);
         if (flags & 0x02) == 0x02 {self.write_chord(data, beat);}
         if (flags & 0x04) == 0x04 {write_int_byte_size_string(data, &beat.text);}
-        if (flags & 0x08) == 0x08 {self.write_beat_effect(data, beat);}
-        if (flags & 0x10) == 0x10 {self.write_mix_table_change(data, &beat.effect.mix_table_change);}
-        self.write_notes(data, beat);
+        if (flags & 0x08) == 0x08 {self.write_beat_effect_v3(data, beat);}
+        if (flags & 0x10) == 0x10 {self.write_mix_table_change(data, &beat.effect.mix_table_change, &(3,0,0));}
+        self.write_notes(data, beat, &Vec::new(), &(3,0,0));
     }
 
-    fn write_beat_effect(&self, data: &mut  Vec<u8>, beat: &Beat) {
+    pub(crate) fn write_beat(&self, data: &mut Vec<u8>, beat: &Beat, strings: &Vec<(i8,i8)>, version: &(u8,u8,u8)) {
+        let mut flags = 0u8;
+        if beat.duration.dotted {flags |= 0x01;}
+        if beat.effect.is_chord() {flags |= 0x02;}
+        if !beat.text.is_empty() {flags |= 0x04;}
+        if beat.effect.is_default() {flags |= 0x08;}
+        if let Some(mtc) = &beat.effect.mix_table_change {
+            if mtc.is_just_wah() || version.0 > 4 {flags |= 0x10;}
+        }
+        if !beat.duration.is_default_tuplet() {flags |= 0x20;}
+        if beat.status != BeatStatus::Normal {flags |= 0x40;}
+        write_byte(data, flags);
+        if (flags & 0x40) == 0x40 {write_byte(data, from_beat_status(beat.status));}
+        beat.duration.write_duration(data, flags);
+        if (flags & 0x02) == 0x02 {self.write_chord_v4(data, beat);}
+        if (flags & 0x04) == 0x04 {write_int_byte_size_string(data, &beat.text);}
+        if (flags & 0x08) == 0x08 {self.write_beat_effect_v4(data, beat);}
+        if (flags & 0x10) == 0x10 {self.write_mix_table_change(data, &beat.effect.mix_table_change, version);}
+        self.write_notes(data, beat, strings, version);
+    }
+
+    fn write_beat_effect_v3(&self, data: &mut  Vec<u8>, beat: &Beat) {
         let mut flags1: u8 = 0;
         if beat.has_vibrato()  {flags1 |= 0x01;}
         if beat.effect.vibrato {flags1 |= 0x01;}
@@ -358,6 +379,27 @@ impl Song {
         }
         if (flags1 & 0x40) == 0x40 {self.write_beat_stroke(data, &beat.effect.stroke);}
     }
+
+    fn write_beat_effect_v4(&self, data: &mut  Vec<u8>, beat: &Beat) {
+        let mut flags1: i8 = 0;
+        if beat.has_vibrato()  {flags1 |= 0x01;}
+        if beat.effect.fade_in {flags1 |= 0x10;}
+        if beat.effect.is_slap_effect() {flags1 |= 0x20;}
+        if beat.effect.stroke.direction != BeatStrokeDirection::None && beat.effect.stroke.value != 0 {flags1 |= 0x40;}
+        write_signed_byte(data, flags1);
+
+        let mut flags2 = 0i8;
+        if beat.effect.has_rasgueado {flags2 |= 0x01;}
+        if beat.effect.has_pick_stroke() {flags2 |= 0x02;}
+        if beat.effect.is_tremolo_bar() {flags2 |= 0x04;}
+        write_signed_byte(data, flags2);
+
+        if (flags1 & 0x20) == 0x20 {write_signed_byte(data, from_slap_effect(beat.effect.slap_effect).to_i8().unwrap());}
+        if (flags2 & 0x04) == 0x04 {self.write_bend(data, &beat.effect.tremolo_bar);} //write tremolo bar
+        if (flags2 & 0x40) == 0x40 {self.write_beat_stroke(data, &beat.effect.stroke);}
+        if (flags2 & 0x02) == 0x02 {write_signed_byte(data, from_beat_stroke_direction(beat.effect.pick_stroke));}
+    }
+
     fn write_tremolo_bar(&self, data: &mut Vec<u8>, bar: &Option<BendEffect>) {
         if let Some(b) = bar {write_i32(data, b.value.to_i32().unwrap());}
         else {write_i32(data, 0);}

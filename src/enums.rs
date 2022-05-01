@@ -50,6 +50,17 @@ pub(crate) fn get_slide_type(value: i8) -> SlideType {
         _ => panic!("Invalid slide type"),
     }
 }
+pub(crate) fn from_slide_type(value: SlideType) -> i8 {
+    match value {
+        SlideType::IntoFromAbove  => -2,
+        SlideType::IntoFromBelow  => -1,
+        SlideType::None           => 0,
+        SlideType::ShiftSlideTo   => 1,
+        SlideType::LegatoSlideTo  => 2,
+        SlideType::OutDownwards   => 3,
+        SlideType::OutUpWards     => 4,
+    }
+}
 
 /// An enumeration of all supported slide types.
 #[derive(Debug,Copy,Clone,PartialEq)]
@@ -130,6 +141,13 @@ pub(crate) fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
         1 => BeatStrokeDirection::Up,
         2 => BeatStrokeDirection::Down,
         _ => panic!("Cannot read beat stroke direction"),
+    }
+}
+pub(crate) fn from_beat_stroke_direction(value: BeatStrokeDirection) -> i8 {
+    match value {
+        BeatStrokeDirection::None => 0,
+        BeatStrokeDirection::Up   => 1,
+        BeatStrokeDirection::Down => 2,
     }
 }
 /// Characteristic of articulation
@@ -322,6 +340,17 @@ pub(crate) fn get_fingering(value: i8) -> Fingering {
         _  => Fingering::Unknown(value), //panic!("Cannot get fingering! How can you have more than 5 fingers per hand?!?"),
     }
 }
+pub(crate) fn from_fingering(value: Fingering) -> i8 {
+    match value {
+        Fingering::Open           => -1,
+        Fingering::Thumb          => 0,
+        Fingering::Index          => 1,
+        Fingering::Middle         => 2,
+        Fingering::Annular        => 3,
+        Fingering::Little         => 4,
+        Fingering::Unknown(value) => value, //panic!("Cannot get fingering! How can you have more than 5 fingers per hand?!?"),
+    }
+}
 
 /// All Bend presets
 #[derive(Debug,Copy,Clone,PartialEq)]
@@ -426,6 +455,15 @@ pub enum HarmonicType {
     Tapped,
     Pinch,
     Semi, //5
+}
+pub(crate) fn from_harmonic_type(value: HarmonicType) -> i8 {
+    match value {
+        HarmonicType::Natural       => 1,
+        HarmonicType::Artificial    => 2,
+        HarmonicType::Tapped        => 3,
+        HarmonicType::Pinch         => 4,
+        HarmonicType::Semi          => 5,
+    }
 }
 
 /// Values of auto-accentuation on the beat found in track RSE settings

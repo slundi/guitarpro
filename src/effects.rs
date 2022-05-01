@@ -88,7 +88,7 @@ impl Default for HarmonicEffect { fn default() -> Self {HarmonicEffect { kind: H
 
 /// A tremolo picking effect.
 #[derive(Debug,Clone,PartialEq,Default)]
-pub struct TremoloPickingEffect {duration: Duration,}
+pub struct TremoloPickingEffect {pub duration: Duration,}
 //impl Default for TremoloPickingEffect { fn default() -> Self {TremoloPickingEffect { duration: Duration::default() }}}
 /// Convert tremolo picking speed to actual duration. Values are:
 /// - *1*: eighth
@@ -106,8 +106,8 @@ fn from_tremolo_value(value: i8) -> u8 {
 /// A trill effect.
 #[derive(Debug,Clone,PartialEq,Default)]
 pub struct TrillEffect {
-    fret: i8,
-    duration: Duration,
+    pub fret: i8,
+    pub duration: Duration,
 }
 //impl Default for TrillEffect { fn default() -> Self {TrillEffect { fret:0, duration: Duration::default() }}}
 
@@ -234,12 +234,12 @@ impl Song {
                 he.kind = HarmonicType::Artificial;
             },
             17 => {
-                he.pitch = Some(PitchClass::from(note.real_value(self.tracks[self.current_track.expect("Current track not defined")].strings.clone()), None, None));
+                he.pitch = Some(PitchClass::from(note.real_value(&self.tracks[self.current_track.expect("Current track not defined")].strings), None, None));
                 he.octave = Some(Octave::Quindicesima);
                 he.kind = HarmonicType::Artificial;
             },
             22 => {
-                he.pitch = Some(PitchClass::from(note.real_value(self.tracks[self.current_track.expect("Current track not defined")].strings.clone()), None, None));
+                he.pitch = Some(PitchClass::from(note.real_value(&self.tracks[self.current_track.expect("Current track not defined")].strings), None, None));
                 he.octave = Some(Octave::Ottava);
                 he.kind = HarmonicType::Artificial;
             },
@@ -321,5 +321,20 @@ impl Song {
         write_byte(data, pack_velocity(g.velocity).to_u8().unwrap());
         write_byte(data, g.duration.leading_zeros().to_u8().unwrap()); //8 - grace.duration.bit_length()
         write_signed_byte(data, from_grace_effect_transition(g.transition));
+    }
+    pub(crate) fn write_harmonic(&self, data: &mut Vec<u8>, note: &crate::note::Note, strings: &Vec<(i8,i8)>) {
+        if let Some(h) = &note.effect.harmonic {
+            let mut byte = from_harmonic_type(h.kind);
+            if h.kind != HarmonicType::Artificial {
+                if h.pitch.is_some() && h.octave.is_some() {
+                    let p = h.pitch.clone().unwrap();
+                    let o = h.octave.clone().unwrap();
+                    if      p.value == ((note.real_value(strings) +7) % 12) && o == Octave::Ottava {byte = 15;}
+                    else if p.value == (note.real_value(strings) % 12) && o == Octave::Quindicesima {byte = 17;}
+                    else if p.value == (note.real_value(strings) % 12) && o == Octave::Ottava {byte = 22;}
+                } else {byte = 22;}
+            }
+            write_signed_byte(data, byte);
+        }
     }
 }

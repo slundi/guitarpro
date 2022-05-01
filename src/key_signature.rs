@@ -28,7 +28,7 @@ pub const KEY_SIGNATURES: [&str; 34] = ["F♭ major", "C♭ major", "G♭ major"
             "D♭ minor", "A♭ minor", "E♭ minor", "B♭ minor",
             "F minor", "C minor", "G minor", "D minor", "A minor", "E minor", "B minor",
             "F# minor", "C# minor", "G# minor", "D# minor", "A# minor", "E# minor"];
-#[derive(Debug,Clone,Default)]
+#[derive(Debug,Clone,Default,PartialEq)]
 pub struct KeySignature {
     pub key: i8,
     pub is_minor: bool,
