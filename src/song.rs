@@ -197,7 +197,7 @@ impl Song {
     pub fn write(&self, version: (u8,u8,u8), clipboard: Option<bool>) ->Vec<u8> {
         let mut data: Vec<u8> = Vec::with_capacity(8388608); //capacity of 8MB, should be sufficient
         write_version(&mut data, version);
-        if clipboard.is_some() && clipboard.unwrap() && version.0 >= 4 {}
+        if clipboard.is_some() && clipboard.unwrap() && version.0 >= 4 {self.write_clipboard(&mut data, &version);}
         self.write_info(&mut data, version);
         write_bool(&mut data, self.triplet_feel != TripletFeel::None);
         if version.0 >= 4 {self.write_lyrics(&mut data);}

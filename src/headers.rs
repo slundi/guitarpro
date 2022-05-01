@@ -321,4 +321,18 @@ impl Song {
             }
         }
     }
+
+    pub(crate) fn write_clipboard(&self, data: &mut Vec<u8>, version: &(u8,u8,u8)) {
+        if let Some(c) = &self.clipboard {
+            write_i32(data, c.start_measure.to_i32().unwrap());
+            write_i32(data, c.stop_measure.to_i32().unwrap());
+            write_i32(data, c.start_track.to_i32().unwrap());
+            write_i32(data, c.stop_track.to_i32().unwrap());
+            if version.0 == 5 {
+                write_i32(data, c.start_beat.to_i32().unwrap());
+                write_i32(data, c.stop_beat.to_i32().unwrap());
+                //TODO: write_i32(data, c.sub_bar_copy.to_i32().unwrap());
+            }
+        }
+    }
 }
