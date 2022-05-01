@@ -112,7 +112,7 @@ impl Song {
 
     pub(crate) fn write_rse_master_effect(&self, data: &mut Vec<u8>) {
         write_i32(data, if self.master_effect.volume == 0.0 {100} else {self.master_effect.volume.ceil().to_i32().unwrap()});
-        write_i32(data, 0);
+        write_i32(data, 0); //reverb?
         self.write_equalizer(data, &self.master_effect.equalizer);
 
     }
@@ -121,6 +121,6 @@ impl Song {
         write_signed_byte(data, self.pack_volume_value(equalizer.gain));
     }
     fn pack_volume_value(&self, value: f32) -> i8 {
-        (-value * 10f32).round().to_i8().unwrap()
+        (-value * 10f32).round().to_i8().unwrap() //int(-round(value, 1) * 10)
     }
 }
