@@ -153,12 +153,6 @@ impl Song {
         g.velocity = unpack_velocity(read_byte(data, seek).to_i16().unwrap());
         g.duration = 1 << (7 - read_byte(data, seek));
         //g.duration = 1 << (7 - read_byte(data, seek));
-        /*g.duration = match read_byte(data, seek) {
-            1 => DURATION_THIRTY_SECOND,
-            2 => DURATION_TWENTY_FOURTH, //TODO: FIXME: ?
-            3 => DURATION_SIXTEENTH,
-            _ => panic!("Cannot get grace note effect duration"),
-        };*/
         g.is_dead = g.fret == -1;
         g.transition = get_grace_effect_transition(read_signed_byte(data, seek));
         g

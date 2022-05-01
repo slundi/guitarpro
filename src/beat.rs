@@ -158,7 +158,7 @@ impl Song {
         if (flags & 0x08) == 0x08 {
             let chord = voice.beats[b].effect.chord.clone();
             if   self.version.number.0 == 3 {voice.beats[b].effect = self.read_beat_effects_v3(data, seek, &mut note_effect); }
-            else                            {voice.beats[b].effect = self.read_beat_effects_v4(data, seek, &mut note_effect);}
+            else                            {voice.beats[b].effect = self.read_beat_effects_v4(data, seek);}
             voice.beats[b].effect.chord = chord;
         }
         if (flags & 0x10) == 0x10 {
@@ -263,7 +263,7 @@ impl Song {
     /// - Tremolo bar. See `readTremoloBar`.
     /// - Beat stroke. See `readBeatStroke`.
     /// - Pick stroke: `signed-byte`. For value mapping see `BeatStrokeDirection`.
-    fn read_beat_effects_v4(&self, data: &[u8], seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
+    fn read_beat_effects_v4(&self, data: &[u8], seek: &mut usize) -> BeatEffects {
         let mut be = BeatEffects::default();
         let flags1 = read_signed_byte(data, seek);
         let flags2 = read_signed_byte(data, seek);
@@ -367,8 +367,14 @@ impl Song {
         let mut flags1: u8 = 0;
         if beat.has_vibrato()  {flags1 |= 0x01;}
         if beat.effect.vibrato {flags1 |= 0x01;}
-        //TODO: if beat.has_harmonic() && HarmonicType::Natural {flags1 |= 0x04;}
-        //TODO: if beat.has_harmonic() && HarmonicType::Artificial {flags1 |= 0x08;}
+        if beat.has_harmonic() {
+            for n in 0..beat.notes.len() {
+                if let Some(h) = &beat.notes[n].effect.harmonic {
+                    if h.kind == HarmonicType::Natural {flags1 |= 0x04;}
+                    if h.kind == HarmonicType::Artificial {flags1 |= 0x08;}
+                }
+            }
+        }
         if beat.effect.fade_in {flags1 |= 0x10;}
         if beat.effect.is_tremolo_bar() || beat.effect.is_slap_effect() {flags1 |= 0x20;}
         if beat.effect.stroke.direction != BeatStrokeDirection::None && beat.effect.stroke.value != 0 {flags1 |= 0x40;}

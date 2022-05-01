@@ -341,7 +341,7 @@ impl Song {
             if version.0 == 5 {
                 write_i32(data, c.start_beat.to_i32().unwrap());
                 write_i32(data, c.stop_beat.to_i32().unwrap());
-                //TODO: write_i32(data, c.sub_bar_copy.to_i32().unwrap());
+                write_i32(data, if c.sub_bar_copy {1} else {0});
             }
         }
     }

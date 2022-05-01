@@ -24,21 +24,8 @@ pub struct Chord {
     pub fingerings: Vec<Fingering>,
     pub show: Option<bool>,
     pub new_format: Option<bool>,
+}
 
-    //TODO: @property def notes(self): return <string for string in self.strings if string >= 0>,
-}
-/*impl Default for Chord {
-    fn default() -> Self { Chord {
-        length: 0,
-        sharp:None, root:None, kind:None, extension:None, bass:None, tonality:None, add:None, name:String::new(),
-        fifth:None, ninth:None, eleventh:None,
-        first_fret: None, strings:Vec::new(), barres:Vec::new(), omissions:Vec::new(), fingerings:Vec::new(),
-        show:None, new_format:None,
-    }}
-}
-impl Chord {
-    //TODO: @property def notes(self): return [string for string in self.strings if string >= 0]
-}*/
 
 
 /// A single barre
