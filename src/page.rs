@@ -69,10 +69,10 @@ impl Default for PageSetup {fn default() -> Self { PageSetup { page_size:Point{x
 
 impl Song {
     /// Read page setup. Page setup is read as follows:
-    /// - Page size: 2 :ref:`Ints <int>`. Width and height of the page.
-    /// - Page padding: 4 :ref:`Ints <int>`. Left, right, top, bottom padding of the page.
-    /// - Score size proportion: :ref:`int`.
-    /// - Header and footer elements: :ref:`short`. See :class:`guitarpro.models.HeaderFooterElements` for value mapping.
+    /// - Page size: 2 `Ints <int>`. Width and height of the page.
+    /// - Page padding: 4 `Ints <int>`. Left, right, top, bottom padding of the page.
+    /// - Score size proportion: `int`.
+    /// - Header and footer elements: `short`. See `HeaderFooterElements` for value mapping.
     /// - List of placeholders:
     ///   * title
     ///   * subtitle
@@ -105,5 +105,33 @@ impl Song {
         c.push_str(&read_int_size_string(data, seek));
         self.page_setup.copyright = c;
         self.page_setup.page_number = read_int_size_string(data, seek);
+    }
+
+    pub(crate) fn write_page_setup(&self, data: &mut Vec<u8>) {
+        write_i32(data, self.page_setup.page_size.x.to_i32().unwrap());
+        write_i32(data, self.page_setup.page_size.y.to_i32().unwrap());
+
+        write_i32(data, self.page_setup.page_margin.left.to_i32().unwrap());
+        write_i32(data, self.page_setup.page_margin.right.to_i32().unwrap());
+        write_i32(data, self.page_setup.page_margin.top.to_i32().unwrap());
+        write_i32(data, self.page_setup.page_margin.bottom.to_i32().unwrap());
+        write_i32(data, (self.page_setup.score_size_proportion * 100f32).ceil().to_i32().unwrap());
+
+        write_byte(data, (self.page_setup.header_and_footer & 0xff).to_u8().unwrap());
+
+        let mut flags2 = 0u8;
+        if self.page_setup.header_and_footer != 0 && (self.page_setup.header_and_footer & HEADER_FOOTER_PAGE_NUMBER) != 0 {flags2 |= 0x01;} //TODO: check
+        write_byte(data, flags2);
+        write_int_byte_size_string(data, &self.page_setup.title);
+        write_int_byte_size_string(data, &self.page_setup.subtitle);
+        write_int_byte_size_string(data, &self.page_setup.artist);
+        write_int_byte_size_string(data, &self.page_setup.album);
+        write_int_byte_size_string(data, &self.page_setup.word_and_music);
+        write_int_byte_size_string(data, &self.page_setup.music);
+        write_int_byte_size_string(data, &self.page_setup.word_and_music);
+        let c: Vec<&str> = self.page_setup.copyright.split('\n').collect();
+        write_int_byte_size_string(data, c[0]);
+        write_int_byte_size_string(data, c[1]);
+        write_int_byte_size_string(data, &self.page_setup.page_number);
     }
 }
