@@ -130,7 +130,7 @@ impl Song {
         self.read_info(data, &mut seek);
         self.triplet_feel = if read_bool(data, &mut seek) {TripletFeel::Eighth} else {TripletFeel::None};
         //println!("Triplet feel: {}", self.triplet_feel);
-        self.lyrics = read_lyrics(data, &mut seek); //read lyrics
+        self.lyrics = self.read_lyrics(data, &mut seek); //read lyrics
         self.tempo = read_int(data, &mut seek).to_i16().unwrap();
         self.key.key = read_int(data, &mut seek).to_i8().unwrap();
         //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
@@ -150,7 +150,7 @@ impl Song {
         self.version = read_version_string(data, &mut seek);
         self.read_clipboard(data, &mut seek);
         self.read_info(data, &mut seek);
-        self.lyrics = read_lyrics(data, &mut seek); //read lyrics
+        self.lyrics = self.read_lyrics(data, &mut seek); //read lyrics
         self.master_effect = self.read_rse_master_effect(data, &mut seek);
         self.read_page_setup(data, &mut seek);
         self.tempo_name = read_int_size_string(data, &mut seek);
@@ -197,9 +197,10 @@ impl Song {
     pub fn write(&self, version: (u8,u8,u8), clipboard: Option<bool>) ->Vec<u8> {
         let mut data: Vec<u8> = Vec::with_capacity(8388608); //capacity of 8MB, should be sufficient
         write_version(&mut data, version);
-        if clipboard.is_some() && clipboard.unwrap() {}
+        if clipboard.is_some() && clipboard.unwrap() && version.0 >= 4 {}
         self.write_info(&mut data, version);
         write_bool(&mut data, self.triplet_feel != TripletFeel::None);
+        if version.0 >= 4 {self.write_lyrics(&mut data);}
         write_i32(&mut data, self.tempo.to_i32().unwrap());
         write_i32(&mut data, self.key.key.to_i32().unwrap());
         self.write_midi_channels(&mut data);

@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use fraction::ToPrimitive;
 
 use crate::io::*;
@@ -17,47 +15,35 @@ pub const _MAX_LYRICS_LINE_COUNT: u8 = 5;
 #[derive(Debug,Clone,Default)]
 pub struct Lyrics {
     pub track_choice: u8,
-    pub line1: BTreeMap<u16, String>,
-    pub line2: BTreeMap<u16, String>,
-    pub line3: BTreeMap<u16, String>,
-    pub line4: BTreeMap<u16, String>,
-    pub line5: BTreeMap<u16, String>,
+    pub lines: Vec<(u8, u16, String)>,
 }
 //impl Default for Lyrics { fn default() -> Self { Lyrics { track_choice: 0, line1: BTreeMap::new(), line2: BTreeMap::new(), line3: BTreeMap::new(), line4: BTreeMap::new(), line5: BTreeMap::new(), }}}
 impl std::fmt::Display for Lyrics {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut s = String::new();
-        for l in &self.line1 { s.push_str(l.1); s.push('\n'); }
-        for l in &self.line2 { s.push_str(l.1); s.push('\n'); }
-        for l in &self.line3 { s.push_str(l.1); s.push('\n'); }
-        for l in &self.line4 { s.push_str(l.1); s.push('\n'); }
-        for l in &self.line5 { s.push_str(l.1); s.push('\n'); }
+        for l in &self.lines { s.push_str(&l.2); s.push('\n'); }
         write!(f, "{}", s.trim().replace('\n', " ").replace('\r', " "))
     }
 }
-/// Read lyrics.
-///
-/// First, read an `i32` that points to the track lyrics are bound to. Then it is followed by 5 lyric lines. Each one consists of
-/// number of starting measure encoded in`i32` and`int-size-string` holding text of the lyric line.
-pub(crate) fn read_lyrics(data: &[u8], seek: &mut usize) -> Lyrics {
-    let mut lyrics = Lyrics{track_choice: read_int(data, seek).to_u8().unwrap(), ..Default::default()};
-    //println!("Lyrics for track #{}", lyrics.track_choice);
-    let starting_measure = read_int(data, seek).to_u16().unwrap();
-    let text = read_int_size_string(data, seek);
-    //println!("read_lyrics: {}, \"{}\"", starting_measure, text);
-    lyrics.line1.insert(starting_measure, text);
-    let starting_measure = read_int(data, seek).to_u16().unwrap();
-    let text = read_int_size_string(data, seek);
-    lyrics.line2.insert(starting_measure, text);
-    let starting_measure = read_int(data, seek).to_u16().unwrap();
-    let text = read_int_size_string(data, seek);
-    lyrics.line3.insert(starting_measure, text);
-    let starting_measure = read_int(data, seek).to_u16().unwrap();
-    let text = read_int_size_string(data, seek);
-    lyrics.line4.insert(starting_measure, text);
-    let starting_measure = read_int(data, seek).to_u16().unwrap();
-    let text = read_int_size_string(data, seek);
-    lyrics.line5.insert(starting_measure, text);
-    //println!("read_lyrics: {:?}", lyrics);
-    lyrics
+
+impl crate::gp::Song {
+    /// Read lyrics.
+    ///
+    /// First, read an `i32` that points to the track lyrics are bound to. Then it is followed by 5 lyric lines. Each one consists of
+    /// number of starting measure encoded in`i32` and`int-size-string` holding text of the lyric line.
+    pub(crate) fn read_lyrics(&self, data: &[u8], seek: &mut usize) -> Lyrics {
+        let mut lyrics = Lyrics{track_choice: read_int(data, seek).to_u8().unwrap(), ..Default::default()};
+        for i in 0..5u8 {
+            let starting_measure = read_int(data, seek).to_u16().unwrap();
+            lyrics.lines.push((i, starting_measure, read_int_size_string(data, seek)));
+        }
+        lyrics
+    }
+    pub(crate) fn write_lyrics(&self, data: &mut Vec<u8>) {
+        write_i32(data, self.lyrics.track_choice.to_i32().unwrap());
+        for i in 0..5 {
+            write_i32(data, self.lyrics.lines[i].1.to_i32().unwrap());
+            write_int_byte_size_string(data, &self.lyrics.lines[i].2);
+        }
+    }
 }

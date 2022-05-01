@@ -4,7 +4,7 @@ Rust library and command line interface (CLI) for guitar tab files.
 
 [![Tests](https://github.com/slundi/guitarpro/actions/workflows/rust.yml/badge.svg)](https://github.com/slundi/guitarpro/actions/workflows/rust.yml) [![rust-clippy](https://github.com/slundi/guitarpro/actions/workflows/rust-clippy.yml/badge.svg)](https://github.com/slundi/guitarpro/actions/workflows/rust-clippy.yml)
 
-It is based on [Perlence/PyGuitarPro](https://github.com/Perlence/PyGuitarPro) and [TuxGuitar](http://tuxguitar.com.ar/) sources.
+It is based on [Perlence/PyGuitarPro](https://github.com/Perlence/PyGuitarPro), [TuxGuitar](http://tuxguitar.com.ar/) and [MuseScore](https://musescore.org) sources.
 
 ## Roadmap
 
