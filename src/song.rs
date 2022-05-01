@@ -201,6 +201,7 @@ impl Song {
         self.write_info(&mut data, version);
         write_bool(&mut data, self.triplet_feel != TripletFeel::None);
         if version.0 >= 4 {self.write_lyrics(&mut data);}
+        if version > (5,0,0) {self.write_rse_master_effect(&mut data);}
         write_i32(&mut data, self.tempo.to_i32().unwrap());
         write_i32(&mut data, self.key.key.to_i32().unwrap());
         if version.0 >= 4 {write_signed_byte(&mut data, 0);} //octave
