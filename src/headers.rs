@@ -345,4 +345,30 @@ impl Song {
             }
         }
     }
+    pub(crate) fn write_directions(&self, data: &mut Vec<u8>) {
+        let mut map: HashMap<DirectionSign, i16>= HashMap::with_capacity(19);
+        for i in 1..self.measure_headers.len() {
+            if let Some(d) = &self.measure_headers[i].direction { map.insert(d.clone(), i.to_i16().unwrap()); }
+        }
+        let order: Vec<DirectionSign> = vec![DirectionSign::Coda, DirectionSign::DoubleCoda, DirectionSign::Segno, DirectionSign::SegnoSegno, DirectionSign::Fine,
+                                             DirectionSign::DaCapo,
+                                             DirectionSign::DaCapoAlCoda,
+                                             DirectionSign::DaCapoAlDoubleCoda,
+                                             DirectionSign::DaCapoAlFine,
+                                             DirectionSign::DaSegno,
+                                             DirectionSign::DaSegnoAlCoda,
+                                             DirectionSign::DaSegnoAlDoubleCoda,
+                                             DirectionSign::DaSegnoAlFine,
+                                             DirectionSign::DaSegnoSegno,
+                                             DirectionSign::DaSegnoSegnoAlCoda,
+                                             DirectionSign::DaSegnoSegnoAlDoubleCoda,
+                                             DirectionSign::DaSegnoSegnoAlFine,
+                                             DirectionSign::DaCoda,
+                                             DirectionSign::DaDoubleCoda];
+        for d in order {
+            let x = map.get(&d);
+            if let Some(dir) = x {write_i16(data, *dir);}
+            else {write_i16(data, -1);}
+        }
+    }
 }
