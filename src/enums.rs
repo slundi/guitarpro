@@ -10,7 +10,13 @@ pub(crate) fn get_triplet_feel(value: i8) -> TripletFeel {
         _ => panic!("Invalid triplet feel"),
     }
 }
-
+pub(crate) fn from_triplet_feel(value: TripletFeel) -> u8 {
+    match value {
+        TripletFeel::None       => 0,
+        TripletFeel::Eighth     => 1,
+        TripletFeel::Sixteenth  => 2,
+    }
+}
 
 /// An enumeration of available clefs
 #[allow(dead_code)]
@@ -478,6 +484,16 @@ pub(crate) fn get_accentuation(value: u8) -> Accentuation {
         4 => Accentuation::Strong,
         5 => Accentuation::VeryStrong,
         _ => panic!("Cannot get accentuation"),
+    }
+}
+pub(crate) fn from_accentuation(value: Accentuation) -> u8 {
+    match value {
+        Accentuation::None         => 0,
+        Accentuation::VerySoft     => 1,
+        Accentuation::Soft         => 2,
+        Accentuation::Medium       => 3,
+        Accentuation::Strong       => 4,
+        Accentuation::VeryStrong   => 5,
     }
 }
 

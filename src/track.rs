@@ -226,11 +226,13 @@ impl Song {
         self.tracks.push(track);
     }
 
-    pub(crate) fn write_tracks(&self, data: &mut Vec<u8>) {
+    pub(crate) fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8,u8,u8)) {
         for i in 0..self.tracks.len() {
             //self.current_track = Some(i);
-            self.write_track(data, i);
+            if version.0 < 5 {self.write_track(data, i);}
+            else {self.write_track_v5(data, i, version);}
         }
+        if version.0 == 5 {write_placeholder_default(data, if version == &(5,0,0) {2} else {1});}
         //self.current_track = None;
     }
     fn write_track(&self, data: &mut Vec<u8>, number: usize) {
@@ -255,5 +257,54 @@ impl Song {
         write_i32(data, self.tracks[number].fret_count.to_i32().unwrap());
         write_i32(data, self.tracks[number].offset);
         write_color(data, self.tracks[number].color);
+    }
+    fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8,u8,u8)) {
+        if number == 1 || version == &(5,0,0) {write_placeholder_default(data, 1);}
+        let mut flags1 = 0u8;
+        if self.tracks[number].percussion_track             {flags1 |= 0x01;}
+        if self.tracks[number].twelve_stringed_guitar_track {flags1 |= 0x02;}
+        if self.tracks[number].banjo_track                  {flags1 |= 0x04;}
+        if self.tracks[number].visible                      {flags1 |= 0x08;}
+        if self.tracks[number].solo                         {flags1 |= 0x10;}
+        if self.tracks[number].mute                         {flags1 |= 0x20;}
+        if self.tracks[number].use_rse                      {flags1 |= 0x40;}
+        if self.tracks[number].indicate_tuning              {flags1 |= 0x80;}
+        write_byte(data, flags1);
+
+        write_byte_size_string(data, &self.tracks[number].name);
+        write_placeholder_default(data, 40 - self.tracks[number].name.len());
+
+        write_i32(data, self.tracks[number].strings.len().to_i32().unwrap());
+        for i in 0..7usize {
+            let mut tuning = 0i8;
+            if i < self.tracks[number].strings.len() { tuning = self.tracks[number].strings[i].1;}
+            write_i32(data, tuning.to_i32().unwrap());
+        }
+        write_i32(data, self.tracks[number].port.to_i32().unwrap());
+        //write channel
+        write_i32(data, self.channels[self.tracks[number].channel_index].channel.to_i32().unwrap() + 1);
+        write_i32(data, self.channels[self.tracks[number].channel_index].effect_channel.to_i32().unwrap() + 1);
+        //end write channel
+        write_i32(data, self.tracks[number].fret_count.to_i32().unwrap());
+        write_i32(data, self.tracks[number].offset);
+        write_color(data, self.tracks[number].color);
+
+        let mut flags2 = 0i16;
+        if self.tracks[number].settings.tablature           {flags2 |= 0x0001;}
+        if self.tracks[number].settings.notation            {flags2 |= 0x0002;}
+        if self.tracks[number].settings.diagram_are_below   {flags2 |= 0x0004;}
+        if self.tracks[number].settings.show_rythm          {flags2 |= 0x0008;}
+        if self.tracks[number].settings.force_horizontal    {flags2 |= 0x0010;}
+        if self.tracks[number].settings.force_channels      {flags2 |= 0x0020;}
+        if self.tracks[number].settings.diagram_list        {flags2 |= 0x0040;}
+        if self.tracks[number].settings.diagram_in_score    {flags2 |= 0x0080;}
+        if self.tracks[number].settings.auto_let_ring       {flags2 |= 0x0200;}
+        if self.tracks[number].settings.auto_brush          {flags2 |= 0x0400;}
+        if self.tracks[number].settings.extend_rythmic      {flags2 |= 0x0800;}
+        write_i16(data, flags2);
+
+        write_byte(data, from_accentuation(self.tracks[number].rse.auto_accentuation));
+        write_byte(data, self.channels[self.tracks[number].channel_index].bank);
+        self.write_track_rse(data, &self.tracks[number].rse, version);
     }
 }

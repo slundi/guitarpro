@@ -12,7 +12,7 @@ pub const DURATION_SIXTY_FOURTH: u8 = 64;
 pub const DURATION_HUNDRED_TWENTY_EIGHTH: u8 = 128;
 
 /// A time signature
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone, PartialEq,Eq)]
 pub struct TimeSignature {
     pub numerator: i8,
     pub denominator: Duration,
@@ -44,7 +44,7 @@ impl std::fmt::Display for KeySignature {
 
 const SUPPORTED_TUPLETS: [(u8, u8); 10] = [(1,1), (3,2), (5,4), (6,4), (7,4), (9,8), (10,8), (11,8), (12,8), (13,8)];
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct Duration {
     pub value:u16,
     pub dotted: bool,

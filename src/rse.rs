@@ -126,4 +126,28 @@ impl Song {
     pub(crate) fn write_master_reverb(&self, data: &mut Vec<u8>) {
         write_i32(data, self.master_effect.reverb.to_i32().unwrap());
     }
+
+    pub(crate) fn write_track_rse(&self, data: &mut Vec<u8>, rse: &TrackRse, version: &(u8,u8,u8)) {
+        write_byte(data, rse.humanize);
+        write_i32(data, 0); write_i32(data, 0); write_i32(data, 100);
+        write_placeholder_default(data, 12);
+        self.write_rse_instrument(data, &rse.instrument, version);
+        if version > &(5,0,0) {
+            self.write_equalizer(data, &rse.equalizer);
+            self.write_rse_instrument_effect(data, &rse.instrument);
+        }
+    }
+    fn write_rse_instrument(&self, data: &mut Vec<u8>, instrument: &RseInstrument, version: &(u8,u8,u8)) {
+        write_i32(data, instrument.instrument.to_i32().unwrap());
+        write_i32(data, instrument.unknown.to_i32().unwrap());
+        write_i32(data, instrument.sound_bank.to_i32().unwrap());
+        if version == &(5,0,0) {
+            write_i16(data, instrument.effect_number);
+            write_placeholder_default(data, 1);
+        } else {write_i32(data, instrument.effect_number.to_i32().unwrap());}
+    }
+    fn write_rse_instrument_effect(&self, data: &mut Vec<u8>, instrument: &RseInstrument) { //version>5.0.0
+        write_int_byte_size_string(data, &instrument.effect);
+        write_int_byte_size_string(data, &instrument.effect_category);
+    }
 }

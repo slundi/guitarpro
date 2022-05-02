@@ -221,7 +221,7 @@ impl Song {
         write_i32(&mut data, self.tracks[0].measures.len().to_i32().unwrap());
         write_i32(&mut data, self.tracks.len().to_i32().unwrap());
         self.write_measure_headers(&mut data, &version);
-        self.write_tracks(&mut data);
+        self.write_tracks(&mut data, &version);
         self.write_measures(&mut data, &version);
         write_i32(&mut data, 0);
         data

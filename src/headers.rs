@@ -304,21 +304,30 @@ impl Song {
             else if let Some(p) = previous {if self.measure_headers[header].key_signature ==  self.measure_headers[p].key_signature {flags |= 0x40;}}
             if self.measure_headers[header].double_bar {flags |= 0x80;}
         }
+        if version.0 >= 5 {
+            if let Some(p) = previous {
+                if self.measure_headers[header].time_signature != self.measure_headers[p].time_signature {flags |= 0x03;}
+                write_placeholder_default(data, 1);
+            }
+        }
         //end pack
         //write measure header values
         write_byte(data, flags);
         if (flags & 0x01) == 0x01 {write_signed_byte(data, self.measure_headers[header].time_signature.numerator);}
         if (flags & 0x02) == 0x02 {write_signed_byte(data, self.measure_headers[header].time_signature.denominator.value.to_i8().unwrap());}
-        if (flags & 0x08) == 0x08 {write_signed_byte(data, self.measure_headers[header].repeat_close);}
+        if (flags & 0x08) == 0x08 {write_signed_byte(data, if version.0 < 5 {self.measure_headers[header].repeat_close} else {self.measure_headers[header].repeat_close + 1});}
         if (flags & 0x10) == 0x10 { //write repeat alternative
-            let mut first_one = false;
-            let mut ra:u8 = 0;
-            for i in 0u8..9-self.measure_headers[header].repeat_alternative.leading_zeros().to_u8().unwrap() {
-                ra = i;
-                if (self.measure_headers[header].repeat_alternative & 1 << i) > 0 {first_one = true;}
-                else if first_one {break;}
+            if version.0 ==5 {write_byte(data, self.measure_headers[header].repeat_alternative);}
+            else {
+                let mut first_one = false;
+                let mut ra:u8 = 0;
+                for i in 0u8..9-self.measure_headers[header].repeat_alternative.leading_zeros().to_u8().unwrap() {
+                    ra = i;
+                    if (self.measure_headers[header].repeat_alternative & 1 << i) > 0 {first_one = true;}
+                    else if first_one {break;}
+                }
+                write_byte(data, ra);
             }
-            write_byte(data, ra);
         }
         if (flags & 0x20) == 0x20 { //write marker
             if let Some(marker) = &self.measure_headers[header].marker {
@@ -329,6 +338,13 @@ impl Song {
         if version.0 >= 4 {
             write_signed_byte(data, self.measure_headers[header].key_signature.key);
             write_signed_byte(data, if self.measure_headers[header].key_signature.is_minor {1} else {0});
+        }
+        if version.0 >= 5 {
+            if (flags & 0x03) == 0x03 {
+                for i in 0..self.measure_headers[header].time_signature.beams.len() {write_byte(data, self.measure_headers[header].time_signature.beams[i]);}
+            }
+            if (flags & 0x10) == 0x10 {write_placeholder_default(data, 1);}
+            write_byte(data, from_triplet_feel(self.measure_headers[header].triplet_feel));
         }
     }
 
