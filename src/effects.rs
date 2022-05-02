@@ -316,7 +316,7 @@ impl Song {
         write_byte(data, g.duration.leading_zeros().to_u8().unwrap()); //8 - grace.duration.bit_length()
         write_signed_byte(data, from_grace_effect_transition(g.transition));
     }
-    pub(crate) fn write_harmonic(&self, data: &mut Vec<u8>, note: &crate::note::Note, strings: &Vec<(i8,i8)>) {
+    pub(crate) fn write_harmonic(&self, data: &mut Vec<u8>, note: &crate::note::Note, strings: &[(i8,i8)]) {
         if let Some(h) = &note.effect.harmonic {
             let mut byte = from_harmonic_type(h.kind);
             if h.kind != HarmonicType::Artificial {

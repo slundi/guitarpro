@@ -26,7 +26,7 @@ impl Default for Note {fn default() -> Self {Note {
     duration: None, tuplet: None,
 }}}
 impl Note {
-    pub(crate) fn real_value(&self, strings: &Vec<(i8,i8)>) -> i8 {
+    pub(crate) fn real_value(&self, strings: &[(i8,i8)]) -> i8 {
         if self.string > 0 {return self.value.to_i8().unwrap() + strings[self.string.to_usize().unwrap() -1].1;}
         panic!("Cannot get real value for the note.");
     }
@@ -312,7 +312,7 @@ impl Song {
         -1
     }
 
-    pub(crate) fn write_notes(&self, data: &mut Vec<u8>, beat: &Beat, strings: &Vec<(i8,i8)>, version: &(u8,u8,u8)) {
+    pub(crate) fn write_notes(&self, data: &mut Vec<u8>, beat: &Beat, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
         let mut string_flags: u8 = 0;
         for i in 0..beat.notes.len() {string_flags |= 1 << (7 - beat.notes[i].string);}
         write_byte(data, string_flags);
@@ -338,7 +338,7 @@ impl Song {
         }
         if (flags & 0x08) == 0x08 {self.write_note_effects_v3(data, note);}
     }
-    fn write_note(&self, data: &mut Vec<u8>, note: &Note, strings: &Vec<(i8,i8)>, version: &(u8,u8,u8)) {
+    fn write_note(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
         let flags: u8 = self.pack_note_flags(note, version);
         write_byte(data, flags);
         if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(note.kind));}
@@ -385,7 +385,7 @@ impl Song {
         if (flags1 & 0x01) == 0x01 {self.write_bend(data, &note.effect.bend);}
         if (flags1 & 0x10) == 0x10 {self.write_grace(data, &note.effect.grace);}
     }
-    fn write_note_effects(&self, data: &mut Vec<u8>, note: &Note, strings: &Vec<(i8,i8)>) {
+    fn write_note_effects(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)]) {
         let mut flags1 = 0i8;
         if note.effect.is_bend()  {flags1 |= 0x01;}
         if note.effect.hammer     {flags1 |= 0x02;}

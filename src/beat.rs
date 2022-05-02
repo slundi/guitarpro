@@ -342,7 +342,7 @@ impl Song {
         self.write_notes(data, beat, &Vec::new(), &(3,0,0));
     }
 
-    pub(crate) fn write_beat(&self, data: &mut Vec<u8>, beat: &Beat, strings: &Vec<(i8,i8)>, version: &(u8,u8,u8)) {
+    pub(crate) fn write_beat(&self, data: &mut Vec<u8>, beat: &Beat, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
         let mut flags = 0u8;
         if beat.duration.dotted {flags |= 0x01;}
         if beat.effect.is_chord() {flags |= 0x02;}

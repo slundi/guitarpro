@@ -199,14 +199,25 @@ impl Song {
         write_version(&mut data, version);
         if clipboard.is_some() && clipboard.unwrap() && version.0 >= 4 {self.write_clipboard(&mut data, &version);}
         self.write_info(&mut data, version);
-        write_bool(&mut data, self.triplet_feel != TripletFeel::None);
+        if version.0 < 5 {write_bool(&mut data, self.triplet_feel != TripletFeel::None);}
         if version.0 >= 4 {self.write_lyrics(&mut data);}
         if version > (5,0,0) {self.write_rse_master_effect(&mut data);}
-        if version.0 >= 5 {self.write_page_setup(&mut data);}
+        if version.0 >= 5 {
+            self.write_page_setup(&mut data);
+            write_int_byte_size_string(&mut data, &self.tempo_name);
+        }
         write_i32(&mut data, self.tempo.to_i32().unwrap());
+        if version > (5,0,0) {write_bool(&mut data, self.hide_tempo);}
         write_i32(&mut data, self.key.key.to_i32().unwrap());
+
         if version.0 >= 4 {write_signed_byte(&mut data, 0);} //octave
         self.write_midi_channels(&mut data);
+
+        if version.0 == 5 {
+            self.write_directions(&mut data);
+            self.write_master_reverb(&mut data);
+        }
+
         write_i32(&mut data, self.tracks[0].measures.len().to_i32().unwrap());
         write_i32(&mut data, self.tracks.len().to_i32().unwrap());
         self.write_measure_headers(&mut data, &version);

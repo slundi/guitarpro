@@ -123,4 +123,7 @@ impl Song {
     fn pack_volume_value(&self, value: f32) -> i8 {
         (-value * 10f32).round().to_i8().unwrap() //int(-round(value, 1) * 10)
     }
+    pub(crate) fn write_master_reverb(&self, data: &mut Vec<u8>) {
+        write_i32(data, self.master_effect.reverb.to_i32().unwrap());
+    }
 }
