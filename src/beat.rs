@@ -8,12 +8,12 @@ pub struct BeatDisplay {
     break_beam: bool,
     force_beam: bool,
     beam_direction: VoiceDirection,
-    tuple_bracket: TupletBracket,
+    tuplet_bracket: TupletBracket,
     break_secondary: u8,
     break_secondary_tuplet: bool,
     force_bracket: bool,
 }
-impl Default for BeatDisplay { fn default() -> Self { BeatDisplay { break_beam:false, force_beam:false, beam_direction:VoiceDirection::None, tuple_bracket:TupletBracket::None, break_secondary:0, break_secondary_tuplet:false, force_bracket:false }}}
+impl Default for BeatDisplay { fn default() -> Self { BeatDisplay { break_beam:false, force_beam:false, beam_direction:VoiceDirection::None, tuplet_bracket:TupletBracket::None, break_secondary:0, break_secondary_tuplet:false, force_bracket:false }}}
 
 
 /// A stroke effect for beats.
@@ -201,8 +201,8 @@ impl Song {
         voice.beats[b].display.break_secondary_tuplet = (flags2 & 0x1000) == 0x1000;
         if (flags2 & 0x0002) == 0x0002 {voice.beats[b].display.beam_direction = VoiceDirection::Down;}
         if (flags2 & 0x0008) == 0x0008 {voice.beats[b].display.beam_direction = VoiceDirection::Up;}
-        if (flags2 & 0x0200) == 0x0200 {voice.beats[b].display.tuple_bracket = TupletBracket::Start;}
-        if (flags2 & 0x0400) == 0x0400 {voice.beats[b].display.tuple_bracket = TupletBracket::End;}
+        if (flags2 & 0x0200) == 0x0200 {voice.beats[b].display.tuplet_bracket = TupletBracket::Start;}
+        if (flags2 & 0x0400) == 0x0400 {voice.beats[b].display.tuplet_bracket = TupletBracket::End;}
         if (flags2 & 0x0800) == 0x0800 {voice.beats[b].display.break_secondary = read_byte(data, seek);}
 
         duration
@@ -361,6 +361,24 @@ impl Song {
         if (flags & 0x08) == 0x08 {self.write_beat_effect_v4(data, beat);}
         if (flags & 0x10) == 0x10 {self.write_mix_table_change(data, &beat.effect.mix_table_change, version);}
         self.write_notes(data, beat, strings, version);
+        if version.0 == 5 {
+            let mut flags2 = 0i16;
+            if beat.display.break_beam {flags2 |= 0x0001;}
+            if beat.display.beam_direction == VoiceDirection::Down {flags2 |= 0x0002;}
+            if beat.display.force_beam {flags2 |= 0x0004;}
+            if beat.display.beam_direction == VoiceDirection::Up {flags2 |= 0x0008;}
+            if beat.octave == Octave::Ottava {flags2 |= 0x0010;}
+            if beat.octave == Octave::OttavaBassa {flags2 |= 0x0020;}
+            if beat.octave == Octave::Quindicesima {flags2 |= 0x0040;}
+            if beat.octave == Octave::QuindicesimaBassa {flags2 |= 0x0100;}
+            if beat.display.tuplet_bracket == TupletBracket::Start {flags2 |= 0x0200;}
+            if beat.display.tuplet_bracket == TupletBracket::End {flags2 |= 0x0400;}
+            if beat.display.break_secondary != 0 {flags2 |= 0x0800;}
+            if beat.display.break_secondary_tuplet {flags2 |= 0x1000;}
+            if beat.display.force_bracket {flags2 |= 0x2000;}
+            write_i16(data, flags2);
+            if (flags2 & 0x0800) == 0x0800 {write_byte(data, beat.display.break_secondary);}
+        }
     }
 
     fn write_beat_effect_v3(&self, data: &mut  Vec<u8>, beat: &Beat) {

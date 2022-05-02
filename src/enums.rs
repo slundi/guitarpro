@@ -32,6 +32,13 @@ pub(crate) fn get_line_break(value: u8) -> LineBreak {
         _ => LineBreak::None,
     }
 }
+pub(crate) fn from_line_break(value: LineBreak) -> u8 {
+    match value {
+        LineBreak::None    => 0,
+        LineBreak::Break   => 1,
+        LineBreak::Protect => 2,
+    }
+}
 
 /// An enumeration of all supported slide types.
 #[derive(Debug,Copy,Clone,PartialEq)]
