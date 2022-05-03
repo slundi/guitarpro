@@ -358,7 +358,7 @@ impl Song {
         beat.duration.write_duration(data, flags);
         if (flags & 0x02) == 0x02 {self.write_chord_v4(data, beat);}
         if (flags & 0x04) == 0x04 {write_int_byte_size_string(data, &beat.text);}
-        if (flags & 0x08) == 0x08 {self.write_beat_effect_v4(data, beat);}
+        if (flags & 0x08) == 0x08 {self.write_beat_effect_v4(data, beat, version);}
         if (flags & 0x10) == 0x10 {self.write_mix_table_change(data, &beat.effect.mix_table_change, version);}
         self.write_notes(data, beat, strings, version);
         if version.0 == 5 {
@@ -401,10 +401,10 @@ impl Song {
             write_byte(data, from_slap_effect(beat.effect.slap_effect));
             self.write_tremolo_bar(data, &beat.effect.tremolo_bar);
         }
-        if (flags1 & 0x40) == 0x40 {self.write_beat_stroke(data, &beat.effect.stroke);}
+        if (flags1 & 0x40) == 0x40 {self.write_beat_stroke(data, &beat.effect.stroke, &(3,0,0));}
     }
 
-    fn write_beat_effect_v4(&self, data: &mut  Vec<u8>, beat: &Beat) {
+    fn write_beat_effect_v4(&self, data: &mut  Vec<u8>, beat: &Beat, version: &(u8,u8,u8)) {
         let mut flags1: i8 = 0;
         if beat.has_vibrato()  {flags1 |= 0x01;}
         if beat.effect.fade_in {flags1 |= 0x10;}
@@ -420,7 +420,7 @@ impl Song {
 
         if (flags1 & 0x20) == 0x20 {write_signed_byte(data, from_slap_effect(beat.effect.slap_effect).to_i8().unwrap());}
         if (flags2 & 0x04) == 0x04 {self.write_bend(data, &beat.effect.tremolo_bar);} //write tremolo bar
-        if (flags2 & 0x40) == 0x40 {self.write_beat_stroke(data, &beat.effect.stroke);}
+        if (flags2 & 0x40) == 0x40 {self.write_beat_stroke(data, &beat.effect.stroke, version);}
         if (flags2 & 0x02) == 0x02 {write_signed_byte(data, from_beat_stroke_direction(beat.effect.pick_stroke));}
     }
 
@@ -428,7 +428,9 @@ impl Song {
         if let Some(b) = bar {write_i32(data, b.value.to_i32().unwrap());}
         else {write_i32(data, 0);}
     }
-    fn write_beat_stroke(&self, data: &mut Vec<u8>, stroke: &BeatStroke) {
+    fn write_beat_stroke(&self, data: &mut Vec<u8>, stroke: &BeatStroke, version: &(u8,u8,u8)) {
+        let mut stroke = stroke.clone();
+        if version.0 == 5 {stroke.swap_direction();}
         let mut stroke_down = 0i8;
         let mut stroke_up = 0i8;
         if stroke.direction == BeatStrokeDirection::Up        { stroke_up   = self.from_stroke_value(stroke.value.to_u8().unwrap()); }
