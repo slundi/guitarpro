@@ -188,4 +188,12 @@ mod test {
         let mut song: Song = Song::default();
         song.read_gp5(&read_file(String::from("test/Wah-m.gp5")));
     }
+
+    #[test]
+    fn test_gp3_writing() {
+        let mut song = Song::default();
+        song.read_gp3(&read_file(String::from("test/Chords.gp3")));
+        let out = song.write((3,0,0), None);
+        song.read_gp3(&out);
+    }
 }
