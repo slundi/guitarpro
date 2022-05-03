@@ -355,4 +355,16 @@ impl Song {
             else if h.kind == HarmonicType::Tapped {write_byte(data, h.fret.unwrap().to_u8().unwrap());}
         }
     }
+    pub(crate) fn write_slides_v5(&self, data: &mut Vec<u8>, slides: &[SlideType]) {
+        let mut st = 0u8; //slide type
+        for s in slides {
+            if      s == &SlideType::ShiftSlideTo  {st |= 0x01;}
+            else if s == &SlideType::LegatoSlideTo {st |= 0x02;}
+            else if s == &SlideType::OutDownwards  {st |= 0x04;}
+            else if s == &SlideType::OutUpWards    {st |= 0x08;}
+            else if s == &SlideType::IntoFromBelow {st |= 0x10;}
+            else if s == &SlideType::IntoFromAbove {st |= 0x20;}
+        }
+        write_byte(data, st);
+    }
 }

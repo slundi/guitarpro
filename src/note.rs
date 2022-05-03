@@ -319,8 +319,9 @@ impl Song {
         let mut notes = beat.notes.clone();
         notes.sort_by_key(|k|k.string);
         for note in &notes {
-            if version.0 == 3 {self.write_note_v3(data, note);}
-            else {self.write_note(data, note, strings, version);}
+            if      version.0 == 3 {self.write_note_v3(data, note);}
+            else if version.0 == 4 {self.write_note_v4(data, note, strings, version);}
+            else if version.0 == 5 {self.write_note_v5(data, note, strings, version);}
         }
     }
     fn write_note_v3(&self, data: &mut Vec<u8>, note: &Note) {
@@ -338,7 +339,7 @@ impl Song {
         }
         if (flags & 0x08) == 0x08 {self.write_note_effects_v3(data, note);}
     }
-    fn write_note(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
+    fn write_note_v4(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
         let flags: u8 = self.pack_note_flags(note, version);
         write_byte(data, flags);
         if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(note.kind));}
@@ -357,8 +358,27 @@ impl Song {
         }
         if (flags & 0x08) == 0x08 {
             if version.0 == 3 {self.write_note_effects_v3(data, note);}
-            else {self.write_note_effects(data, note, strings);}
+            else {self.write_note_effects(data, note, strings, version);}
         }
+    }
+    fn write_note_v5(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
+        let flags: u8 = self.pack_note_flags(note, version);
+        write_byte(data, flags);
+        if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(note.kind));}
+        if (flags & 0x10) == 0x10 {write_signed_byte(data, crate::effects::pack_velocity(note.velocity));}
+        if (flags & 0x20) == 0x20 {
+            if note.kind != NoteType::Tie {write_signed_byte(data, note.value.to_i8().unwrap());}
+            else {write_signed_byte(data, 0);}
+        }
+        if (flags & 0x80) == 0x80 {
+            write_signed_byte(data, from_fingering(note.effect.left_hand_finger));
+            write_signed_byte(data, from_fingering(note.effect.right_hand_finger));
+        }
+        if (flags & 0x01) == 0x01 {write_f64(data, note.duration_percent.to_f64().unwrap());}
+        let mut flags2 = 0u8;
+        if note.swap_accidentals {flags2 |= 0x02;}
+        write_byte(data, flags2);
+        if (flags & 0x08) == 0x08 {self.write_note_effects(data, note, strings, version);}
     }
     fn pack_note_flags(&self, note: &Note, version: &(u8,u8,u8)) -> u8 {
         let mut flags: u8 = 0u8;
@@ -372,6 +392,7 @@ impl Song {
             if note.effect.accentuated_note {flags |= 0x40;}
             if note.effect.is_fingering() {flags |= 0x80;}
         }
+        if version.0 >= 5 && (note.duration_percent - 1.0).abs() > 1e-3 {flags |= 0x01;}
         flags
     }
     fn write_note_effects_v3(&self, data: &mut Vec<u8>, note: &Note) {
@@ -385,7 +406,7 @@ impl Song {
         if (flags1 & 0x01) == 0x01 {self.write_bend(data, &note.effect.bend);}
         if (flags1 & 0x10) == 0x10 {self.write_grace(data, &note.effect.grace);}
     }
-    fn write_note_effects(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)]) {
+    fn write_note_effects(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
         let mut flags1 = 0i8;
         if note.effect.is_bend()  {flags1 |= 0x01;}
         if note.effect.hammer     {flags1 |= 0x02;}
@@ -404,7 +425,10 @@ impl Song {
         write_signed_byte(data, flags2);
 
         if (flags1 & 0x01) == 0x01 {self.write_bend(data, &note.effect.bend);}
-        if (flags1 & 0x10) == 0x10 {self.write_grace(data, &note.effect.grace);}
+        if (flags1 & 0x10) == 0x10 {
+            if version.0 <5 {self.write_grace(data, &note.effect.grace);}
+            else {self.write_grace_v5(data, &note.effect.grace);}
+        }
         if (flags2 & 0x04) == 0x04 {if let Some(tp) = &note.effect.tremolo_picking {
             write_signed_byte(data, match tp.duration.value.to_u8().unwrap() {
                                                 DURATION_EIGHTH         => 1,
@@ -412,8 +436,14 @@ impl Song {
                                                 DURATION_THIRTY_SECOND  => 3,
                                                 _ => panic!("Cannot write tremolo picking"),});
         }}
-        if (flags2 & 0x08) == 0x08 {write_signed_byte(data, from_slide_type(note.effect.slides[0]));}
-        if (flags2 & 0x10) == 0x10 {self.write_harmonic(data, note, strings);}
+        if (flags2 & 0x08) == 0x08 {
+            if version.0 < 5 {write_signed_byte(data, from_slide_type(note.effect.slides[0]));}
+            else {self.write_slides_v5(data, &note.effect.slides);}
+        }
+        if (flags2 & 0x10) == 0x10 {
+            if version.0 <5 {self.write_harmonic(data, note, strings);}
+            else {self.write_harmonic_v5(data, note, strings);}
+        }
         if (flags2 & 0x20) == 0x20 { //trill
             if let Some(t) = &note.effect.trill {
                 write_signed_byte(data, t.fret);

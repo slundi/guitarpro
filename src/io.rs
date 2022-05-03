@@ -160,10 +160,10 @@ pub(crate) fn write_byte(data: &mut Vec<u8>, value: u8) {data.push(value);}
 pub(crate) fn write_signed_byte(data: &mut Vec<u8>, value: i8) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_bool(data: &mut Vec<u8>, value: bool) {data.push(if value {0x01} else {0x00});}
 pub(crate) fn write_i32(data: &mut Vec<u8>, value: i32) {data.extend(value.to_le_bytes());}
-pub(crate) fn write_u32(data: &mut Vec<u8>, value: u32) {data.extend(value.to_le_bytes());}
+//pub(crate) fn write_u32(data: &mut Vec<u8>, value: u32) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_i16(data: &mut Vec<u8>, value: i16) {data.extend(value.to_le_bytes());}
-pub(crate) fn write_u16(data: &mut Vec<u8>, value: u16) {data.extend(value.to_le_bytes());}
-pub(crate) fn write_f32(data: &mut Vec<u8>, value: f32) {data.extend(value.to_le_bytes());}
+//pub(crate) fn write_u16(data: &mut Vec<u8>, value: u16) {data.extend(value.to_le_bytes());}
+//pub(crate) fn write_f32(data: &mut Vec<u8>, value: f32) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_f64(data: &mut Vec<u8>, value: f64) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_color(data: &mut Vec<u8>, value: i32) {
     let r: u8 = ((value & 0xff0000) >> 16).to_u8().unwrap();
@@ -180,7 +180,8 @@ pub(crate) fn write_byte_size_string(data: &mut Vec<u8>, value: &str) {
 }
 
 pub(crate) fn write_int_byte_size_string(data: &mut Vec<u8>, value: &str) {
-    
+    write_i32(data, (value.len() + 1).to_i32().unwrap()); //write_i32( (value.getBytes(charset).length + 1) );
+    data.extend(value.as_bytes());
 }
 
 pub(crate) fn write_version(data: &mut Vec<u8>, version: (u8,u8,u8)) {
