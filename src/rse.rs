@@ -137,7 +137,7 @@ impl Song {
             self.write_rse_instrument_effect(data, &rse.instrument);
         }
     }
-    fn write_rse_instrument(&self, data: &mut Vec<u8>, instrument: &RseInstrument, version: &(u8,u8,u8)) {
+    pub(crate) fn write_rse_instrument(&self, data: &mut Vec<u8>, instrument: &RseInstrument, version: &(u8,u8,u8)) {
         write_i32(data, instrument.instrument.to_i32().unwrap());
         write_i32(data, instrument.unknown.to_i32().unwrap());
         write_i32(data, instrument.sound_bank.to_i32().unwrap());
@@ -146,7 +146,7 @@ impl Song {
             write_placeholder_default(data, 1);
         } else {write_i32(data, instrument.effect_number.to_i32().unwrap());}
     }
-    fn write_rse_instrument_effect(&self, data: &mut Vec<u8>, instrument: &RseInstrument) { //version>5.0.0
+    pub(crate) fn write_rse_instrument_effect(&self, data: &mut Vec<u8>, instrument: &RseInstrument) { //version>5.0.0
         write_int_byte_size_string(data, &instrument.effect);
         write_int_byte_size_string(data, &instrument.effect_category);
     }
