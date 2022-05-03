@@ -316,6 +316,17 @@ impl Song {
         write_byte(data, g.duration.leading_zeros().to_u8().unwrap()); //8 - grace.duration.bit_length()
         write_signed_byte(data, from_grace_effect_transition(g.transition));
     }
+    pub(crate) fn write_grace_v5(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) {
+        let g = grace.clone().unwrap();
+        write_byte(data, g.fret.to_u8().unwrap());
+        write_byte(data, pack_velocity(g.velocity).to_u8().unwrap());
+        write_byte(data, from_grace_effect_transition(g.transition).to_u8().unwrap());
+        write_byte(data, g.duration.leading_zeros().to_u8().unwrap()); //8 - grace.duration.bit_length()
+        let mut flags = 0u8;
+        if g.is_dead {flags |= 0x01;}
+        if g.is_on_beat {flags |= 0x02;}
+        write_byte(data, flags);
+    }
     pub(crate) fn write_harmonic(&self, data: &mut Vec<u8>, note: &crate::note::Note, strings: &[(i8,i8)]) {
         if let Some(h) = &note.effect.harmonic {
             let mut byte = from_harmonic_type(h.kind);
@@ -329,6 +340,19 @@ impl Song {
                 } else {byte = 22;}
             }
             write_signed_byte(data, byte);
+        }
+    }
+    pub(crate) fn write_harmonic_v5(&self, data: &mut Vec<u8>, note: &crate::note::Note, strings: &[(i8,i8)]) {
+        if let Some(h) = &note.effect.harmonic {
+            write_signed_byte(data, from_harmonic_type(h.kind));
+            if h.kind == HarmonicType::Artificial && (h.pitch.is_none() || h.octave.is_none()) {
+                let p = PitchClass::from(note.real_value(strings) % 12, None, None);
+                let o = Octave::Ottava;
+                write_byte(data, p.just.to_u8().unwrap());
+                write_signed_byte(data, p.accidental);
+                write_byte(data, from_octave(o));
+            }
+            else if h.kind == HarmonicType::Tapped {write_byte(data, h.fret.unwrap().to_u8().unwrap());}
         }
     }
 }

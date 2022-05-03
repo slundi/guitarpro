@@ -144,6 +144,15 @@ pub(crate) fn get_octave(value: u8) -> Octave {
         _ => panic!("Cannot get octave value"),
     }
 }
+pub(crate) fn from_octave(value: Octave) -> u8 {
+    match value {
+        Octave::None               => 0,
+        Octave::Ottava             => 1,
+        Octave::Quindicesima       => 2,
+        Octave::OttavaBassa        => 3,
+        Octave::QuindicesimaBassa  => 4,
+    }
+}
 
 /// All beat stroke directions
 #[derive(Debug,Copy,Clone,PartialEq)]
