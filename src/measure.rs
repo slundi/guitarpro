@@ -140,7 +140,7 @@ impl Song {
         if version.0 < 5 {self.write_voice(data, track, measure,0, version);}
         else {
             for v in 0..self.tracks[track].measures[measure].voices.len() {self.write_voice(data, track, measure,v, version);} //self.current_voice_number = Some(v+1);
-            if version.0 == 5 {write_byte(data, from_line_break(self.tracks[track].measures[measure].line_break));}
+            if version.0 == 5 {write_byte(data, from_line_break(&self.tracks[track].measures[measure].line_break));}
         }
         //self.current_voice_number = None;
     }

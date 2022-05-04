@@ -295,7 +295,7 @@ impl Song {
         if self.tracks[number].settings.extend_rythmic      {flags2 |= 0x0800;}
         write_i16(data, flags2);
 
-        write_byte(data, from_accentuation(self.tracks[number].rse.auto_accentuation));
+        write_byte(data, from_accentuation(&self.tracks[number].rse.auto_accentuation));
         write_byte(data, self.channels[self.tracks[number].channel_index].bank);
         self.write_track_rse(data, &self.tracks[number].rse, version);
     }

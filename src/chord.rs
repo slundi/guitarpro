@@ -257,27 +257,27 @@ impl Song {
         if let Some(r) = &chord.root {write_i32(data, r.value.to_i32().unwrap());}
         else {write_i32(data, 0);}
         //chord type
-        if let Some(t) = chord.kind {write_i32(data, from_chord_type(t).to_i32().unwrap());} 
+        if let Some(t) = &chord.kind {write_i32(data, from_chord_type(t).to_i32().unwrap());} 
         else {write_i32(data, 0);}
         //chord extension
-        if let Some(e) = chord.extension {write_i32(data, from_chord_extension(e).to_i32().unwrap());}
+        if let Some(e) = &chord.extension {write_i32(data, from_chord_extension(e).to_i32().unwrap());}
         else {write_i32(data, 0);}
         //bass
         if let Some(b) = &chord.bass {write_i32(data, b.value.to_i32().unwrap());}
         else {write_i32(data, 0);}
         //tonality
-        if let Some(t) = chord.tonality {write_i32(data, from_chord_alteration(t).to_i32().unwrap());}
+        if let Some(t) = &chord.tonality {write_i32(data, from_chord_alteration(t).to_i32().unwrap());}
         else {write_i32(data, 0);}
         //
         write_bool(data, chord.add == Some(true));
         write_byte_size_string(data, &chord.name);
         write_placeholder_default(data, 22 - chord.name.len());
         //fifth, ninth, eleventh
-        if let Some(f) = chord.fifth    {write_i32(data, from_chord_alteration(f).to_i32().unwrap());}
+        if let Some(f) = &chord.fifth    {write_i32(data, from_chord_alteration(f).to_i32().unwrap());}
         else {write_i32(data, 0);}
-        if let Some(n) = chord.ninth    {write_i32(data, from_chord_alteration(n).to_i32().unwrap());}
+        if let Some(n) = &chord.ninth    {write_i32(data, from_chord_alteration(n).to_i32().unwrap());}
         else {write_i32(data, 0);}
-        if let Some(e) = chord.eleventh {write_i32(data, from_chord_alteration(e).to_i32().unwrap());}
+        if let Some(e) = &chord.eleventh {write_i32(data, from_chord_alteration(e).to_i32().unwrap());}
         else {write_i32(data, 0);}
         //first fret
         if let Some(ff) = chord.first_fret {write_i32(data, ff.to_i32().unwrap());}
@@ -324,27 +324,27 @@ impl Song {
             if let Some(r) = &c.root {write_i32(data, r.value.to_i32().unwrap());}
             else {write_i32(data, 0);}
             //chord type
-            if let Some(t) = c.kind {write_i32(data, from_chord_type(t).to_i32().unwrap());} 
+            if let Some(t) = &c.kind {write_i32(data, from_chord_type(t).to_i32().unwrap());} 
             else {write_i32(data, 0);}
             //chord extension
-            if let Some(e) = c.extension {write_i32(data, from_chord_extension(e).to_i32().unwrap());}
+            if let Some(e) = &c.extension {write_i32(data, from_chord_extension(e).to_i32().unwrap());}
             else {write_i32(data, 0);}
             //bass
             if let Some(b) = &c.bass {write_i32(data, b.value.to_i32().unwrap());}
             else {write_i32(data, 0);}
             //tonality
-            if let Some(t) = c.tonality {write_i32(data, from_chord_alteration(t).to_i32().unwrap());}
+            if let Some(t) = &c.tonality {write_i32(data, from_chord_alteration(t).to_i32().unwrap());}
             else {write_i32(data, 0);}
             //
             write_bool(data, c.add == Some(true));
             write_byte_size_string(data, &c.name);
             write_placeholder_default(data, 22 - c.name.len());
             //fifth, ninth, eleventh
-            if let Some(f) = c.fifth    {write_i32(data, from_chord_alteration(f).to_i32().unwrap());}
+            if let Some(f) = &c.fifth    {write_i32(data, from_chord_alteration(f).to_i32().unwrap());}
             else {write_i32(data, 0);}
-            if let Some(n) = c.ninth    {write_i32(data, from_chord_alteration(n).to_i32().unwrap());}
+            if let Some(n) = &c.ninth    {write_i32(data, from_chord_alteration(n).to_i32().unwrap());}
             else {write_i32(data, 0);}
-            if let Some(e) = c.eleventh {write_i32(data, from_chord_alteration(e).to_i32().unwrap());}
+            if let Some(e) = &c.eleventh {write_i32(data, from_chord_alteration(e).to_i32().unwrap());}
             else {write_i32(data, 0);}
             //first fret
             if let Some(ff) = c.first_fret {write_i32(data, ff.to_i32().unwrap());}
@@ -372,7 +372,7 @@ impl Song {
             }
             write_placeholder_default(data, 1);
             for i in 0..7 {
-                if i < c.fingerings.len() {write_signed_byte(data, from_fingering(c.fingerings[i]));}
+                if i < c.fingerings.len() {write_signed_byte(data, from_fingering(&c.fingerings[i]));}
                 else {write_signed_byte(data, -2);}
             }
             write_bool(data, c.show == Some(true));

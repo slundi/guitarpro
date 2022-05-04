@@ -212,7 +212,7 @@ impl Song {
 
         if version.0 >= 4 {write_signed_byte(&mut data, 0);} //octave
         self.write_midi_channels(&mut data); //TODO: fixme for writing
-        return data;
+        //return data;
 
         if version.0 == 5 {
             self.write_directions(&mut data);

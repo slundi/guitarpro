@@ -289,7 +289,7 @@ impl Song {
             else                              {note.effect.slides.push(get_slide_type(read_signed_byte(data, seek)));}
         }
         if (flags2 & 0x10) == 0x10 {
-            if self.version.number >= (5,0,0) {note.effect.harmonic = Some(self.read_harmonic_v5(data, seek, note));}
+            if self.version.number >= (5,0,0) {note.effect.harmonic = Some(self.read_harmonic_v5(data, seek));}
             else                              {note.effect.harmonic = Some(self.read_harmonic(data, seek, note));}
         }
         if (flags2 & 0x20) == 0x20 {note.effect.trill = Some(self.read_trill(data, seek));}
@@ -327,7 +327,7 @@ impl Song {
     fn write_note_v3(&self, data: &mut Vec<u8>, note: &Note) {
         let flags: u8 = self.pack_note_flags(note, &(3,0,0));
         write_byte(data, flags);
-        if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(note.kind));}
+        if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(&note.kind));}
         if (flags & 0x01) == 0x01 {
             write_signed_byte(data, note.duration.unwrap());
             write_signed_byte(data, note.tuplet.unwrap());
@@ -342,7 +342,7 @@ impl Song {
     fn write_note_v4(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
         let flags: u8 = self.pack_note_flags(note, version);
         write_byte(data, flags);
-        if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(note.kind));}
+        if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(&note.kind));}
         if (flags & 0x01) == 0x01 {
             write_signed_byte(data, note.duration.unwrap());
             write_signed_byte(data, note.tuplet.unwrap());
@@ -353,8 +353,8 @@ impl Song {
             else {write_signed_byte(data, 0);}
         }
         if (flags & 0x80) == 0x80 {
-            write_signed_byte(data, from_fingering(note.effect.left_hand_finger));
-            write_signed_byte(data, from_fingering(note.effect.right_hand_finger));
+            write_signed_byte(data, from_fingering(&note.effect.left_hand_finger));
+            write_signed_byte(data, from_fingering(&note.effect.right_hand_finger));
         }
         if (flags & 0x08) == 0x08 {
             if version.0 == 3 {self.write_note_effects_v3(data, note);}
@@ -364,15 +364,15 @@ impl Song {
     fn write_note_v5(&self, data: &mut Vec<u8>, note: &Note, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
         let flags: u8 = self.pack_note_flags(note, version);
         write_byte(data, flags);
-        if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(note.kind));}
+        if (flags & 0x20) == 0x20 {write_byte(data, from_note_type(&note.kind));}
         if (flags & 0x10) == 0x10 {write_signed_byte(data, crate::effects::pack_velocity(note.velocity));}
         if (flags & 0x20) == 0x20 {
             if note.kind != NoteType::Tie {write_signed_byte(data, note.value.to_i8().unwrap());}
             else {write_signed_byte(data, 0);}
         }
         if (flags & 0x80) == 0x80 {
-            write_signed_byte(data, from_fingering(note.effect.left_hand_finger));
-            write_signed_byte(data, from_fingering(note.effect.right_hand_finger));
+            write_signed_byte(data, from_fingering(&note.effect.left_hand_finger));
+            write_signed_byte(data, from_fingering(&note.effect.right_hand_finger));
         }
         if (flags & 0x01) == 0x01 {write_f64(data, note.duration_percent.to_f64().unwrap());}
         let mut flags2 = 0u8;
@@ -437,7 +437,7 @@ impl Song {
                                                 _ => panic!("Cannot write tremolo picking"),});
         }}
         if (flags2 & 0x08) == 0x08 {
-            if version.0 < 5 {write_signed_byte(data, from_slide_type(note.effect.slides[0]));}
+            if version.0 < 5 {write_signed_byte(data, from_slide_type(&note.effect.slides[0]));}
             else {self.write_slides_v5(data, &note.effect.slides);}
         }
         if (flags2 & 0x10) == 0x10 {

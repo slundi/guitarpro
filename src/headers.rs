@@ -145,8 +145,8 @@ impl Song {
             previous = Some(r.0.clone());
             self.measure_headers.push(r.0); //TODO: use add_measure_header
         }
-        for s in &directions.0 { if s.1 > &-1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(*s.0);} }
-        for s in &directions.1 { if s.1 > &-1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(*s.0);} }
+        for s in &directions.0 { if s.1 > &-1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0.clone());} }
+        for s in &directions.1 { if s.1 > &-1 {self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0.clone());} }
     }
 
     /// Read measure header. The first byte is the measure's flags. It lists the data given in the current measure.
@@ -171,7 +171,7 @@ impl Song {
         //println!("read_measure_header(), flags: {} \t N: {} \t Measure header count: {}", flag, number, self.measure_headers.len());
         let mut mh = MeasureHeader{number: number.to_u16().unwrap(), ..Default::default()};
         mh.start  = 0;
-        mh.triplet_feel = self.triplet_feel;
+        mh.triplet_feel = self.triplet_feel.clone(); //TODO: use ref & lifetime
         //we need a previous header for the next 2 flags
         //Numerator of the (key) signature
         if (flag & 0x01 )== 0x01 {mh.time_signature.numerator = read_signed_byte(data, seek);}
@@ -344,7 +344,7 @@ impl Song {
                 for i in 0..self.measure_headers[header].time_signature.beams.len() {write_byte(data, self.measure_headers[header].time_signature.beams[i]);}
             }
             if (flags & 0x10) == 0x10 {write_placeholder_default(data, 1);}
-            write_byte(data, from_triplet_feel(self.measure_headers[header].triplet_feel));
+            write_byte(data, from_triplet_feel(&self.measure_headers[header].triplet_feel));
         }
     }
 

@@ -333,7 +333,7 @@ impl Song {
         if !beat.duration.is_default_tuplet() {flags |= 0x20;}
         if beat.status != BeatStatus::Normal {flags |= 0x40;}
         write_byte(data, flags);
-        if (flags & 0x40) == 0x40 {write_byte(data, from_beat_status(beat.status));}
+        if (flags & 0x40) == 0x40 {write_byte(data, from_beat_status(&beat.status));}
         beat.duration.write_duration(data, flags);
         if (flags & 0x02) == 0x02 {self.write_chord(data, beat);}
         if (flags & 0x04) == 0x04 {write_int_byte_size_string(data, &beat.text);}
@@ -354,7 +354,7 @@ impl Song {
         if !beat.duration.is_default_tuplet() {flags |= 0x20;}
         if beat.status != BeatStatus::Normal {flags |= 0x40;}
         write_byte(data, flags);
-        if (flags & 0x40) == 0x40 {write_byte(data, from_beat_status(beat.status));}
+        if (flags & 0x40) == 0x40 {write_byte(data, from_beat_status(&beat.status));}
         beat.duration.write_duration(data, flags);
         if (flags & 0x02) == 0x02 {self.write_chord_v4(data, beat);}
         if (flags & 0x04) == 0x04 {write_int_byte_size_string(data, &beat.text);}
@@ -398,7 +398,7 @@ impl Song {
         if beat.effect.stroke.direction != BeatStrokeDirection::None && beat.effect.stroke.value != 0 {flags1 |= 0x40;}
         write_byte(data, flags1);
         if (flags1 & 0x20) == 0x20 {
-            write_byte(data, from_slap_effect(beat.effect.slap_effect));
+            write_byte(data, from_slap_effect(&beat.effect.slap_effect));
             self.write_tremolo_bar(data, &beat.effect.tremolo_bar);
         }
         if (flags1 & 0x40) == 0x40 {self.write_beat_stroke(data, &beat.effect.stroke, &(3,0,0));}
@@ -418,10 +418,10 @@ impl Song {
         if beat.effect.is_tremolo_bar() {flags2 |= 0x04;}
         write_signed_byte(data, flags2);
 
-        if (flags1 & 0x20) == 0x20 {write_signed_byte(data, from_slap_effect(beat.effect.slap_effect).to_i8().unwrap());}
+        if (flags1 & 0x20) == 0x20 {write_signed_byte(data, from_slap_effect(&beat.effect.slap_effect).to_i8().unwrap());}
         if (flags2 & 0x04) == 0x04 {self.write_bend(data, &beat.effect.tremolo_bar);} //write tremolo bar
         if (flags2 & 0x40) == 0x40 {self.write_beat_stroke(data, &beat.effect.stroke, version);}
-        if (flags2 & 0x02) == 0x02 {write_signed_byte(data, from_beat_stroke_direction(beat.effect.pick_stroke));}
+        if (flags2 & 0x02) == 0x02 {write_signed_byte(data, from_beat_stroke_direction(&beat.effect.pick_stroke));}
     }
 
     fn write_tremolo_bar(&self, data: &mut Vec<u8>, bar: &Option<BendEffect>) {
