@@ -99,7 +99,7 @@ impl Song{
     }
 
     /// Read MIDI channel. MIDI channel in Guitar Pro is represented by two integers. First is zero-based number of channel, second is zero-based number of channel used for effects.
-    pub(crate) fn read_channel(&mut self, data: &[u8], seek: &mut usize) -> usize {
+    pub(crate) fn read_channel(&mut self, data: &[u8], seek: &mut usize) -> usize { //TODO: fixme for writing
         let index          = read_int(data, seek) - 1;
         let effect_channel = read_int(data, seek) - 1;
         if 0 <= index && index < self.channels.len().to_i32().unwrap() {

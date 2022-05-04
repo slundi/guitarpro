@@ -189,11 +189,316 @@ mod test {
         song.read_gp5(&read_file(String::from("test/Wah-m.gp5")));
     }
 
+    //MuseScore tests
+    #[test]
+    fn test_gp5_all_percussion() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/all-percussion.gp5")));
+    }
+    #[test]
+    fn test_gp5_basic_bend() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/basic-bend.gp5")));
+    }
+    #[test]
+    fn test_gp5_beams_sterms_ledger_lines() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/beams-stems-ledger-lines.gp5")));
+    }
+    #[test]
+    fn test_gp5_brush() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/brush.gp5")));
+    }
+    #[test]
+    fn test_gp3_capo_fret() {
+        let mut song: Song = Song::default();
+        song.read_gp3(&read_file(String::from("test/capo-fret.gp3")));
+    }
+    #[test]
+    fn test_gp4_capo_fret() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/capo-fret.gp4")));
+    }
+    #[test]
+    fn test_gp5_capo_fret() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/capo-fret.gp5")));
+    }
+    #[test]
+    fn test_gp3_copyright() {
+        let mut song: Song = Song::default();
+        song.read_gp3(&read_file(String::from("test/copyright.gp3")));
+    }
+    #[test]
+    fn test_gp4_copyright() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/copyright.gp4")));
+    }
+    #[test]
+    fn test_gp5_copyright() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/copyright.gp5")));
+    }
+    #[test]
+    fn test_gp3_dotted_gliss() {
+        let mut song: Song = Song::default();
+        song.read_gp3(&read_file(String::from("test/dotted-gliss.gp3")));
+    }
+    #[test]
+    fn test_gp5_dotted_tuplets() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/dotted-tuplets.gp5")));
+    }
+    #[test]
+    fn test_gp5_dynamic() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/dynamic.gp5")));
+    }
+    #[test]
+    fn test_gp4_fade_in() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/fade-in.gp4")));
+    }
+    #[test]
+    fn test_gp5_fade_in() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/fade-in.gp5")));
+    }
+    #[test]
+    fn test_gp4_fingering() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/fingering.gp4")));
+    }
+    #[test]
+    fn test_gp5_fingering() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/fingering.gp5")));
+    }
+    #[test]
+    fn test_gp4_fret_diagram() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/fret-diagram.gp4")));
+    }
+    #[test]
+    fn test_gp5_fret_diagram() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/fret-diagram.gp5")));
+    }
+    #[test]
+    fn test_gp3_ghost_note() {
+        let mut song: Song = Song::default();
+        song.read_gp3(&read_file(String::from("test/ghost_note.gp3")));
+    }
+    #[test]
+    fn test_gp5_grace() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/grace.gp5")));
+    }
+    #[test]
+    fn test_gp5_heavy_accent() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/heavy-accent.gp5")));
+    }
+    #[test]
+    fn test_gp3_high_pitch() {
+        let mut song: Song = Song::default();
+        song.read_gp3(&read_file(String::from("test/high-pitch.gp3")));
+    }
+    #[test]
+    fn test_gp4_keysig() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/keysig.gp4")));
+    }
+    #[test]
+    fn test_gp5_keysig() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/keysig.gp5")));
+    }
+    #[test]
+    fn test_gp4_legato_slide() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/legato-slide.gp4")));
+    }
+    #[test]
+    fn test_gp5_legato_slide() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/legato-slide.gp5")));
+    }
+    #[test]
+    fn test_gp4_let_ring() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/let-ring.gp4")));
+    }
+    #[test]
+    fn test_gp5_let_ring() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/let-ring.gp5")));
+    }
+    #[test]
+    fn test_gp4_palm_mute() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/palm-mute.gp4")));
+    }
+    #[test]
+    fn test_gp5_palm_mute() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/palm-mute.gp5")));
+    }
+    #[test]
+    fn test_gp4_pick_up_down() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/pick-up-down.gp4")));
+    }
+    #[test]
+    fn test_gp5_pick_up_down() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/pick-up-down.gp5")));
+    }
+    #[test]
+    fn test_gp4_rest_centered() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/rest-centered.gp4")));
+    }
+    #[test]
+    fn test_gp5_rest_centered() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/rest-centered.gp5")));
+    }
+    #[test]
+    fn test_gp4_sforzato() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/sforzato.gp4")));
+    }
+    #[test]
+    fn test_gp4_shift_slide() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/shift-slide.gp4")));
+    }
+    #[test]
+    fn test_gp5_shift_slide() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/shift-slide.gp5")));
+    }
+    #[test]
+    fn test_gp4_slide_in_above() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/slide-in-above.gp4")));
+    }
+    #[test]
+    fn test_gp5_slide_in_above() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/slide-in-above.gp5")));
+    }
+    #[test]
+    fn test_gp4_slide_in_below() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/slide-in-below.gp4")));
+    }
+    #[test]
+    fn test_gp5_slide_in_below() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/slide-in-below.gp5")));
+    }
+    #[test]
+    fn test_gp4_slide_out_down() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/slide-out-down.gp4")));
+    }
+    #[test]
+    fn test_gp5_slide_out_down() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/slide-out-down.gp5")));
+    }
+    #[test]
+    fn test_gp4_slide_out_up() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/slide-out-up.gp4")));
+    }
+    #[test]
+    fn test_gp5_slide_out_up() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/slide-out-up.gp5")));
+    }
+    #[test]
+    fn test_gp4_slur() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/slur.gp4")));
+    }
+    #[test]
+    fn test_gp5_slur_notes_effect_mask() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/slur-notes-effect-mask.gp5")));
+    }
+    #[test]
+    fn test_gp5_tap_slap_pop() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/tap-slap-pop.gp5")));
+    }
+    #[test]
+    fn test_gp3_tempo() {
+        let mut song: Song = Song::default();
+        song.read_gp3(&read_file(String::from("test/tempo.gp3")));
+    }
+    #[test]
+    fn test_gp4_tempo() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/tempo.gp4")));
+    }
+    #[test]
+    fn test_gp5_tempo() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/tempo.gp5")));
+    }
+    #[test]
+    fn test_gp4_test_irr_tuplet() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/testIrrTuplet.gp4")));
+    }
+    #[test]
+    fn test_gp5_tremolos() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/tremolos.gp5")));
+    }
+    #[test]
+    fn test_gp4_trill() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/trill.gp4")));
+    }
+    #[test]
+    fn test_gp4_tuplet_with_slur() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/tuplet-with-slur.gp4")));
+    }
+    #[test]
+    fn test_gp5_vibrato() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/vibrato.gp5")));
+    }
+    #[test]
+    fn test_gp3_volta() {
+        let mut song: Song = Song::default();
+        song.read_gp3(&read_file(String::from("test/volta.gp3")));
+    }
+    #[test]
+    fn test_gp4_volta() {
+        let mut song: Song = Song::default();
+        song.read_gp4(&read_file(String::from("test/volta.gp4")));
+    }
+    #[test]
+    fn test_gp5_volta() {
+        let mut song: Song = Song::default();
+        song.read_gp5(&read_file(String::from("test/volta.gp5")));
+    }
+
+    //writing
     #[test]
     fn test_gp3_writing() {
         let mut song = Song::default();
-        song.read_gp3(&read_file(String::from("test/Chords.gp3")));
+        let data = read_file(String::from("test/Chords.gp3"));
+        song.read_gp3(&data);
         let out = song.write((3,0,0), None);
+        assert_eq!(out, data[0..out.len()]);
         song.read_gp3(&out);
     }
 }
