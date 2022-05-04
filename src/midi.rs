@@ -99,17 +99,19 @@ impl Song{
     }
 
     /// Read MIDI channel. MIDI channel in Guitar Pro is represented by two integers. First is zero-based number of channel, second is zero-based number of channel used for effects.
-    pub(crate) fn read_channel(&mut self, data: &[u8], seek: &mut usize) {
+    pub(crate) fn read_channel(&mut self, data: &[u8], seek: &mut usize) -> usize {
         let index          = read_int(data, seek) - 1;
         let effect_channel = read_int(data, seek) - 1;
         if 0 <= index && index < self.channels.len().to_i32().unwrap() {
             if  self.channels[index.to_usize().unwrap()].instrument < 0 {self.channels[index.to_usize().unwrap()].instrument = 0;}
             if !self.channels[index.to_usize().unwrap()].is_percussion_channel() {self.channels[index.to_usize().unwrap()].effect_channel =  effect_channel.to_u8().unwrap();}
         }
+        index.to_usize().unwrap()
     }
 
     pub(crate) fn write_midi_channels(&self, data: &mut Vec<u8>) {
         for i in 0..self.channels.len() {
+            println!("writing channel: {:?}", self.channels[i]);
             if self.channels[i].is_percussion_channel() && self.channels[i].instrument == 0 {write_i32(data, -1);}
             else                                                                            {write_i32(data, self.channels[i].instrument);}
             write_signed_byte(data, self.from_channel_short(self.channels[i].volume));

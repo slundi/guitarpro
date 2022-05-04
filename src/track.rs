@@ -122,15 +122,7 @@ impl Song {
         }
         //println!("tuning: {:?}", track.strings);
         track.port = read_int(data, seek).to_u8().unwrap();
-        // Read MIDI channel. MIDI channel in Guitar Pro is represented by two integers. First is zero-based number of channel, second is zero-based number of channel used for effects.
-        let index = (read_int(data, seek) -1).to_usize().unwrap();
-        let effect_channel = read_int(data, seek) -1;
-        if index < self.channels.len() {
-            track.channel_index = index;
-            if self.channels[index].get_instrument() < 0 {self.channels[index].set_instrument(0);}
-            if !self.channels[index].is_percussion_channel() {self.channels[index].effect_channel = effect_channel.to_u8().unwrap();}
-        }
-        //
+        let index = self.read_channel(data, seek);
         if self.channels[index].channel == 9 {track.percussion_track = true;}
         track.fret_count = read_int(data, seek).to_u8().unwrap();
         track.offset = read_int(data, seek);
