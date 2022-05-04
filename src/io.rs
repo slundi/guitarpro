@@ -86,7 +86,6 @@ pub(crate) fn read_int_size_string(data: &[u8], seek: &mut usize) -> String {
 /// Read length of the string increased by 1 and stored in 1 integer followed by length of the string in 1 byte and finally followed by character bytes.
 pub(crate) fn read_int_byte_size_string(data: &[u8], seek: &mut usize) -> String {
     let s = (read_int(data, seek) - 1).to_usize().unwrap();
-    //println!("read_int_byte_size_string(), d={}",s);
     read_byte_size_string(data, seek, s)
 }
 
@@ -186,8 +185,8 @@ pub(crate) fn write_int_size_string(data: &mut Vec<u8>, value: &str) {
 
 pub(crate) fn write_int_byte_size_string(data: &mut Vec<u8>, value: &str) {
     print!("{}", value.len());
-    //write_byte(data, 8); //charset length in bytes
-    write_i32(data, value.len().to_i32().unwrap()); //write_i32( (value.getBytes(charset).length + 1) );
+    write_i32(data, (value.len() + 1).to_i32().unwrap()); //write_i32( (value.getBytes(charset).length + 1) );
+    write_byte(data,value.len().to_u8().unwrap());
     data.extend(value.as_bytes());
 }
 
@@ -217,10 +216,16 @@ mod test {
 
     #[test]
     fn test_read_int_size_string() {
-        let data: Vec<u8> = vec![0x09,0x00,0x00,0x00,
-                                 0x08,0x25,0x41,0x52,0x54,0x49,0x53,0x54,0x25];
+        let data: Vec<u8> = vec![0x08,0x00,0x00,0x00,   0x25,0x41,0x52,0x54,0x49,0x53,0x54,0x25];
         let mut seek = 0usize;
         assert_eq!(read_int_size_string(&data, &mut seek), "%ARTIST%");
+    }
+
+    #[test]
+    fn test_read_int_byte_size_string() {
+        let data: Vec<u8> = vec![0x09,0x00,0x00,0x00,   0x08,   0x25,0x41,0x52,0x54,0x49,0x53,0x54,0x25];
+        let mut seek = 0usize;
+        assert_eq!(read_int_byte_size_string(&data, &mut seek), "%ARTIST%");
     }
 
     #[test]
@@ -237,8 +242,14 @@ mod test {
     fn test_write_int_size_string() {
         let mut out: Vec<u8> = Vec::with_capacity(16);
         write_int_size_string(&mut out, "%ARTIST%");
-        let expected_result: Vec<u8> = vec![0x09,0x00,0x00,0x00,
-                                            0x08,0x25,0x41,0x52,0x54,0x49,0x53,0x54,0x25];
+        let expected_result: Vec<u8> = vec![0x09,0x00,0x00,0x00,   0x08,0x25,0x41,0x52,0x54,0x49,0x53,0x54,0x25];
+        assert_eq!(out, expected_result);
+    }
+    #[test]
+    fn test_write_int_byte_size_string() {
+        let mut out: Vec<u8> = Vec::with_capacity(16);
+        write_int_byte_size_string(&mut out, "%ARTIST%");
+        let expected_result: Vec<u8> = vec![0x09,0x00,0x00,0x00,   0x08,   0x25,0x41,0x52,0x54,0x49,0x53,0x54,0x25];
         assert_eq!(out, expected_result);
     }
 }
