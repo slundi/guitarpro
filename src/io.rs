@@ -1,4 +1,5 @@
 use fraction::ToPrimitive;
+use encoding_rs::*;
 
 //reading functions
 
@@ -104,10 +105,15 @@ fn read_string(data: &[u8], seek: &mut usize, size: usize, length: Option<usize>
     //println!("read_string(), size={} \t length={:?}", size, length);
     let length = length.unwrap_or(size);
     //let count = if size > 0 {size} else {length};
-    let parse = std::str::from_utf8(&data[*seek..*seek+length]);
-    if parse.is_err() {panic!("Unable to read string");}
+    let (cow, _encoding_used, had_errors) = WINDOWS_1252.decode(&data[*seek..*seek+length]);
+    if had_errors {
+        let parse = std::str::from_utf8(&data[*seek..*seek+length]);
+        if parse.is_err() {panic!("Unable to read string");}
+        *seek += size;
+        return parse.unwrap().to_string();
+    }
     *seek += size;
-    parse.unwrap().to_string()
+    (&cow).to_string()
 }
 
 pub const VERSIONS: [((u8,u8,u8), bool, &str); 10] = [((3, 0, 0), false, "FICHIER GUITAR PRO v3.00"),
