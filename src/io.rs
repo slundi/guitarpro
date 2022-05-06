@@ -180,19 +180,19 @@ pub(crate) fn write_color(data: &mut Vec<u8>, value: i32) {
     write_placeholder_default(data, 1);
 }
 pub(crate) fn write_byte_size_string(data: &mut Vec<u8>, value: &str) {
-    write_byte(data, value.len().to_u8().unwrap());
+    write_byte(data, value.chars().count().to_u8().unwrap());
     data.extend(value.as_bytes());
 }
 pub(crate) fn write_int_size_string(data: &mut Vec<u8>, value: &str) {
-    write_i32(data, value.len().to_i32().unwrap()+1);
-    write_byte(data, 8);
+    let count = value.chars().count();
+    write_i32(data, count.to_i32().unwrap()+1);
     data.extend(value.as_bytes());
 }
 
 pub(crate) fn write_int_byte_size_string(data: &mut Vec<u8>, value: &str) {
-    print!("{}", value.len());
-    write_i32(data, (value.len() + 1).to_i32().unwrap()); //write_i32( (value.getBytes(charset).length + 1) );
-    write_byte(data,value.len().to_u8().unwrap());
+    let count = value.chars().count();
+    write_i32(data, count.to_i32().unwrap()+1); //write_i32( (value.getBytes(charset).length + 1) );
+    write_byte(data, count.to_u8().unwrap());
     data.extend(value.as_bytes());
 }
 

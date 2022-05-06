@@ -43,7 +43,7 @@ impl crate::gp::Song {
         write_i32(data, self.lyrics.track_choice.to_i32().unwrap());
         for i in 0..5 {
             write_i32(data, self.lyrics.lines[i].1.to_i32().unwrap());
-            write_int_byte_size_string(data, &self.lyrics.lines[i].2);
+            write_int_size_string(data, &self.lyrics.lines[i].2);
         }
     }
 }
