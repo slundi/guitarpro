@@ -23,3 +23,6 @@ path = "src/main.rs"
 clap = { version = "3", features = ["derive"] }
 fraction = "0.10"
 encoding_rs = "0.8"
+
+[features]
+build-binary = ["clap"]

@@ -433,13 +433,13 @@ impl Song {
         if version.0 == 5 {stroke.swap_direction();}
         let mut stroke_down = 0i8;
         let mut stroke_up = 0i8;
-        if stroke.direction == BeatStrokeDirection::Up        { stroke_up   = self.from_stroke_value(stroke.value.to_u8().unwrap()); }
-        else if stroke.direction == BeatStrokeDirection::Down { stroke_down = self.from_stroke_value(stroke.value.to_u8().unwrap()); }
+        if stroke.direction == BeatStrokeDirection::Up        { stroke_up   = Song::from_stroke_value(stroke.value.to_u8().unwrap()); }
+        else if stroke.direction == BeatStrokeDirection::Down { stroke_down = Song::from_stroke_value(stroke.value.to_u8().unwrap()); }
         write_signed_byte(data, stroke_down);
         write_signed_byte(data, stroke_up);
     }
 
-    fn from_stroke_value(&self, value: u8) -> i8 {
+    fn from_stroke_value(value: u8) -> i8 {
         if      value == DURATION_HUNDRED_TWENTY_EIGHTH {1}
         else if value == DURATION_SIXTY_FOURTH          {2}
         else if value == DURATION_THIRTY_SECOND         {3}
