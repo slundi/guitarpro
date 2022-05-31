@@ -16,6 +16,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "guitarpro_cli"
 path = "src/main.rs"
+required-features = ["clap"]
 
 [dev-dependencies]
 
