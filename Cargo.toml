@@ -20,7 +20,7 @@ path = "src/main.rs"
 [dev-dependencies]
 
 [dependencies]
-clap = { version = "3", features = ["derive"] }
+clap = { version = "3", features = ["derive"] , optional = true } 
 fraction = "0.10"
 encoding_rs = "0.8"
 
