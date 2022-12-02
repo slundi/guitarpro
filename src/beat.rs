@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::{mix_table::*, effects::*, chord::*, key_signature::*, note::*, io::*, gp::*, enums::*};
 
 /// Parameters of beat display
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct BeatDisplay {
     break_beam: bool,
     force_beam: bool,
@@ -17,7 +17,7 @@ impl Default for BeatDisplay { fn default() -> Self { BeatDisplay { break_beam:f
 
 
 /// A stroke effect for beats.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct BeatStroke {
     pub direction: BeatStrokeDirection,
     pub value: u16,
@@ -42,7 +42,7 @@ pub struct Voice {
 impl Default for Voice {fn default() -> Self { Voice { measure_index: 0, /*measure: Measure::default(),*/ beats: Vec::new(), directions: VoiceDirection::None }}}
 
 /// This class contains all beat effects
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct BeatEffects {
     pub stroke: BeatStroke,
     pub has_rasgueado: bool,

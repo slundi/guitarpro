@@ -21,8 +21,8 @@ required-features = ["clap"]
 [dev-dependencies]
 
 [dependencies]
-clap = { version = "3", features = ["derive"] , optional = true } 
-fraction = "0.10"
+clap = { version = "4", features = ["derive"], optional = true } 
+fraction = "0.12"
 encoding_rs = "0.8"
 
 [features]

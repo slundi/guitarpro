@@ -4,14 +4,14 @@ use fraction::ToPrimitive;
 
 use crate::{io::*, gp::*, key_signature::*, enums::*};
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct Version {
     pub data: String,
     pub number: (u8, u8, u8),
     pub clipboard: bool
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct Clipboard {
     pub start_measure: i32,
     pub stop_measure: i32,
@@ -337,7 +337,7 @@ impl Song {
         }
         if version.0 >= 4 {
             write_signed_byte(data, self.measure_headers[header].key_signature.key);
-            write_signed_byte(data, if self.measure_headers[header].key_signature.is_minor {1} else {0});
+            write_signed_byte(data, i8::from(self.measure_headers[header].key_signature.is_minor));
         }
         if version.0 >= 5 {
             if (flags & 0x03) == 0x03 {
@@ -357,7 +357,7 @@ impl Song {
             if version.0 == 5 {
                 write_i32(data, c.start_beat.to_i32().unwrap());
                 write_i32(data, c.stop_beat.to_i32().unwrap());
-                write_i32(data, if c.sub_bar_copy {1} else {0});
+                write_i32(data, i32::from(c.sub_bar_copy));
             }
         }
     }

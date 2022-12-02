@@ -113,7 +113,7 @@ fn read_string(data: &[u8], seek: &mut usize, size: usize, length: Option<usize>
         return parse.unwrap().to_string();
     }
     *seek += size;
-    (&cow).to_string()
+    cow.to_string()
 }
 
 pub const VERSIONS: [((u8,u8,u8), bool, &str); 10] = [((3, 0, 0), false, "FICHIER GUITAR PRO v3.00"),
@@ -163,7 +163,7 @@ fn write_placeholder(data: &mut Vec<u8>, count: usize, byte: u8) { for _ in 0..c
 pub(crate) fn write_placeholder_default(data: &mut Vec<u8>, count: usize) {write_placeholder(data, count, 0x00);}
 pub(crate) fn write_byte(data: &mut Vec<u8>, value: u8) {data.push(value);}
 pub(crate) fn write_signed_byte(data: &mut Vec<u8>, value: i8) {data.extend(value.to_le_bytes());}
-pub(crate) fn write_bool(data: &mut Vec<u8>, value: bool) {data.push(if value {0x01} else {0x00});}
+pub(crate) fn write_bool(data: &mut Vec<u8>, value: bool) {data.push(u8::from(value));}
 pub(crate) fn write_i32(data: &mut Vec<u8>, value: i32) {data.extend(value.to_le_bytes());}
 //pub(crate) fn write_u32(data: &mut Vec<u8>, value: u32) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_i16(data: &mut Vec<u8>, value: i16) {data.extend(value.to_le_bytes());}

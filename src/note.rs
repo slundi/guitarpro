@@ -33,7 +33,7 @@ impl Note {
 }
 
 /// Contains all effects which can be applied to one note.
-#[derive(Debug,Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq,Eq)]
 pub struct NoteEffect {
     pub accentuated_note: bool,
     pub bend: Option<BendEffect>,

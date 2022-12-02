@@ -1,4 +1,3 @@
-extern crate clap;
 use clap::Parser;
 use fraction::ToPrimitive;
 use std::path::Path;

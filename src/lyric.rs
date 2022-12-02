@@ -22,7 +22,7 @@ impl std::fmt::Display for Lyrics {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut s = String::new();
         for l in &self.lines { s.push_str(&l.2); s.push('\n'); }
-        write!(f, "{}", s.trim().replace('\n', " ").replace('\r', " "))
+        write!(f, "{}", s.trim().replace(['\n', '\r'], " "))
     }
 }
 

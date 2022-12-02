@@ -1,6 +1,6 @@
 
 /// An enumeration of different triplet feels.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum TripletFeel { None, Eighth, Sixteenth }
 pub(crate) fn get_triplet_feel(value: i8) -> TripletFeel {
     match value {
@@ -41,7 +41,7 @@ pub(crate) fn from_line_break(value: &LineBreak) -> u8 {
 }
 
 /// An enumeration of all supported slide types.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum SlideType {
     IntoFromAbove, //-2
     IntoFromBelow, //-1
@@ -76,7 +76,7 @@ pub(crate) fn from_slide_type(value: &SlideType) -> i8 {
 }
 
 /// An enumeration of all supported slide types.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum NoteType {
     Rest, //0
     Normal, Tie, Dead,
@@ -101,7 +101,7 @@ pub(crate) fn from_note_type(value: &NoteType) -> u8 {
     }
 }
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum BeatStatus {Empty, Normal, Rest}
 pub(crate) fn get_beat_status(value: u8) -> BeatStatus {
     match value {
@@ -119,11 +119,11 @@ pub(crate) fn from_beat_status(value: &BeatStatus) -> u8 {
     }
 }
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum TupletBracket {None, Start, End}
 
 /// Octave signs
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum Octave { None, Ottava, Quindicesima, OttavaBassa, QuindicesimaBassa }
 pub(crate) fn get_octave(value: u8) -> Octave {
     match value {
@@ -146,7 +146,7 @@ pub(crate) fn from_octave(value: &Octave) -> u8 {
 }
 
 /// All beat stroke directions
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum BeatStrokeDirection { None, Up, Down }
 pub(crate) fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
     match value {
@@ -164,7 +164,7 @@ pub(crate) fn from_beat_stroke_direction(value: &BeatStrokeDirection) -> i8 {
     }
 }
 /// Characteristic of articulation
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }
 pub(crate) fn get_slap_effect(value: u8) -> SlapEffect {
     match value {
@@ -186,11 +186,11 @@ pub(crate) fn from_slap_effect(value: &SlapEffect) -> u8 {
 
 
 /// Voice directions indicating the direction of beams
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum VoiceDirection { None, Up, Down }
 
 /// Type of the chord.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum ChordType {
     /// Major chord.
     Major,
@@ -267,7 +267,7 @@ pub(crate) fn from_chord_type(value: &ChordType) -> u8 {
 }
 
 /// Tonality of the chord
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum ChordAlteration {
     /// Perfect.
     Perfect,
@@ -293,7 +293,7 @@ pub(crate) fn from_chord_alteration(value: &ChordAlteration) -> u8 {
 }
 
 /// Extension type of the chord
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum ChordExtension {
     None,
     /// Ninth chord.
@@ -324,7 +324,7 @@ pub(crate) fn from_chord_extension(value: &ChordExtension) -> u8 {
 }
 
 /// Left and right hand fingering used in tabs and chord diagram editor.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum Fingering {
     /// Open or muted.
     Open, //-1?
@@ -366,7 +366,7 @@ pub(crate) fn from_fingering(value: &Fingering) -> i8 {
 }
 
 /// All Bend presets
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum BendType {
     /// No Preset.
     None,
@@ -432,7 +432,7 @@ pub(crate) fn from_bend_type(value: &BendType) -> i8 {
 }
 
 /// All transition types for grace notes.
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum GraceEffectTransition {
     ///No transition
     None,
@@ -461,7 +461,7 @@ pub(crate) fn from_grace_effect_transition(value: &GraceEffectTransition) -> i8 
     }
 }
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub enum HarmonicType {
     Natural, //1
     Artificial,

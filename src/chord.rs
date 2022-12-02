@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::{io::*, gp::*, enums::*};
 
 /// A chord annotation for beats
-#[derive(Debug,Clone,PartialEq,Default)]
+#[derive(Debug,Clone,PartialEq,Eq,Default)]
 pub struct Chord {
     pub length: u8,
     pub sharp: Option<bool>,
@@ -29,7 +29,7 @@ pub struct Chord {
 
 
 /// A single barre
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq, Eq)]
 pub struct Barre {
     pub fret: i8,
     /// First string from the bottom of the barre
@@ -42,7 +42,7 @@ pub struct Barre {
 pub const SHARP_NOTES: [&str; 12] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 pub const FLAT_NOTES:  [&str; 12] = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 
-#[derive(Debug,Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq, Eq)]
 pub struct PitchClass {
     pub note: String,
     pub just: i8,
@@ -56,7 +56,11 @@ impl PitchClass {
         let mut p = PitchClass {just, accidental:0, value:-1, sharp: true, note:String::with_capacity(2) };
         let pitch: i8;
         let accidental2: i8;
-        if accidental == None {
+        if let Some(a) = accidental {
+            pitch = p.just;
+            accidental2 = a;
+        }
+        else {
             let value = p.just % 12;
             //println!("PitchClass(), value: {}", value);
             p.note = if value >= 0 {String::from(SHARP_NOTES[value as usize])} else {String::from(SHARP_NOTES[(12 + value).to_usize().unwrap()])}; //try: note = SHARP_NOTES[p.value]; except KeyError: note = FLAT_NOTES[p.value];
@@ -65,9 +69,6 @@ impl PitchClass {
             else if p.note.ends_with('#') {accidental2 = 1;}
             else                          {accidental2 = 0;}
             pitch = value - accidental2;
-        } else {
-            pitch = p.just;
-            accidental2 = accidental.unwrap();
         }
         //println!("VALUE: {} \t NOTE: {}", p.value, p.note);
         p.just = pitch % 12;

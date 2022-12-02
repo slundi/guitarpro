@@ -22,7 +22,7 @@ pub struct RseMasterEffect {
 }
 impl Default for RseMasterEffect { fn default() -> Self { RseMasterEffect {volume:0.0, reverb:0.0, equalizer:RseEqualizer{knobs:vec![0.0;10], ..Default::default()} }}}
 
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RseInstrument {
     pub instrument: i16,
     pub unknown: i16,

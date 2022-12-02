@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::{io::*, gp::*, chord::*, key_signature::*, enums::*};
 
 /// A single point within the BendEffect
-#[derive(Debug,Clone,PartialEq,Default)]
+#[derive(Debug,Clone,PartialEq, Eq, Default)]
 pub struct BendPoint {
     pub position: u8,
     pub value: i8,
@@ -24,7 +24,7 @@ pub const GP_BEND_SEMITONE: f32 = 25.0;
 pub const GP_BEND_POSITION: f32 = 60.0;
 pub const GP_BEND_SEMITONE_LENGTH: f32 = 1.0;
 /// This effect is used to describe string bends and tremolo bars
-#[derive(Debug,Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq,Eq)]
 pub struct BendEffect {
     pub kind: BendType,
     pub value: i16,
@@ -58,7 +58,7 @@ pub(crate) fn unpack_velocity(v: i16) -> i16 {
 pub(crate) fn pack_velocity(velocity: i16) -> i8 { ((velocity + VELOCITY_INCREMENT - MIN_VELOCITY).to_f32().unwrap()/ VELOCITY_INCREMENT.to_f32().unwrap()).ceil().to_i8().unwrap() }
 
 /// A grace note effect
-#[derive(Debug,Clone, PartialEq)]
+#[derive(Debug,Clone, PartialEq,Eq)]
 pub struct GraceEffect {
     pub duration: u8,
     pub fret: i8,
@@ -75,7 +75,7 @@ impl GraceEffect {
 }
 
 /// A harmonic note effect
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug,Clone,PartialEq,Eq)]
 pub struct HarmonicEffect {
     pub kind: HarmonicType,
     //artificial harmonic
@@ -87,7 +87,7 @@ pub struct HarmonicEffect {
 impl Default for HarmonicEffect { fn default() -> Self {HarmonicEffect { kind: HarmonicType::Natural, pitch: None, octave: None, fret: None}}}
 
 /// A tremolo picking effect.
-#[derive(Debug,Clone,PartialEq,Default)]
+#[derive(Debug,Clone,PartialEq,Eq,Default)]
 pub struct TremoloPickingEffect {pub duration: Duration,}
 //impl Default for TremoloPickingEffect { fn default() -> Self {TremoloPickingEffect { duration: Duration::default() }}}
 /// Convert tremolo picking speed to actual duration. Values are:
@@ -104,7 +104,7 @@ fn from_tremolo_value(value: i8) -> u8 {
 }
 
 /// A trill effect.
-#[derive(Debug,Clone,PartialEq,Default)]
+#[derive(Debug,Clone,PartialEq,Eq,Default)]
 pub struct TrillEffect {
     pub fret: i8,
     pub duration: Duration,
@@ -285,10 +285,10 @@ impl Song {
     /// - Period: `signed-byte`. See `from_trill_period`.
     pub(crate) fn read_trill(&self, data: &[u8], seek: &mut usize) -> TrillEffect {
         let mut t = TrillEffect{fret: read_signed_byte(data, seek), ..Default::default()};
-        t.duration.value = self.from_trill_period(read_signed_byte(data, seek));
+        t.duration.value = Self::from_trill_period(read_signed_byte(data, seek));
         t
     }
-    fn from_trill_period(&self, period: i8) -> u16 {
+    fn from_trill_period(period: i8) -> u16 {
         match period {
             1 => DURATION_SIXTEENTH,
             2 => DURATION_THIRTY_SECOND,
