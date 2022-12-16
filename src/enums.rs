@@ -1,5 +1,6 @@
 
 /// An enumeration of different triplet feels.
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum TripletFeel { None, Eighth, Sixteenth }
 pub(crate) fn get_triplet_feel(value: i8) -> TripletFeel {
@@ -20,9 +21,11 @@ pub(crate) fn from_triplet_feel(value: &TripletFeel) -> u8 {
 
 /// An enumeration of available clefs
 #[allow(dead_code)]
+#[repr(u8)]
 #[derive(Debug,Clone)]
 pub enum MeasureClef { Treble, Bass, Tenor, Alto }
 /// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
+#[repr(u8)]
 #[derive(Debug,Clone)]
 pub enum LineBreak { None, Break, Protect }
 pub(crate) fn get_line_break(value: u8) -> LineBreak {
@@ -41,11 +44,12 @@ pub(crate) fn from_line_break(value: &LineBreak) -> u8 {
 }
 
 /// An enumeration of all supported slide types.
+#[repr(i8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum SlideType {
-    IntoFromAbove, //-2
-    IntoFromBelow, //-1
-    None, //0
+    IntoFromAbove = -2, //-2
+    IntoFromBelow = -1, //-1
+    None = 0, //0
     ShiftSlideTo,
     LegatoSlideTo,
     OutDownwards,
@@ -76,6 +80,7 @@ pub(crate) fn from_slide_type(value: &SlideType) -> i8 {
 }
 
 /// An enumeration of all supported slide types.
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum NoteType {
     Rest, //0
@@ -101,6 +106,7 @@ pub(crate) fn from_note_type(value: &NoteType) -> u8 {
     }
 }
 
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum BeatStatus {Empty, Normal, Rest}
 pub(crate) fn get_beat_status(value: u8) -> BeatStatus {
@@ -119,10 +125,12 @@ pub(crate) fn from_beat_status(value: &BeatStatus) -> u8 {
     }
 }
 
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum TupletBracket {None, Start, End}
 
 /// Octave signs
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum Octave { None, Ottava, Quindicesima, OttavaBassa, QuindicesimaBassa }
 pub(crate) fn get_octave(value: u8) -> Octave {
@@ -146,6 +154,7 @@ pub(crate) fn from_octave(value: &Octave) -> u8 {
 }
 
 /// All beat stroke directions
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum BeatStrokeDirection { None, Up, Down }
 pub(crate) fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
@@ -164,6 +173,7 @@ pub(crate) fn from_beat_stroke_direction(value: &BeatStrokeDirection) -> i8 {
     }
 }
 /// Characteristic of articulation
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }
 pub(crate) fn get_slap_effect(value: u8) -> SlapEffect {
@@ -186,10 +196,12 @@ pub(crate) fn from_slap_effect(value: &SlapEffect) -> u8 {
 
 
 /// Voice directions indicating the direction of beams
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum VoiceDirection { None, Up, Down }
 
 /// Type of the chord.
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum ChordType {
     /// Major chord.
@@ -267,6 +279,7 @@ pub(crate) fn from_chord_type(value: &ChordType) -> u8 {
 }
 
 /// Tonality of the chord
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum ChordAlteration {
     /// Perfect.
@@ -293,6 +306,7 @@ pub(crate) fn from_chord_alteration(value: &ChordAlteration) -> u8 {
 }
 
 /// Extension type of the chord
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum ChordExtension {
     None,
@@ -324,12 +338,13 @@ pub(crate) fn from_chord_extension(value: &ChordExtension) -> u8 {
 }
 
 /// Left and right hand fingering used in tabs and chord diagram editor.
+#[repr(i8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum Fingering {
     /// Open or muted.
-    Open, //-1?
+    Open = -1, //-1?
     /// Thumb.
-    Thumb,
+    Thumb = 0,
     /// Index finger.
     Index,
     /// Middle finger.
@@ -366,6 +381,7 @@ pub(crate) fn from_fingering(value: &Fingering) -> i8 {
 }
 
 /// All Bend presets
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum BendType {
     /// No Preset.
@@ -432,10 +448,11 @@ pub(crate) fn from_bend_type(value: &BendType) -> i8 {
 }
 
 /// All transition types for grace notes.
+#[repr(i8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum GraceEffectTransition {
     ///No transition
-    None,
+    None = 0,
     ///Slide from the grace note to the real one.
     Slide,
     ///Perform a bend from the grace note to the real one.
@@ -461,9 +478,10 @@ pub(crate) fn from_grace_effect_transition(value: &GraceEffectTransition) -> i8 
     }
 }
 
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum HarmonicType {
-    Natural, //1
+    Natural = 1, //1
     Artificial,
     Tapped,
     Pinch,
@@ -480,6 +498,7 @@ pub(crate) fn from_harmonic_type(value: &HarmonicType) -> i8 {
 }
 
 /// Values of auto-accentuation on the beat found in track RSE settings
+#[repr(u8)]
 #[derive(Debug,Clone)]
 pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
 pub(crate) fn get_accentuation(value: u8) -> Accentuation {
@@ -505,6 +524,7 @@ pub(crate) fn from_accentuation(value: &Accentuation) -> u8 {
 }
 
 /// A navigation sign like *Coda* (𝄌: U+1D10C) or *Segno* (𝄋 or 𝄉: U+1D10B or U+1D109).
+#[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq,Hash)]
 pub enum DirectionSign {
     Coda, DoubleCoda,
