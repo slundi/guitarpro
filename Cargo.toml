@@ -1,6 +1,6 @@
 [package]
 name = "guitarpro"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["slundi"]
 edition = "2021"
 description = "Rust library and command line interface (CLI) for guitar tab files."

@@ -23,7 +23,7 @@ pub struct WahEffect {
 impl Default for WahEffect { fn default() -> Self { WahEffect { value: WAH_EFFECT_NONE, display: false }}}
 impl WahEffect {
     pub(crate) fn check_value(value: i8) {
-        if !(WAH_EFFECT_OFF <= value && value <= 100) {panic!("Value for a wah effect must be in range from -2 to 100")}
+        if !(WAH_EFFECT_OFF..=100).contains(&value) {panic!("Value for a wah effect must be in range from -2 to 100")}
     }
     pub(crate) fn is_on(&self) -> bool {self.value <= 0 && self.value <= 100}
     pub(crate) fn is_off(&self) -> bool {self.value == WAH_EFFECT_OFF}

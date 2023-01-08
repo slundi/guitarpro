@@ -1,4 +1,3 @@
-use std::cmp::{min,max};
 use fraction::ToPrimitive;
 
 use crate::{effects::*, enums::*, io::*, gp::*, beat::*, key_signature::*};
@@ -158,7 +157,7 @@ impl Song {
         if (flags & 0x20) == 0x20 {
             let fret = read_signed_byte(data, seek);
             let value = if note.kind == NoteType::Tie { self.get_tied_note_value(guitar_string.0, track_index)} else {fret.to_i16().unwrap()};
-            note.value = max(0, min(99, value));
+            note.value = value.clamp(0, 99);
             //println!("read_note(), value: {}", note.value);
         }
         if (flags & 0x80) == 0x80 {
@@ -211,7 +210,7 @@ impl Song {
         if (flags &0x20) == 0x20 {
             let fret = read_signed_byte(data, seek);
             let value = if note.kind == NoteType::Tie { self.get_tied_note_value(guitar_string.0, track_index)} else {fret.to_i16().unwrap()};
-            note.value = max(0, min(99, value));
+            note.value = value.clamp(0, 99);
             //println!("read_note(), value: {}", note.value);
         }
         if (flags &0x80) == 0x80 {

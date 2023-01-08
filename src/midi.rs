@@ -124,5 +124,5 @@ impl Song{
         }
     }
 
-    fn from_channel_short(data: i8) -> i8 { std::cmp::max(-128, std::cmp::min(127, (data >> 3) - 1)) + 1 }
+    fn from_channel_short(data: i8) -> i8 { ((data >> 3) - 1).clamp(-128, 127) + 1 }
 }
