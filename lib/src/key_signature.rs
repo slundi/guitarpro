@@ -81,7 +81,7 @@ impl Duration {
         self.convert_time(result.to_u32().unwrap())
     }
 
-    pub(crate) fn index(&self) -> u8 {
+    pub(crate) fn _index(&self) -> u8 {
         let mut index = 0u8;
         let mut value = self.value;
         loop {

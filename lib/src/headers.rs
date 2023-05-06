@@ -59,7 +59,7 @@ impl Default for MeasureHeader {
 }
 impl MeasureHeader {
     pub(crate) fn length(&self) -> i64 {self.time_signature.numerator.to_i64().unwrap() * self.time_signature.denominator.time().to_i64().unwrap()}
-    pub(crate) fn end(&self) -> i64 {self.start + self.length()}
+    pub(crate) fn _end(&self) -> i64 {self.start + self.length()}
 }
 
 /// A marker annotation for beats.
@@ -104,7 +104,7 @@ pub struct RepeatGroup {
 }*/
 
 impl Song {
-    fn add_measure_header(&mut self, header: MeasureHeader) {
+    fn _add_measure_header(&mut self, header: MeasureHeader) {
         // if the group is closed only the next upcoming header can reopen the group in case of a repeat alternative, so we remove the current group
         //TODO: if header.repeat_open or self.current_repeat_group.is_closed && header.repeat_alternative <= 0 {self.current_repeat_group = RepeatGroup::default();}
         self.measure_headers.push(header);

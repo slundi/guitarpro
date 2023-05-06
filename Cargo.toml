@@ -1,29 +1,5 @@
-[package]
-name = "guitarpro"
-version = "0.2.1"
+[workspace.package]
 authors = ["slundi"]
-edition = "2021"
-description = "Rust library and command line interface (CLI) for guitar tab files."
-repository = "https://gitlab.com/slundi/guitar-io"
-license = "MIT"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-name = "guitarpro"
-path = "src/lib.rs"
-
-[[bin]]
-name = "guitarpro_cli"
-path = "src/main.rs"
-required-features = ["clap"]
-
-[dev-dependencies]
-
-[dependencies]
-clap = { version = "4", features = ["derive"], optional = true } 
-fraction = "0.12"
-encoding_rs = "0.8"
-
-[features]
-build-binary = ["clap"]
+[workspace]
+members = ["lib", "cli", "web_server"]

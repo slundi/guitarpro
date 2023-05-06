@@ -66,7 +66,7 @@ impl MidiChannel {
         else {self.instrument = instrument;}
     }
 
-    pub(crate) fn get_instrument(self) -> i32 {self.instrument}
+    pub(crate) fn _get_instrument(self) -> i32 {self.instrument}
     pub(crate) fn get_instrument_name(&self) -> String {String::from(CHANNEL_DEFAULT_NAMES[self.instrument.to_usize().unwrap()])} //TODO: FIXME: does not seems OK
 }
 

@@ -13,7 +13,7 @@ pub struct BendPoint {
 impl BendPoint {
     /// Gets the exact time when the point need to be played (MIDI)
     /// * `duration`: the full duration of the effect
-    fn get_time(&self, duration: u8) -> u16{
+    fn _get_time(&self, duration: u8) -> u16{
         (f32::from(duration) * f32::from(self.position) / f32::from(BEND_EFFECT_MAX_POSITION)).to_i16().expect("Cannot get bend point time") as u16
     }
 }
@@ -69,7 +69,7 @@ pub struct GraceEffect {
 }
 impl Default for GraceEffect { fn default() -> Self { GraceEffect {duration: 1, fret: 0, is_dead: false, is_on_beat: false, transition: GraceEffectTransition::None, velocity: DEFAULT_VELOCITY }}}
 impl GraceEffect {
-    pub(crate) fn duration_time(self) -> i16 {
+    pub(crate) fn _duration_time(self) -> i16 {
         (f32::from(crate::key_signature::DURATION_QUARTER_TIME.to_i16().unwrap()) / 16f32 * f32::from(self.duration)).to_i16().expect("Cannot get bend point time").to_i16().unwrap()
     }
 }

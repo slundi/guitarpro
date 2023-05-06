@@ -1,0 +1,22 @@
+[package]
+name = "cli"
+version = "0.0.1"
+authors = ["slundi"]
+edition = "2021"
+description = "Rust command line interface (CLI) for guitar tab files."
+repository = "https://gitlab.com/slundi/guitar-io"
+license = "MIT"
+readme = "README.md"
+
+[[bin]]
+name = "score_tool"
+path = "src/main.rs"
+required-features = ["clap"]
+
+[dependencies]
+# lib = { path = "../lib" }
+clap = { version = "4", features = ["derive"], optional = true }
+fraction = "0.13"
+encoding_rs = "0.8"
+
+[dev-dependencies]
