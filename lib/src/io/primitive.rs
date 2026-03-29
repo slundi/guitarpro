@@ -1,6 +1,6 @@
 use fraction::ToPrimitive;
 use encoding_rs::*;
-use crate::error::{GpError, GpResult};
+use crate::error::{GpError, GpResult, ToPrimitiveGp};
 
 //reading functions
 
@@ -82,7 +82,7 @@ pub(crate) fn read_double(data: &[u8], seek: &mut usize ) -> GpResult<f64> {
 
 /// Read length of the string stored in 1 integer and followed by character bytes.
 pub(crate) fn read_int_size_string(data: &[u8], seek: &mut usize) -> GpResult<String> {
-    let size = read_int(data, seek)?.to_usize().unwrap();
+    let size = read_int(data, seek)?.to_usize_gp("string size")?;
     read_string(data, seek, size, None)
 }
 
@@ -98,7 +98,7 @@ pub(crate) fn read_int_byte_size_string(data: &[u8], seek: &mut usize) -> GpResu
 /// Read length of the string stored in 1 byte and followed by character bytes.
 /// * `size`: string length that we should attempt to read.
 pub(crate) fn read_byte_size_string(data: &[u8], seek: &mut usize, size: usize) -> GpResult<String> {
-    let length = read_byte(data, seek)?.to_usize().unwrap();
+    let length = read_byte(data, seek)?.to_usize_gp("byte string length")?;
     read_string(data, seek, size, Some(length))
 }
 
@@ -153,9 +153,9 @@ pub(crate) fn read_version_string(data: &[u8], seek: &mut usize) -> GpResult<cra
 
 /// Read a color. Colors are used by `Marker` and `Track`. They consist of 3 consecutive bytes and one blank byte.
 pub(crate) fn read_color(data: &[u8], seek: &mut usize) -> GpResult<i32> {
-    let r = read_byte(data, seek)?.to_i32().unwrap();
-    let g = read_byte(data, seek)?.to_i32().unwrap();
-    let b = read_byte(data, seek)?.to_i32().unwrap();
+    let r = read_byte(data, seek)?.to_i32_gp("color red")?;
+    let g = read_byte(data, seek)?.to_i32_gp("color green")?;
+    let b = read_byte(data, seek)?.to_i32_gp("color blue")?;
     *seek += 1;
     Ok(r * 65536 + g * 256 + b)
 }
@@ -174,28 +174,32 @@ pub(crate) fn write_i16(data: &mut Vec<u8>, value: i16) {data.extend(value.to_le
 //pub(crate) fn write_f32(data: &mut Vec<u8>, value: f32) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_f64(data: &mut Vec<u8>, value: f64) {data.extend(value.to_le_bytes());}
 pub(crate) fn write_color(data: &mut Vec<u8>, value: i32) {
-    let r: u8 = ((value & 0xff0000) >> 16).to_u8().unwrap();
-    let g: u8 = ((value & 0x00ff00) >> 8).to_u8().unwrap();
-    let b: u8 = (value & 0x0000ff).to_u8().unwrap();
+    // These conversions are safe because we mask to 8-bit values
+    let r: u8 = ((value & 0xff0000) >> 16) as u8;
+    let g: u8 = ((value & 0x00ff00) >> 8) as u8;
+    let b: u8 = (value & 0x0000ff) as u8;
     write_byte(data, r);
     write_byte(data, g);
     write_byte(data, b);
     write_placeholder_default(data, 1);
 }
 pub(crate) fn write_byte_size_string(data: &mut Vec<u8>, value: &str) {
-    write_byte(data, value.chars().count().to_u8().unwrap());
-    data.extend(value.as_bytes());
+    // Truncate to 255 if longer (max u8)
+    let count = value.chars().count().min(255) as u8;
+    write_byte(data, count);
+    data.extend(value.as_bytes().iter().take(count as usize));
 }
 pub(crate) fn write_int_size_string(data: &mut Vec<u8>, value: &str) {
-    let count = value.chars().count();
-    write_i32(data, count.to_i32().unwrap()+1);
+    let count = value.chars().count() as i32;
+    write_i32(data, count + 1);
     data.extend(value.as_bytes());
 }
 
 pub(crate) fn write_int_byte_size_string(data: &mut Vec<u8>, value: &str) {
     let count = value.chars().count();
-    write_i32(data, count.to_i32().unwrap()+1); //write_i32( (value.getBytes(charset).length + 1) );
-    write_byte(data, count.to_u8().unwrap());
+    write_i32(data, count as i32 + 1);
+    // Truncate byte length to 255 if longer
+    write_byte(data, count.min(255) as u8);
     data.extend(value.as_bytes());
 }
 

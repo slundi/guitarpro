@@ -1,10 +1,10 @@
 use fraction::ToPrimitive;
 
+use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
     model::{beat::*, enums::*, key_signature::*, song::*},
 };
-use crate::error::GpResult;
 
 const MAX_VOICES: usize = 2;
 
@@ -74,14 +74,14 @@ pub trait SongMeasureOps {
         start: &mut i64,
         track_index: usize,
     ) -> GpResult<()>;
-    fn write_measures(&self, data: &mut Vec<u8>, version: &(u8, u8, u8));
+    fn write_measures(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()>;
     fn write_measure(
         &self,
         data: &mut Vec<u8>,
         track: usize,
         measure: usize,
         version: &(u8, u8, u8),
-    );
+    ) -> GpResult<()>;
     fn write_voice(
         &self,
         data: &mut Vec<u8>,
@@ -89,7 +89,7 @@ pub trait SongMeasureOps {
         measure: usize,
         voice: usize,
         version: &(u8, u8, u8),
-    );
+    ) -> GpResult<()>;
 }
 
 impl SongMeasureOps for Song {
@@ -223,16 +223,17 @@ impl SongMeasureOps for Song {
         Ok(())
     }
 
-    fn write_measures(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) {
+    fn write_measures(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()> {
         for i in 0..self.tracks.len() {
             //self.current_track = Some(i);
             for m in 0..self.tracks[i].measures.len() {
                 //self.current_measure_number = Some(self.tracks[i].measure.number);
-                self.write_measure(data, i, m, version);
+                self.write_measure(data, i, m, version)?;
             }
         }
         //self.current_track = None;
         //self.current_measure_number = None;
+        Ok(())
     }
     fn write_measure(
         &self,
@@ -240,13 +241,13 @@ impl SongMeasureOps for Song {
         track: usize,
         measure: usize,
         version: &(u8, u8, u8),
-    ) {
+    ) -> GpResult<()> {
         //self.current_voice_number = Some(1);
         if version.0 < 5 {
-            self.write_voice(data, track, measure, 0, version);
+            self.write_voice(data, track, measure, 0, version)?;
         } else {
             for v in 0..self.tracks[track].measures[measure].voices.len() {
-                self.write_voice(data, track, measure, v, version);
+                self.write_voice(data, track, measure, v, version)?;
             } //self.current_voice_number = Some(v+1);
             if version.0 == 5 {
                 write_byte(
@@ -256,6 +257,7 @@ impl SongMeasureOps for Song {
             }
         }
         //self.current_voice_number = None;
+        Ok(())
     }
     fn write_voice(
         &self,
@@ -264,14 +266,13 @@ impl SongMeasureOps for Song {
         measure: usize,
         voice: usize,
         version: &(u8, u8, u8),
-    ) {
+    ) -> GpResult<()> {
         write_i32(
             data,
             self.tracks[track].measures[measure].voices[voice]
                 .beats
                 .len()
-                .to_i32()
-                .unwrap(),
+                .to_i32_gp("beats count")?,
         );
         for b in 0..self.tracks[track].measures[measure].voices[voice]
             .beats
@@ -282,16 +283,17 @@ impl SongMeasureOps for Song {
                 self.write_beat_v3(
                     data,
                     &self.tracks[track].measures[measure].voices[voice].beats[b],
-                );
+                )?;
             } else {
                 self.write_beat(
                     data,
                     &self.tracks[track].measures[measure].voices[voice].beats[b],
                     &self.tracks[track].strings,
                     version,
-                );
+                )?;
             }
             //self.current_beat_number = None;
         }
+        Ok(())
     }
 }

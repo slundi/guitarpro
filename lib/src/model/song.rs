@@ -1,6 +1,7 @@
 use fraction::ToPrimitive;
 
 use crate::audio::midi::*;
+use crate::error::{GpResult, ToPrimitiveGp};
 use crate::io::gpif_import::*;
 use crate::io::primitive::*;
 use crate::model::enums::*;
@@ -11,7 +12,6 @@ use crate::model::measure::*;
 use crate::model::page::*;
 use crate::model::rse::*;
 use crate::model::track::*;
-use crate::error::GpResult;
 
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
 #[derive(Debug, Clone)]
@@ -242,7 +242,7 @@ impl Song {
         self.copyright = read_int_byte_size_string(data, seek)?;
         self.writer = read_int_byte_size_string(data, seek)?; //tabbed by
         self.instructions = read_int_byte_size_string(data, seek)?; //instructions
-                                                                   //notices
+                                                                    //notices
         let nc = read_int(data, seek)?.to_usize().unwrap(); //notes count
         if nc > 0 {
             for i in 0..nc {
@@ -259,10 +259,10 @@ impl Song {
     pub const _MIN_OFFSET: i32 = -24;*/
 
     /// Write data to a Vec<u8>, you are free to use the encoded data to write it in a file or in a database or do something else.
-    pub fn write(&self, version: (u8, u8, u8), clipboard: Option<bool>) -> Vec<u8> {
+    pub fn write(&self, version: (u8, u8, u8), clipboard: Option<bool>) -> GpResult<Vec<u8>> {
         let mut data: Vec<u8> = Vec::with_capacity(8388608); //capacity of 8MB, should be sufficient
         write_version(&mut data, version);
-        if clipboard.is_some() && clipboard.unwrap() && version.0 >= 4 {
+        if clipboard.is_some_and(|c| c) && version.0 >= 4 {
             self.write_clipboard(&mut data, &version);
         }
         self.write_info(&mut data, version);
@@ -279,11 +279,11 @@ impl Song {
             self.write_page_setup(&mut data);
             write_int_byte_size_string(&mut data, &self.tempo_name);
         }
-        write_i32(&mut data, self.tempo.to_i32().unwrap());
+        write_i32(&mut data, self.tempo.to_i32_gp("tempo")?);
         if version > (5, 0, 0) {
             write_bool(&mut data, self.hide_tempo);
         }
-        write_i32(&mut data, self.key.key.to_i32().unwrap());
+        write_i32(&mut data, self.key.key.to_i32_gp("key signature")?);
 
         if version.0 >= 4 {
             write_signed_byte(&mut data, 0);
@@ -296,13 +296,16 @@ impl Song {
             self.write_master_reverb(&mut data);
         }
 
-        write_i32(&mut data, self.tracks[0].measures.len().to_i32().unwrap());
-        write_i32(&mut data, self.tracks.len().to_i32().unwrap());
+        write_i32(
+            &mut data,
+            self.tracks[0].measures.len().to_i32_gp("measures count")?,
+        );
+        write_i32(&mut data, self.tracks.len().to_i32_gp("tracks count")?);
         self.write_measure_headers(&mut data, &version);
         self.write_tracks(&mut data, &version);
-        self.write_measures(&mut data, &version);
+        self.write_measures(&mut data, &version)?;
         write_i32(&mut data, 0);
-        data
+        Ok(data)
     }
     fn write_info(&self, data: &mut Vec<u8>, version: (u8, u8, u8)) {
         write_int_byte_size_string(data, &self.name);

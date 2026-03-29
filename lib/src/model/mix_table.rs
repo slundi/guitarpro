@@ -1,12 +1,12 @@
 use fraction::ToPrimitive;
 
-use crate::model::{rse::*, song::*};
+use crate::error::{GpError, GpResult};
 use crate::io::primitive::*;
-use crate::error::GpResult;
+use crate::model::{rse::*, song::*};
 // use crate::gp::*;
 
 /// A mix table item describes a mix parameter, e.g. volume or reverb
-#[derive(Debug,Clone,PartialEq,Eq,Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MixTableItem {
     pub value: u8,
     pub duration: u8,
@@ -15,25 +15,44 @@ pub struct MixTableItem {
 //impl Default for MixTableItem { fn default() -> Self { MixTableItem { value: 0, duration: 0, all_tracks: false }}}
 
 #[allow(dead_code)]
-const WAH_EFFECT_OFF:  i8 = -2;
+const WAH_EFFECT_OFF: i8 = -2;
 const WAH_EFFECT_NONE: i8 = -1;
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WahEffect {
     pub value: i8,
     pub display: bool,
 }
-impl Default for WahEffect { fn default() -> Self { WahEffect { value: WAH_EFFECT_NONE, display: false }}}
-impl WahEffect {
-    pub(crate) fn _check_value(value: i8) {
-        if !(WAH_EFFECT_OFF..=100).contains(&value) {panic!("Value for a wah effect must be in range from -2 to 100")}
+impl Default for WahEffect {
+    fn default() -> Self {
+        WahEffect {
+            value: WAH_EFFECT_NONE,
+            display: false,
+        }
     }
-    pub(crate) fn _is_on(&self) -> bool {self.value >= 0 && self.value <= 100}
-    pub(crate) fn _is_off(&self) -> bool {self.value == WAH_EFFECT_OFF}
-    pub(crate) fn _is_none(&self) -> bool {self.value == WAH_EFFECT_NONE}
+}
+impl WahEffect {
+    pub(crate) fn _check_value(value: i8) -> GpResult<()> {
+        if !(WAH_EFFECT_OFF..=100).contains(&value) {
+            return Err(GpError::InvalidValue {
+                context: "wah effect",
+                value: value as i64,
+            });
+        }
+        Ok(())
+    }
+    pub(crate) fn _is_on(&self) -> bool {
+        self.value >= 0 && self.value <= 100
+    }
+    pub(crate) fn _is_off(&self) -> bool {
+        self.value == WAH_EFFECT_OFF
+    }
+    pub(crate) fn _is_none(&self) -> bool {
+        self.value == WAH_EFFECT_NONE
+    }
 }
 
 /// A MixTableChange describes a change in mix parameters
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MixTableChange {
     pub instrument: Option<MixTableItem>,
     pub rse: RseInstrument,
@@ -49,26 +68,88 @@ pub struct MixTableChange {
     pub wah: Option<WahEffect>,
     pub use_rse: bool,
 }
-impl Default for MixTableChange { fn default() -> Self { MixTableChange { instrument:None, rse:RseInstrument::default(), volume:None, balance:None, chorus:None, reverb:None, phaser:None, tremolo:None,
-    tempo_name:String::new(), tempo:None, hide_tempo:true, wah:None, use_rse:false,
-}}}
+impl Default for MixTableChange {
+    fn default() -> Self {
+        MixTableChange {
+            instrument: None,
+            rse: RseInstrument::default(),
+            volume: None,
+            balance: None,
+            chorus: None,
+            reverb: None,
+            phaser: None,
+            tremolo: None,
+            tempo_name: String::new(),
+            tempo: None,
+            hide_tempo: true,
+            wah: None,
+            use_rse: false,
+        }
+    }
+}
 impl MixTableChange {
     pub(crate) fn is_just_wah(&self) -> bool {
-        self.instrument.is_none() &&  self.volume.is_none() && self.balance.is_none() && self.chorus.is_none() && self.reverb.is_none() && self.phaser.is_none() && self.tremolo.is_none() && self.tempo.is_none() && self.wah.is_none()
+        self.instrument.is_none()
+            && self.volume.is_none()
+            && self.balance.is_none()
+            && self.chorus.is_none()
+            && self.reverb.is_none()
+            && self.phaser.is_none()
+            && self.tremolo.is_none()
+            && self.tempo.is_none()
+            && self.wah.is_none()
     }
 }
 
 pub trait SongMixTableOps {
     fn read_mix_table_change(&mut self, data: &[u8], seek: &mut usize) -> GpResult<MixTableChange>;
-    fn read_mix_table_change_values(&mut self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) -> GpResult<()>;
-    fn read_mix_table_change_durations(&self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) -> GpResult<()>;
-    fn read_mix_table_change_flags(&self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) -> GpResult<i8>;
+    fn read_mix_table_change_values(
+        &mut self,
+        data: &[u8],
+        seek: &mut usize,
+        mtc: &mut MixTableChange,
+    ) -> GpResult<()>;
+    fn read_mix_table_change_durations(
+        &self,
+        data: &[u8],
+        seek: &mut usize,
+        mtc: &mut MixTableChange,
+    ) -> GpResult<()>;
+    fn read_mix_table_change_flags(
+        &self,
+        data: &[u8],
+        seek: &mut usize,
+        mtc: &mut MixTableChange,
+    ) -> GpResult<i8>;
     fn read_wah_effect(&self, data: &[u8], seek: &mut usize, flags: i8) -> GpResult<WahEffect>;
-    fn write_mix_table_change(&self, data: &mut Vec<u8>, mix_table_change: &Option<MixTableChange>, version: &(u8,u8,u8));
-    fn write_mix_table_change_values(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange, version: &(u8,u8,u8));
-    fn write_mix_table_change_durations(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange, version: &(u8,u8,u8));
-    fn write_mix_table_change_flags_v4(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange);
-    fn write_mix_table_change_flags_v5(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange);
+    fn write_mix_table_change(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &Option<MixTableChange>,
+        version: &(u8, u8, u8),
+    );
+    fn write_mix_table_change_values(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &MixTableChange,
+        version: &(u8, u8, u8),
+    );
+    fn write_mix_table_change_durations(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &MixTableChange,
+        version: &(u8, u8, u8),
+    );
+    fn write_mix_table_change_flags_v4(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &MixTableChange,
+    );
+    fn write_mix_table_change_flags_v5(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &MixTableChange,
+    );
 }
 
 impl SongMixTableOps for Song {
@@ -87,9 +168,9 @@ impl SongMixTableOps for Song {
         self.read_mix_table_change_values(data, seek, &mut tc)?;
         self.read_mix_table_change_durations(data, seek, &mut tc)?;
         //println!("read_mix_table_change()");
-        if self.version.number >= (4,0,0) {
+        if self.version.number >= (4, 0, 0) {
             let flags = self.read_mix_table_change_flags(data, seek, &mut tc)?;
-            if self.version.number >= (5,0,0) {
+            if self.version.number >= (5, 0, 0) {
                 tc.wah = Some(self.read_wah_effect(data, seek, flags)?);
                 self.read_rse_instrument_effect(data, seek, &mut tc.rse)?;
             }
@@ -109,51 +190,121 @@ impl SongMixTableOps for Song {
     /// - tempo
     ///
     /// If signed byte is *-1* then corresponding parameter hasn't changed.
-    fn read_mix_table_change_values(&mut self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) -> GpResult<()> {
+    fn read_mix_table_change_values(
+        &mut self,
+        data: &[u8],
+        seek: &mut usize,
+        mtc: &mut MixTableChange,
+    ) -> GpResult<()> {
         //instrument
         let b = read_signed_byte(data, seek)?;
-        if b >= 0 {mtc.instrument = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {
+            mtc.instrument = Some(MixTableItem {
+                value: b.to_u8().unwrap(),
+                ..Default::default()
+            });
+        }
         //RSE instrument GP5
-        if self.version.number.0 == 5 {mtc.rse = self.read_rse_instrument(data, seek)?;}
-        if self.version.number == (5,0,0)  { *seek += 1; }
+        if self.version.number.0 == 5 {
+            mtc.rse = self.read_rse_instrument(data, seek)?;
+        }
+        if self.version.number == (5, 0, 0) {
+            *seek += 1;
+        }
         //volume
         let b = read_signed_byte(data, seek)?;
-        if b >= 0 {mtc.volume = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {
+            mtc.volume = Some(MixTableItem {
+                value: b.to_u8().unwrap(),
+                ..Default::default()
+            });
+        }
         //balance
         let b = read_signed_byte(data, seek)?;
-        if b >= 0 {mtc.balance = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {
+            mtc.balance = Some(MixTableItem {
+                value: b.to_u8().unwrap(),
+                ..Default::default()
+            });
+        }
         //chorus
         let b = read_signed_byte(data, seek)?;
-        if b >= 0 {mtc.chorus = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {
+            mtc.chorus = Some(MixTableItem {
+                value: b.to_u8().unwrap(),
+                ..Default::default()
+            });
+        }
         //reverb
         let b = read_signed_byte(data, seek)?;
-        if b >= 0 {mtc.reverb = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {
+            mtc.reverb = Some(MixTableItem {
+                value: b.to_u8().unwrap(),
+                ..Default::default()
+            });
+        }
         //phaser
         let b = read_signed_byte(data, seek)?;
-        if b >= 0 {mtc.phaser = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {
+            mtc.phaser = Some(MixTableItem {
+                value: b.to_u8().unwrap(),
+                ..Default::default()
+            });
+        }
         //tremolo
         let b = read_signed_byte(data, seek)?;
-        if b >= 0 {mtc.tremolo = Some(MixTableItem{value: b.to_u8().unwrap(), ..Default::default()});}
+        if b >= 0 {
+            mtc.tremolo = Some(MixTableItem {
+                value: b.to_u8().unwrap(),
+                ..Default::default()
+            });
+        }
         //tempo
-        if self.version.number >= (5,0,0) {mtc.tempo_name = read_int_byte_size_string(data, seek)?;}
+        if self.version.number >= (5, 0, 0) {
+            mtc.tempo_name = read_int_byte_size_string(data, seek)?;
+        }
         let b = read_int(data, seek)?;
-        if b >= 0 {mtc.tempo = Some(MixTableItem{value: b.clamp(0, 255) as u8, ..Default::default()});}
+        if b >= 0 {
+            mtc.tempo = Some(MixTableItem {
+                value: b.clamp(0, 255) as u8,
+                ..Default::default()
+            });
+        }
         Ok(())
     }
     /// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
     ///
     /// If tempo did change, then one :ref:`bool` is read. If it's true, then tempo change won't be displayed on the score.
-    fn read_mix_table_change_durations(&self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) -> GpResult<()> {
-        if let Some(ref mut item) = mtc.volume  { item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0); }
-        if let Some(ref mut item) = mtc.balance { item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0); }
-        if let Some(ref mut item) = mtc.chorus  { item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0); }
-        if let Some(ref mut item) = mtc.reverb  { item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0); }
-        if let Some(ref mut item) = mtc.phaser  { item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0); }
-        if let Some(ref mut item) = mtc.tremolo { item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0); }
+    fn read_mix_table_change_durations(
+        &self,
+        data: &[u8],
+        seek: &mut usize,
+        mtc: &mut MixTableChange,
+    ) -> GpResult<()> {
+        if let Some(ref mut item) = mtc.volume {
+            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+        }
+        if let Some(ref mut item) = mtc.balance {
+            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+        }
+        if let Some(ref mut item) = mtc.chorus {
+            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+        }
+        if let Some(ref mut item) = mtc.reverb {
+            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+        }
+        if let Some(ref mut item) = mtc.phaser {
+            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+        }
+        if let Some(ref mut item) = mtc.tremolo {
+            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+        }
         if let Some(ref mut item) = mtc.tempo {
             item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
             mtc.hide_tempo = false;
-            if self.version.number >= (5,0,0) { mtc.hide_tempo = read_bool(data, seek)?; }
+            if self.version.number >= (5, 0, 0) {
+                mtc.hide_tempo = read_bool(data, seek)?;
+            }
         }
         Ok(())
     }
@@ -169,7 +320,12 @@ impl SongMixTableOps for Song {
     /// In GP5, there is one additional flag:
     /// - *0x40*: use RSE
     /// - *0x80*: show wah-wah
-    fn read_mix_table_change_flags(&self, data: &[u8], seek: &mut usize, mtc: &mut MixTableChange) -> GpResult<i8> {
+    fn read_mix_table_change_flags(
+        &self,
+        data: &[u8],
+        seek: &mut usize,
+        mtc: &mut MixTableChange,
+    ) -> GpResult<i8> {
         let flags = read_signed_byte(data, seek)?;
         //println!("read_mix_table_change_flags(), flags:  {}", flags);
         if mtc.volume.is_some() {
@@ -202,104 +358,247 @@ impl SongMixTableOps for Song {
             e.all_tracks = (flags & 0x01) == 0x01;
             mtc.tremolo = Some(e);
         }
-        if self.version.number >= (5,0,0) {mtc.use_rse = (flags & 0x40) == 0x40;}
+        if self.version.number >= (5, 0, 0) {
+            mtc.use_rse = (flags & 0x40) == 0x40;
+        }
         Ok(flags)
     }
 
     /// Read wah-wah.
     /// - Wah value: :ref:`signed-byte`. See `WahEffect` for value mapping.
-    fn read_wah_effect(&self, data: &[u8], seek: &mut usize, flags: i8) -> GpResult<WahEffect> {Ok(WahEffect{value: read_signed_byte(data, seek)?, display: (flags & -0x80) == -0x80 /*(flags & 0x80) == 0x80*/})}
+    fn read_wah_effect(&self, data: &[u8], seek: &mut usize, flags: i8) -> GpResult<WahEffect> {
+        Ok(WahEffect {
+            value: read_signed_byte(data, seek)?,
+            display: (flags & -0x80) == -0x80, /*(flags & 0x80) == 0x80*/
+        })
+    }
 
-    fn write_mix_table_change(&self, data: &mut Vec<u8>, mix_table_change: &Option<MixTableChange>, version: &(u8,u8,u8)) {
+    fn write_mix_table_change(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &Option<MixTableChange>,
+        version: &(u8, u8, u8),
+    ) {
         if let Some(mtc) = mix_table_change {
             self.write_mix_table_change_values(data, mtc, version);
             self.write_mix_table_change_durations(data, mtc, version);
-            if version.0 == 4 {self.write_mix_table_change_flags_v4(data, mtc);}
+            if version.0 == 4 {
+                self.write_mix_table_change_flags_v4(data, mtc);
+            }
             if version.0 == 5 {
                 self.write_mix_table_change_flags_v5(data, mtc);
-                if let Some(w) = &mtc.wah {write_signed_byte(data, w.value);} else {write_signed_byte(data, WAH_EFFECT_NONE);} //write wah effect
+                if let Some(w) = &mtc.wah {
+                    write_signed_byte(data, w.value);
+                } else {
+                    write_signed_byte(data, WAH_EFFECT_NONE);
+                } //write wah effect
                 self.write_rse_instrument_effect(data, &mtc.rse);
             }
         }
     }
-    fn write_mix_table_change_values(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange, version: &(u8,u8,u8)) {
+    fn write_mix_table_change_values(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &MixTableChange,
+        version: &(u8, u8, u8),
+    ) {
         //instrument
-        if let Some(i) = &mix_table_change.instrument {write_signed_byte(data, i.value.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
-        if version.0 >= 5 {self.write_rse_instrument(data, &mix_table_change.rse, version);}
-        if version == &(5,0,0) {write_placeholder_default(data, 1);}
+        if let Some(i) = &mix_table_change.instrument {
+            write_signed_byte(data, i.value.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
+        if version.0 >= 5 {
+            self.write_rse_instrument(data, &mix_table_change.rse, version);
+        }
+        if version == &(5, 0, 0) {
+            write_placeholder_default(data, 1);
+        }
         //volume
-        if let Some(i) = &mix_table_change.volume {write_signed_byte(data, i.value.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.volume {
+            write_signed_byte(data, i.value.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //balance
-        if let Some(i) = &mix_table_change.balance {write_signed_byte(data, i.value.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.balance {
+            write_signed_byte(data, i.value.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //chorus
-        if let Some(i) = &mix_table_change.chorus {write_signed_byte(data, i.value.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.chorus {
+            write_signed_byte(data, i.value.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //reverb
-        if let Some(i) = &mix_table_change.reverb {write_signed_byte(data, i.value.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.reverb {
+            write_signed_byte(data, i.value.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //phaser
-        if let Some(i) = &mix_table_change.phaser {write_signed_byte(data, i.value.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.phaser {
+            write_signed_byte(data, i.value.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //tremolo
-        if let Some(i) = &mix_table_change.tremolo {write_signed_byte(data, i.value.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.tremolo {
+            write_signed_byte(data, i.value.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //tempo
-        if let Some(i) = &mix_table_change.tempo {write_signed_byte(data, i.value.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.tempo {
+            write_signed_byte(data, i.value.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         if version.0 >= 5 {
             write_int_byte_size_string(data, &mix_table_change.tempo_name);
-            if let Some(t) = &mix_table_change.tempo {write_i32(data, t.value.to_i32().unwrap());}
-            else {write_i32(data, -1);}
+            if let Some(t) = &mix_table_change.tempo {
+                write_i32(data, t.value.to_i32().unwrap());
+            } else {
+                write_i32(data, -1);
+            }
         }
     }
-    fn write_mix_table_change_durations(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange, version: &(u8,u8,u8)) {
+    fn write_mix_table_change_durations(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &MixTableChange,
+        version: &(u8, u8, u8),
+    ) {
         //volume
-        if let Some(i) = &mix_table_change.volume {write_signed_byte(data, i.duration.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.volume {
+            write_signed_byte(data, i.duration.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //balance
-        if let Some(i) = &mix_table_change.balance {write_signed_byte(data, i.duration.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.balance {
+            write_signed_byte(data, i.duration.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //chorus
-        if let Some(i) = &mix_table_change.chorus {write_signed_byte(data, i.duration.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.chorus {
+            write_signed_byte(data, i.duration.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //reverb
-        if let Some(i) = &mix_table_change.reverb {write_signed_byte(data, i.duration.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.reverb {
+            write_signed_byte(data, i.duration.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //phaser
-        if let Some(i) = &mix_table_change.phaser {write_signed_byte(data, i.duration.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.phaser {
+            write_signed_byte(data, i.duration.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //tremolo
-        if let Some(i) = &mix_table_change.tremolo {write_signed_byte(data, i.duration.to_i8().unwrap());}
-        else {write_signed_byte(data, -1);}
+        if let Some(i) = &mix_table_change.tremolo {
+            write_signed_byte(data, i.duration.to_i8().unwrap());
+        } else {
+            write_signed_byte(data, -1);
+        }
         //tempo
         if let Some(i) = &mix_table_change.tempo {
             write_signed_byte(data, i.duration.to_i8().unwrap());
-            if version > &(5,0,0) {write_bool(data, mix_table_change.hide_tempo);}
-        } else {write_signed_byte(data, -1);}
+            if version > &(5, 0, 0) {
+                write_bool(data, mix_table_change.hide_tempo);
+            }
+        } else {
+            write_signed_byte(data, -1);
+        }
     }
-    fn write_mix_table_change_flags_v4(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange) {
+    fn write_mix_table_change_flags_v4(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &MixTableChange,
+    ) {
         let mut flags = 0i8;
-        if let Some(i) = &mix_table_change.volume  {if i.all_tracks {flags |= 0x01;}}
-        if let Some(i) = &mix_table_change.balance {if i.all_tracks {flags |= 0x02;}}
-        if let Some(i) = &mix_table_change.chorus  {if i.all_tracks {flags |= 0x04;}}
-        if let Some(i) = &mix_table_change.reverb  {if i.all_tracks {flags |= 0x08;}}
-        if let Some(i) = &mix_table_change.phaser  {if i.all_tracks {flags |= 0x10;}}
-        if let Some(i) = &mix_table_change.tremolo {if i.all_tracks {flags |= 0x20;}}
+        if let Some(i) = &mix_table_change.volume {
+            if i.all_tracks {
+                flags |= 0x01;
+            }
+        }
+        if let Some(i) = &mix_table_change.balance {
+            if i.all_tracks {
+                flags |= 0x02;
+            }
+        }
+        if let Some(i) = &mix_table_change.chorus {
+            if i.all_tracks {
+                flags |= 0x04;
+            }
+        }
+        if let Some(i) = &mix_table_change.reverb {
+            if i.all_tracks {
+                flags |= 0x08;
+            }
+        }
+        if let Some(i) = &mix_table_change.phaser {
+            if i.all_tracks {
+                flags |= 0x10;
+            }
+        }
+        if let Some(i) = &mix_table_change.tremolo {
+            if i.all_tracks {
+                flags |= 0x20;
+            }
+        }
         write_signed_byte(data, flags);
     }
-    fn write_mix_table_change_flags_v5(&self, data: &mut Vec<u8>, mix_table_change: &MixTableChange) {
+    fn write_mix_table_change_flags_v5(
+        &self,
+        data: &mut Vec<u8>,
+        mix_table_change: &MixTableChange,
+    ) {
         let mut flags = 0u8;
-        if let Some(i) = &mix_table_change.volume  {if i.all_tracks {flags |= 0x01;}}
-        if let Some(i) = &mix_table_change.balance {if i.all_tracks {flags |= 0x02;}}
-        if let Some(i) = &mix_table_change.chorus  {if i.all_tracks {flags |= 0x04;}}
-        if let Some(i) = &mix_table_change.reverb  {if i.all_tracks {flags |= 0x08;}}
-        if let Some(i) = &mix_table_change.phaser  {if i.all_tracks {flags |= 0x10;}}
-        if let Some(i) = &mix_table_change.tremolo {if i.all_tracks {flags |= 0x20;}}
-        if mix_table_change.use_rse {flags |= 0x40;}
-        if let Some(w) = &mix_table_change.wah {if w.display {flags |= 0x80;}}
+        if let Some(i) = &mix_table_change.volume {
+            if i.all_tracks {
+                flags |= 0x01;
+            }
+        }
+        if let Some(i) = &mix_table_change.balance {
+            if i.all_tracks {
+                flags |= 0x02;
+            }
+        }
+        if let Some(i) = &mix_table_change.chorus {
+            if i.all_tracks {
+                flags |= 0x04;
+            }
+        }
+        if let Some(i) = &mix_table_change.reverb {
+            if i.all_tracks {
+                flags |= 0x08;
+            }
+        }
+        if let Some(i) = &mix_table_change.phaser {
+            if i.all_tracks {
+                flags |= 0x10;
+            }
+        }
+        if let Some(i) = &mix_table_change.tremolo {
+            if i.all_tracks {
+                flags |= 0x20;
+            }
+        }
+        if mix_table_change.use_rse {
+            flags |= 0x40;
+        }
+        if let Some(w) = &mix_table_change.wah {
+            if w.display {
+                flags |= 0x80;
+            }
+        }
         write_byte(data, flags);
     }
 }
