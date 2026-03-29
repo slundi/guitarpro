@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["slundi"]
 edition = "2021"
 description = "Rust command line interface (CLI) for guitar tab files."
@@ -16,7 +16,7 @@ required-features = ["clap"]
 [dependencies]
 lib = { path = "../lib" }
 clap = { version = "4", features = ["derive"], optional = true }
-fraction = "0.13"
+fraction = "0.15"
 encoding_rs = "0.8"
 
 [dev-dependencies]
