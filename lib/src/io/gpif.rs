@@ -206,7 +206,10 @@ pub struct Key {
 
 impl Default for Key {
     fn default() -> Self {
-        Key { accidental_count: 0, mode: "Major".to_string() }
+        Key {
+            accidental_count: 0,
+            mode: "Major".to_string(),
+        }
     }
 }
 

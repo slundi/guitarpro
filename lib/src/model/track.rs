@@ -1,10 +1,14 @@
 use fraction::ToPrimitive;
 
-use crate::{io::primitive::*, model::{song::*, enums::*, measure::*, rse::*}, audio::midi::*};
 use crate::error::GpResult;
+use crate::{
+    audio::midi::*,
+    io::primitive::*,
+    model::{enums::*, measure::*, rse::*, song::*},
+};
 
 /// Settings of the track.
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct TrackSettings {
     pub tablature: bool,
     pub notation: bool,
@@ -18,34 +22,37 @@ pub struct TrackSettings {
     pub auto_brush: bool,
     pub extend_rythmic: bool,
 }
-impl Default for TrackSettings { fn default() -> Self { TrackSettings {
-    tablature: true,
-    notation: true,
-    diagram_are_below: false,
-    show_rythm: false,
-    force_horizontal: false,
-    force_channels: false,
-    diagram_list: true,
-    diagram_in_score: false,
-    auto_let_ring: false,
-    auto_brush: false,
-    extend_rythmic: false,
-}}}
+impl Default for TrackSettings {
+    fn default() -> Self {
+        TrackSettings {
+            tablature: true,
+            notation: true,
+            diagram_are_below: false,
+            show_rythm: false,
+            force_horizontal: false,
+            force_channels: false,
+            diagram_list: true,
+            diagram_in_score: false,
+            auto_let_ring: false,
+            auto_brush: false,
+            extend_rythmic: false,
+        }
+    }
+}
 
-
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Track {
     pub number: i32,
-	pub offset: i32,
-	pub channel_index: usize, //pub channel_id: i32,
-	pub solo: bool,
-	pub mute: bool,
+    pub offset: i32,
+    pub channel_index: usize, //pub channel_id: i32,
+    pub solo: bool,
+    pub mute: bool,
     pub visible: bool,
-	pub name: String,
+    pub name: String,
     pub short_name: String,
     /// A guitar string with a special tuning.
-	pub strings: Vec<(i8, i8)>,
-	pub color: i32,
+    pub strings: Vec<(i8, i8)>,
+    pub color: i32,
     pub percussion_track: bool,
     pub twelve_stringed_guitar_track: bool,
     pub banjo_track: bool,
@@ -64,36 +71,44 @@ pub struct Track {
     pub transpose_octave: i32,
 }
 impl Default for Track {
-    fn default() -> Self { Track {
-        number: 1,
-        offset: 0,
-        channel_index: 0, //channel_id: 25,
-        solo: false, mute: false, visible: true,
-        name: String::from("Track 1"),
-        short_name: String::new(),
-        strings: vec![(1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)],
-        banjo_track: false, twelve_stringed_guitar_track: false, percussion_track: false,
-        fret_count: 24,
-        color: 0xff0000,
-        port: 1,
-        indicate_tuning: false,
-        use_rse: false, rse: TrackRse::default(),
-        measures: Vec::new(),
-        settings: TrackSettings::default(),
-        midi_program_gpif: None,
-        transpose_chromatic: 0,
-        transpose_octave: 0,
-    }}
+    fn default() -> Self {
+        Track {
+            number: 1,
+            offset: 0,
+            channel_index: 0, //channel_id: 25,
+            solo: false,
+            mute: false,
+            visible: true,
+            name: String::from("Track 1"),
+            short_name: String::new(),
+            strings: vec![(1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)],
+            banjo_track: false,
+            twelve_stringed_guitar_track: false,
+            percussion_track: false,
+            fret_count: 24,
+            color: 0xff0000,
+            port: 1,
+            indicate_tuning: false,
+            use_rse: false,
+            rse: TrackRse::default(),
+            measures: Vec::new(),
+            settings: TrackSettings::default(),
+            midi_program_gpif: None,
+            transpose_chromatic: 0,
+            transpose_octave: 0,
+        }
+    }
 }
 
 pub trait SongTrackOps {
     fn read_tracks(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()>;
-    fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()>;
+    fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize)
+        -> GpResult<()>;
     fn read_track(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()>;
     fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()>;
-    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8,u8,u8));
+    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8, u8, u8));
     fn write_track(&self, data: &mut Vec<u8>, number: usize);
-    fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8,u8,u8));
+    fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8, u8, u8));
 }
 
 impl SongTrackOps for Song {
@@ -101,14 +116,27 @@ impl SongTrackOps for Song {
     /// - `track_count`: number of tracks to expect.
     fn read_tracks(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()> {
         //println!("read_tracks()");
-        for i in 0..track_count {self.read_track(data, seek, i)?;}
+        for i in 0..track_count {
+            self.read_track(data, seek, i)?;
+        }
         Ok(())
     }
 
-    fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()> {
+    fn read_tracks_v5(
+        &mut self,
+        data: &[u8],
+        seek: &mut usize,
+        track_count: usize,
+    ) -> GpResult<()> {
         //println!("read_tracks_v5(): {:?} {}", self.version.number, self.version.number == (5,1,0));
-        for i in 0..track_count { self.read_track_v5(data, seek, i)?; }
-        *seek += if self.version.number == (5,0,0) {2} else {1};
+        for i in 0..track_count {
+            self.read_track_v5(data, seek, i)?;
+        }
+        *seek += if self.version.number == (5, 0, 0) {
+            2
+        } else {
+            1
+        };
         Ok(())
     }
 
@@ -130,7 +158,10 @@ impl SongTrackOps for Song {
     /// * **Height of the capo**: `integer`. The number of the fret on which a capo is present. If no capo is used, the value is `0x00000000`.
     /// * **Track's color**: `color`. The track's displayed color in Guitar Pro.
     fn read_track(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()> {
-        let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
+        let mut track = Track {
+            number: number.to_i32().unwrap(),
+            ..Default::default()
+        };
         //read the flag
         let flags = read_byte(data, seek)?;
         //println!("read_track(), flags: {}", flags);
@@ -143,12 +174,16 @@ impl SongTrackOps for Song {
         track.strings.clear();
         for i in 0..7i8 {
             let i_tuning = read_int(data, seek)?.to_i8().unwrap();
-            if string_count.to_i8().unwrap() > i { track.strings.push((i + 1, i_tuning)); }
+            if string_count.to_i8().unwrap() > i {
+                track.strings.push((i + 1, i_tuning));
+            }
         }
         //println!("tuning: {:?}", track.strings);
         track.port = read_int(data, seek)?.to_u8().unwrap();
         let index = self.read_channel(data, seek)?;
-        if self.channels[index].channel == 9 {track.percussion_track = true;}
+        if self.channels[index].channel == 9 {
+            track.percussion_track = true;
+        }
         track.fret_count = read_int(data, seek)?.to_u8().unwrap();
         track.offset = read_int(data, seek)?;
         track.color = read_color(data, seek)?;
@@ -195,18 +230,23 @@ impl SongTrackOps for Song {
     /// - MIDI bank: :ref:`byte`.
     /// - Track RSE. See `readTrackRSE`.
     fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()> {
-        let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
-        if number == 0 || self.version.number == (5,0,0) {*seek += 1;} //always 0 //missing 3 skips?
+        let mut track = Track {
+            number: number.to_i32().unwrap(),
+            ..Default::default()
+        };
+        if number == 0 || self.version.number == (5, 0, 0) {
+            *seek += 1;
+        } //always 0 //missing 3 skips?
         let flags1 = read_byte(data, seek)?;
         //println!("read_track_v5(), flags1: {} \t seek: {}", flags1, *seek);
-        track.percussion_track  = (flags1 & 0x01) == 0x01;
-        track.banjo_track       = (flags1 & 0x02) == 0x02;
-        track.visible           = (flags1 & 0x04) == 0x04;
-        track.solo              = (flags1 & 0x10) == 0x10;
-        track.mute              = (flags1 & 0x20) == 0x20;
-        track.use_rse           = (flags1 & 0x40) == 0x40;
-        track.indicate_tuning   = (flags1 & 0x80) == 0x80;
-        track.name              = read_byte_size_string(data, seek, 40)?;
+        track.percussion_track = (flags1 & 0x01) == 0x01;
+        track.banjo_track = (flags1 & 0x02) == 0x02;
+        track.visible = (flags1 & 0x04) == 0x04;
+        track.solo = (flags1 & 0x10) == 0x10;
+        track.mute = (flags1 & 0x20) == 0x20;
+        track.use_rse = (flags1 & 0x40) == 0x40;
+        track.indicate_tuning = (flags1 & 0x80) == 0x80;
+        track.name = read_byte_size_string(data, seek, 40)?;
         //let string_count = read_int(data, seek).to_u8().unwrap();
         let sc = read_int(data, seek)?;
         //println!("read_track_v5(), track:name: \"{}\", string count: {}", track.name, sc);
@@ -214,29 +254,33 @@ impl SongTrackOps for Song {
         track.strings.clear();
         for i in 0i8..7i8 {
             let i_tuning = read_int(data, seek)?.to_i8().unwrap();
-            if string_count.to_i8().unwrap() > i { track.strings.push((i + 1, i_tuning)); }
+            if string_count.to_i8().unwrap() > i {
+                track.strings.push((i + 1, i_tuning));
+            }
         }
         track.port = read_int(data, seek)?.to_u8().unwrap();
         self.read_channel(data, seek)?;
-        if self.channels[number].channel == 9 {track.percussion_track = true;}
-        track.fret_count    = read_int(data, seek)?.to_u8().unwrap();
-        track.offset        = read_int(data, seek)?;
-        track.color         = read_color(data, seek)?;
+        if self.channels[number].channel == 9 {
+            track.percussion_track = true;
+        }
+        track.fret_count = read_int(data, seek)?.to_u8().unwrap();
+        track.offset = read_int(data, seek)?;
+        track.color = read_color(data, seek)?;
 
         let flags2 = read_short(data, seek)?;
         //println!("read_track_v5(), flags2: {}", flags2);
-        track.settings.tablature            = (flags2 & 0x0001) == 0x0001;
-        track.settings.notation             = (flags2 & 0x0002) == 0x0002;
-        track.settings.diagram_are_below    = (flags2 & 0x0004) == 0x0004;
-        track.settings.show_rythm           = (flags2 & 0x0008) == 0x0008;
-        track.settings.force_horizontal     = (flags2 & 0x0010) == 0x0010;
-        track.settings.force_channels       = (flags2 & 0x0020) == 0x0020;
-        track.settings.diagram_list         = (flags2 & 0x0040) == 0x0040;
-        track.settings.diagram_in_score     = (flags2 & 0x0080) == 0x0080;
+        track.settings.tablature = (flags2 & 0x0001) == 0x0001;
+        track.settings.notation = (flags2 & 0x0002) == 0x0002;
+        track.settings.diagram_are_below = (flags2 & 0x0004) == 0x0004;
+        track.settings.show_rythm = (flags2 & 0x0008) == 0x0008;
+        track.settings.force_horizontal = (flags2 & 0x0010) == 0x0010;
+        track.settings.force_channels = (flags2 & 0x0020) == 0x0020;
+        track.settings.diagram_list = (flags2 & 0x0040) == 0x0040;
+        track.settings.diagram_in_score = (flags2 & 0x0080) == 0x0080;
         //0x0100 ???
-        track.settings.auto_let_ring        = (flags2 & 0x0200) == 0x0200;
-        track.settings.auto_brush           = (flags2 & 0x0400) == 0x0400;
-        track.settings.extend_rythmic       = (flags2 & 0x0800) == 0x0800;
+        track.settings.auto_let_ring = (flags2 & 0x0200) == 0x0200;
+        track.settings.auto_brush = (flags2 & 0x0400) == 0x0400;
+        track.settings.extend_rythmic = (flags2 & 0x0800) == 0x0800;
 
         track.rse.auto_accentuation = get_accentuation(read_byte(data, seek)?)?;
         self.channels[number].bank = read_byte(data, seek)?;
@@ -245,49 +289,94 @@ impl SongTrackOps for Song {
         Ok(())
     }
 
-    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8,u8,u8)) {
+    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) {
         for i in 0..self.tracks.len() {
             //self.current_track = Some(i);
-            if version.0 < 5 {self.write_track(data, i);}
-            else {self.write_track_v5(data, i, version);}
+            if version.0 < 5 {
+                self.write_track(data, i);
+            } else {
+                self.write_track_v5(data, i, version);
+            }
         }
-        if version.0 == 5 {write_placeholder_default(data, if version == &(5,0,0) {2} else {1});}
+        if version.0 == 5 {
+            write_placeholder_default(data, if version == &(5, 0, 0) { 2 } else { 1 });
+        }
         //self.current_track = None;
     }
     fn write_track(&self, data: &mut Vec<u8>, number: usize) {
         let mut flags = 0x00;
-        if self.tracks[number].percussion_track {flags |= 0x01;}
-        if self.tracks[number].twelve_stringed_guitar_track {flags |= 0x02;}
-        if self.tracks[number].banjo_track {flags |= 0x04;}
+        if self.tracks[number].percussion_track {
+            flags |= 0x01;
+        }
+        if self.tracks[number].twelve_stringed_guitar_track {
+            flags |= 0x02;
+        }
+        if self.tracks[number].banjo_track {
+            flags |= 0x04;
+        }
         write_byte(data, flags);
         write_byte_size_string(data, &self.tracks[number].name);
         write_placeholder_default(data, 30 - self.tracks[number].name.len());
         write_i32(data, self.tracks[number].strings.len().to_i32().unwrap());
         for i in 0..7usize {
             let mut tuning = 0i8;
-            if i < self.tracks[number].strings.len() { tuning = self.tracks[number].strings[i].1;}
+            if i < self.tracks[number].strings.len() {
+                tuning = self.tracks[number].strings[i].1;
+            }
             write_i32(data, tuning.to_i32().unwrap());
         }
         write_i32(data, self.tracks[number].port.to_i32().unwrap());
         //write channel
-        write_i32(data, self.channels[self.tracks[number].channel_index].channel.to_i32().unwrap() + 1);
-        write_i32(data, self.channels[self.tracks[number].channel_index].effect_channel.to_i32().unwrap() + 1);
+        write_i32(
+            data,
+            self.channels[self.tracks[number].channel_index]
+                .channel
+                .to_i32()
+                .unwrap()
+                + 1,
+        );
+        write_i32(
+            data,
+            self.channels[self.tracks[number].channel_index]
+                .effect_channel
+                .to_i32()
+                .unwrap()
+                + 1,
+        );
         //end write channel
         write_i32(data, self.tracks[number].fret_count.to_i32().unwrap());
         write_i32(data, self.tracks[number].offset);
         write_color(data, self.tracks[number].color);
     }
-    fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8,u8,u8)) {
-        if number == 1 || version == &(5,0,0) {write_placeholder_default(data, 1);}
+    fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8, u8, u8)) {
+        if number == 1 || version == &(5, 0, 0) {
+            write_placeholder_default(data, 1);
+        }
         let mut flags1 = 0u8;
-        if self.tracks[number].percussion_track             {flags1 |= 0x01;}
-        if self.tracks[number].twelve_stringed_guitar_track {flags1 |= 0x02;}
-        if self.tracks[number].banjo_track                  {flags1 |= 0x04;}
-        if self.tracks[number].visible                      {flags1 |= 0x08;}
-        if self.tracks[number].solo                         {flags1 |= 0x10;}
-        if self.tracks[number].mute                         {flags1 |= 0x20;}
-        if self.tracks[number].use_rse                      {flags1 |= 0x40;}
-        if self.tracks[number].indicate_tuning              {flags1 |= 0x80;}
+        if self.tracks[number].percussion_track {
+            flags1 |= 0x01;
+        }
+        if self.tracks[number].twelve_stringed_guitar_track {
+            flags1 |= 0x02;
+        }
+        if self.tracks[number].banjo_track {
+            flags1 |= 0x04;
+        }
+        if self.tracks[number].visible {
+            flags1 |= 0x08;
+        }
+        if self.tracks[number].solo {
+            flags1 |= 0x10;
+        }
+        if self.tracks[number].mute {
+            flags1 |= 0x20;
+        }
+        if self.tracks[number].use_rse {
+            flags1 |= 0x40;
+        }
+        if self.tracks[number].indicate_tuning {
+            flags1 |= 0x80;
+        }
         write_byte(data, flags1);
 
         write_byte_size_string(data, &self.tracks[number].name);
@@ -296,33 +385,74 @@ impl SongTrackOps for Song {
         write_i32(data, self.tracks[number].strings.len().to_i32().unwrap());
         for i in 0..7usize {
             let mut tuning = 0i8;
-            if i < self.tracks[number].strings.len() { tuning = self.tracks[number].strings[i].1;}
+            if i < self.tracks[number].strings.len() {
+                tuning = self.tracks[number].strings[i].1;
+            }
             write_i32(data, tuning.to_i32().unwrap());
         }
         write_i32(data, self.tracks[number].port.to_i32().unwrap());
         //write channel
-        write_i32(data, self.channels[self.tracks[number].channel_index].channel.to_i32().unwrap() + 1);
-        write_i32(data, self.channels[self.tracks[number].channel_index].effect_channel.to_i32().unwrap() + 1);
+        write_i32(
+            data,
+            self.channels[self.tracks[number].channel_index]
+                .channel
+                .to_i32()
+                .unwrap()
+                + 1,
+        );
+        write_i32(
+            data,
+            self.channels[self.tracks[number].channel_index]
+                .effect_channel
+                .to_i32()
+                .unwrap()
+                + 1,
+        );
         //end write channel
         write_i32(data, self.tracks[number].fret_count.to_i32().unwrap());
         write_i32(data, self.tracks[number].offset);
         write_color(data, self.tracks[number].color);
 
         let mut flags2 = 0i16;
-        if self.tracks[number].settings.tablature           {flags2 |= 0x0001;}
-        if self.tracks[number].settings.notation            {flags2 |= 0x0002;}
-        if self.tracks[number].settings.diagram_are_below   {flags2 |= 0x0004;}
-        if self.tracks[number].settings.show_rythm          {flags2 |= 0x0008;}
-        if self.tracks[number].settings.force_horizontal    {flags2 |= 0x0010;}
-        if self.tracks[number].settings.force_channels      {flags2 |= 0x0020;}
-        if self.tracks[number].settings.diagram_list        {flags2 |= 0x0040;}
-        if self.tracks[number].settings.diagram_in_score    {flags2 |= 0x0080;}
-        if self.tracks[number].settings.auto_let_ring       {flags2 |= 0x0200;}
-        if self.tracks[number].settings.auto_brush          {flags2 |= 0x0400;}
-        if self.tracks[number].settings.extend_rythmic      {flags2 |= 0x0800;}
+        if self.tracks[number].settings.tablature {
+            flags2 |= 0x0001;
+        }
+        if self.tracks[number].settings.notation {
+            flags2 |= 0x0002;
+        }
+        if self.tracks[number].settings.diagram_are_below {
+            flags2 |= 0x0004;
+        }
+        if self.tracks[number].settings.show_rythm {
+            flags2 |= 0x0008;
+        }
+        if self.tracks[number].settings.force_horizontal {
+            flags2 |= 0x0010;
+        }
+        if self.tracks[number].settings.force_channels {
+            flags2 |= 0x0020;
+        }
+        if self.tracks[number].settings.diagram_list {
+            flags2 |= 0x0040;
+        }
+        if self.tracks[number].settings.diagram_in_score {
+            flags2 |= 0x0080;
+        }
+        if self.tracks[number].settings.auto_let_ring {
+            flags2 |= 0x0200;
+        }
+        if self.tracks[number].settings.auto_brush {
+            flags2 |= 0x0400;
+        }
+        if self.tracks[number].settings.extend_rythmic {
+            flags2 |= 0x0800;
+        }
         write_i16(data, flags2);
 
-        write_byte(data, from_accentuation(&self.tracks[number].rse.auto_accentuation));
+        write_byte(
+            data,
+            from_accentuation(&self.tracks[number].rse.auto_accentuation),
+        );
         write_byte(data, self.channels[self.tracks[number].channel_index].bank);
         self.write_track_rse(data, &self.tracks[number].rse, version);
     }

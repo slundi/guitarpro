@@ -13,7 +13,7 @@ struct Args {
     /// Input file path (.gp3, .gp4, .gp5)
     #[clap(short, long)]
     input: String,
-    
+
     /// Action
     #[clap(
         short = 'a',

@@ -1,6 +1,6 @@
 use fraction::ToPrimitive;
 
-use crate::{io::primitive::*, model::song::*, error::GpResult};
+use crate::{error::GpResult, io::primitive::*, model::song::*};
 
 //MIDI channels
 
@@ -185,7 +185,12 @@ impl MidiChannel {
 
 pub trait SongMidiOps {
     fn read_midi_channels(&mut self, data: &[u8], seek: &mut usize) -> GpResult<()>;
-    fn read_midi_channel(&self, data: &[u8], seek: &mut usize, channel: u8) -> GpResult<MidiChannel>;
+    fn read_midi_channel(
+        &self,
+        data: &[u8],
+        seek: &mut usize,
+        channel: u8,
+    ) -> GpResult<MidiChannel>;
     fn read_channel(&mut self, data: &[u8], seek: &mut usize) -> GpResult<usize>;
     fn write_midi_channels(&self, data: &mut Vec<u8>);
 }
@@ -212,7 +217,12 @@ impl SongMidiOps for Song {
     /// * **Tremolo**: `byte`
     /// * **blank1**: `byte` => Backward compatibility with version 3.0
     /// * **blank2**: `byte` => Backward compatibility with version 3.0
-    fn read_midi_channel(&self, data: &[u8], seek: &mut usize, channel: u8) -> GpResult<MidiChannel> {
+    fn read_midi_channel(
+        &self,
+        data: &[u8],
+        seek: &mut usize,
+        channel: u8,
+    ) -> GpResult<MidiChannel> {
         let instrument = read_int(data, seek)?;
         let mut c = MidiChannel {
             channel,

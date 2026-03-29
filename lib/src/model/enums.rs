@@ -1,35 +1,50 @@
 use crate::error::{GpError, GpResult};
 
-
 /// An enumeration of different triplet feels.
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
-pub enum TripletFeel { None, Eighth, Sixteenth }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TripletFeel {
+    None,
+    Eighth,
+    Sixteenth,
+}
 pub(crate) fn get_triplet_feel(value: i8) -> GpResult<TripletFeel> {
     match value {
         0 => Ok(TripletFeel::None),
         1 => Ok(TripletFeel::Eighth),
         2 => Ok(TripletFeel::Sixteenth),
-        _ => Err(GpError::InvalidValue { context: "triplet feel", value: value as i64 }),
+        _ => Err(GpError::InvalidValue {
+            context: "triplet feel",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_triplet_feel(value: &TripletFeel) -> u8 {
     match value {
-        TripletFeel::None       => 0,
-        TripletFeel::Eighth     => 1,
-        TripletFeel::Sixteenth  => 2,
+        TripletFeel::None => 0,
+        TripletFeel::Eighth => 1,
+        TripletFeel::Sixteenth => 2,
     }
 }
 
 /// An enumeration of available clefs
 #[allow(dead_code)]
 #[repr(u8)]
-#[derive(Debug,Clone)]
-pub enum MeasureClef { Treble, Bass, Tenor, Alto }
+#[derive(Debug, Clone)]
+pub enum MeasureClef {
+    Treble,
+    Bass,
+    Tenor,
+    Alto,
+}
 /// A line break directive: `NONE: no line break`, `BREAK: break line`, `Protect the line from breaking`.
 #[repr(u8)]
-#[derive(Debug,Clone)]
-pub enum LineBreak { None, Break, Protect }
+#[derive(Debug, Clone)]
+pub enum LineBreak {
+    None,
+    Break,
+    Protect,
+}
 pub(crate) fn get_line_break(value: u8) -> LineBreak {
     match value {
         1 => LineBreak::Break,
@@ -39,54 +54,59 @@ pub(crate) fn get_line_break(value: u8) -> LineBreak {
 }
 pub(crate) fn from_line_break(value: &LineBreak) -> u8 {
     match value {
-        LineBreak::None    => 0,
-        LineBreak::Break   => 1,
+        LineBreak::None => 0,
+        LineBreak::Break => 1,
         LineBreak::Protect => 2,
     }
 }
 
 /// An enumeration of all supported slide types.
 #[repr(i8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlideType {
     IntoFromAbove = -2, //-2
     IntoFromBelow = -1, //-1
-    None = 0, //0
+    None = 0,           //0
     ShiftSlideTo,
     LegatoSlideTo,
     OutDownwards,
-    OutUpWards
+    OutUpWards,
 }
 pub(crate) fn get_slide_type(value: i8) -> GpResult<SlideType> {
     match value {
         -2 => Ok(SlideType::IntoFromAbove),
         -1 => Ok(SlideType::IntoFromBelow),
-        0  => Ok(SlideType::None),
-        1  => Ok(SlideType::ShiftSlideTo),
-        2  => Ok(SlideType::LegatoSlideTo),
-        3  => Ok(SlideType::OutDownwards),
-        4  => Ok(SlideType::OutUpWards),
-        _ => Err(GpError::InvalidValue { context: "slide type", value: value as i64 }),
+        0 => Ok(SlideType::None),
+        1 => Ok(SlideType::ShiftSlideTo),
+        2 => Ok(SlideType::LegatoSlideTo),
+        3 => Ok(SlideType::OutDownwards),
+        4 => Ok(SlideType::OutUpWards),
+        _ => Err(GpError::InvalidValue {
+            context: "slide type",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_slide_type(value: &SlideType) -> i8 {
     match value {
-        SlideType::IntoFromAbove  => -2,
-        SlideType::IntoFromBelow  => -1,
-        SlideType::None           => 0,
-        SlideType::ShiftSlideTo   => 1,
-        SlideType::LegatoSlideTo  => 2,
-        SlideType::OutDownwards   => 3,
-        SlideType::OutUpWards     => 4,
+        SlideType::IntoFromAbove => -2,
+        SlideType::IntoFromBelow => -1,
+        SlideType::None => 0,
+        SlideType::ShiftSlideTo => 1,
+        SlideType::LegatoSlideTo => 2,
+        SlideType::OutDownwards => 3,
+        SlideType::OutUpWards => 4,
     }
 }
 
 /// An enumeration of all supported slide types.
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoteType {
     Rest, //0
-    Normal, Tie, Dead,
+    Normal,
+    Tie,
+    Dead,
     Unknown(u8),
 }
 pub(crate) fn get_note_type(value: u8) -> NoteType {
@@ -100,17 +120,21 @@ pub(crate) fn get_note_type(value: u8) -> NoteType {
 }
 pub(crate) fn from_note_type(value: &NoteType) -> u8 {
     match value {
-        NoteType::Rest             => 0,
-        NoteType::Normal           => 1,
-        NoteType::Tie              => 2,
-        NoteType::Dead             => 3,
-        NoteType::Unknown(value)   => *value, //panic!("Cannot read note type"),
+        NoteType::Rest => 0,
+        NoteType::Normal => 1,
+        NoteType::Tie => 2,
+        NoteType::Dead => 3,
+        NoteType::Unknown(value) => *value, //panic!("Cannot read note type"),
     }
 }
 
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
-pub enum BeatStatus {Empty, Normal, Rest}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BeatStatus {
+    Empty,
+    Normal,
+    Rest,
+}
 pub(crate) fn get_beat_status(value: u8) -> BeatStatus {
     match value {
         0 => BeatStatus::Empty,
@@ -128,13 +152,23 @@ pub(crate) fn from_beat_status(value: &BeatStatus) -> u8 {
 }
 
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
-pub enum TupletBracket {None, Start, End}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TupletBracket {
+    None,
+    Start,
+    End,
+}
 
 /// Octave signs
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
-pub enum Octave { None, Ottava, Quindicesima, OttavaBassa, QuindicesimaBassa }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Octave {
+    None,
+    Ottava,
+    Quindicesima,
+    OttavaBassa,
+    QuindicesimaBassa,
+}
 pub(crate) fn get_octave(value: u8) -> GpResult<Octave> {
     match value {
         0 => Ok(Octave::None),
@@ -142,69 +176,90 @@ pub(crate) fn get_octave(value: u8) -> GpResult<Octave> {
         2 => Ok(Octave::Quindicesima),
         3 => Ok(Octave::OttavaBassa),
         4 => Ok(Octave::QuindicesimaBassa),
-        _ => Err(GpError::InvalidValue { context: "octave", value: value as i64 }),
+        _ => Err(GpError::InvalidValue {
+            context: "octave",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_octave(value: &Octave) -> u8 {
     match value {
-        Octave::None               => 0,
-        Octave::Ottava             => 1,
-        Octave::Quindicesima       => 2,
-        Octave::OttavaBassa        => 3,
-        Octave::QuindicesimaBassa  => 4,
+        Octave::None => 0,
+        Octave::Ottava => 1,
+        Octave::Quindicesima => 2,
+        Octave::OttavaBassa => 3,
+        Octave::QuindicesimaBassa => 4,
     }
 }
 
 /// All beat stroke directions
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
-pub enum BeatStrokeDirection { None, Up, Down }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BeatStrokeDirection {
+    None,
+    Up,
+    Down,
+}
 pub(crate) fn get_beat_stroke_direction(value: i8) -> GpResult<BeatStrokeDirection> {
     match value {
         0 => Ok(BeatStrokeDirection::None),
         1 => Ok(BeatStrokeDirection::Up),
         2 => Ok(BeatStrokeDirection::Down),
-        _ => Err(GpError::InvalidValue { context: "beat stroke direction", value: value as i64 }),
+        _ => Err(GpError::InvalidValue {
+            context: "beat stroke direction",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_beat_stroke_direction(value: &BeatStrokeDirection) -> i8 {
     match value {
         BeatStrokeDirection::None => 0,
-        BeatStrokeDirection::Up   => 1,
+        BeatStrokeDirection::Up => 1,
         BeatStrokeDirection::Down => 2,
     }
 }
 /// Characteristic of articulation
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
-pub enum SlapEffect { None, Tapping, Slapping, Popping }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SlapEffect {
+    None,
+    Tapping,
+    Slapping,
+    Popping,
+}
 pub(crate) fn get_slap_effect(value: u8) -> GpResult<SlapEffect> {
     match value {
         0 => Ok(SlapEffect::None),
         1 => Ok(SlapEffect::Tapping),
         2 => Ok(SlapEffect::Slapping),
         3 => Ok(SlapEffect::Popping),
-        _ => Err(GpError::InvalidValue { context: "slap effect", value: value as i64 }),
+        _ => Err(GpError::InvalidValue {
+            context: "slap effect",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_slap_effect(value: &SlapEffect) -> u8 {
     match value {
-        SlapEffect::None     => 0,
-        SlapEffect::Tapping  => 1,
+        SlapEffect::None => 0,
+        SlapEffect::Tapping => 1,
         SlapEffect::Slapping => 2,
-        SlapEffect::Popping  => 3,
+        SlapEffect::Popping => 3,
     }
 }
 
-
 /// Voice directions indicating the direction of beams
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
-pub enum VoiceDirection { None, Up, Down }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VoiceDirection {
+    None,
+    Up,
+    Down,
+}
 
 /// Type of the chord.
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChordType {
     /// Major chord.
     Major,
@@ -241,48 +296,48 @@ pub enum ChordType {
 }
 pub(crate) fn get_chord_type(value: u8) -> ChordType {
     match value {
-        0  => ChordType::Major,
-        1  => ChordType::Seventh,
-        2  => ChordType::MajorSeventh,
-        3  => ChordType::Sixth,
-        4  => ChordType::Minor,
-        5  => ChordType::MinorSeventh,
-        6  => ChordType::MinorMajor,
-        7  => ChordType::MinorSixth,
-        8  => ChordType::SuspendedSecond,
-        9  => ChordType::SuspendedFourth,
+        0 => ChordType::Major,
+        1 => ChordType::Seventh,
+        2 => ChordType::MajorSeventh,
+        3 => ChordType::Sixth,
+        4 => ChordType::Minor,
+        5 => ChordType::MinorSeventh,
+        6 => ChordType::MinorMajor,
+        7 => ChordType::MinorSixth,
+        8 => ChordType::SuspendedSecond,
+        9 => ChordType::SuspendedFourth,
         10 => ChordType::SeventhSuspendedSecond,
         11 => ChordType::SeventhSuspendedFourth,
         12 => ChordType::Diminished,
         13 => ChordType::Augmented,
         14 => ChordType::Power,
-        _  => ChordType::Unknown(value), //panic!("Cannot read chord type (new format)"),
+        _ => ChordType::Unknown(value), //panic!("Cannot read chord type (new format)"),
     }
 }
 pub(crate) fn from_chord_type(value: &ChordType) -> u8 {
     match value {
-        ChordType::Major                    => 0,
-        ChordType::Seventh                  => 1,
-        ChordType::MajorSeventh             => 2,
-        ChordType::Sixth                    => 3,
-        ChordType::Minor                    => 4,
-        ChordType::MinorSeventh             => 5,
-        ChordType::MinorMajor               => 6,
-        ChordType::MinorSixth               => 7,
-        ChordType::SuspendedSecond          => 8,
-        ChordType::SuspendedFourth          => 9,
-        ChordType::SeventhSuspendedSecond   => 10,
-        ChordType::SeventhSuspendedFourth   => 11,
-        ChordType::Diminished               => 12,
-        ChordType::Augmented                => 13,
-        ChordType::Power                    => 14,
+        ChordType::Major => 0,
+        ChordType::Seventh => 1,
+        ChordType::MajorSeventh => 2,
+        ChordType::Sixth => 3,
+        ChordType::Minor => 4,
+        ChordType::MinorSeventh => 5,
+        ChordType::MinorMajor => 6,
+        ChordType::MinorSixth => 7,
+        ChordType::SuspendedSecond => 8,
+        ChordType::SuspendedFourth => 9,
+        ChordType::SeventhSuspendedSecond => 10,
+        ChordType::SeventhSuspendedFourth => 11,
+        ChordType::Diminished => 12,
+        ChordType::Augmented => 13,
+        ChordType::Power => 14,
         ChordType::Unknown(value) => *value,
     }
 }
 
 /// Tonality of the chord
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChordAlteration {
     /// Perfect.
     Perfect,
@@ -296,20 +351,23 @@ pub(crate) fn get_chord_alteration(value: u8) -> GpResult<ChordAlteration> {
         0 => Ok(ChordAlteration::Perfect),
         1 => Ok(ChordAlteration::Diminished),
         2 => Ok(ChordAlteration::Augmented),
-        _ => Err(GpError::InvalidValue { context: "chord alteration", value: value as i64 }),
+        _ => Err(GpError::InvalidValue {
+            context: "chord alteration",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_chord_alteration(value: &ChordAlteration) -> u8 {
     match value {
-        ChordAlteration::Perfect    => 0,
+        ChordAlteration::Perfect => 0,
         ChordAlteration::Diminished => 1,
-        ChordAlteration::Augmented  => 2,
+        ChordAlteration::Augmented => 2,
     }
 }
 
 /// Extension type of the chord
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChordExtension {
     None,
     /// Ninth chord.
@@ -318,7 +376,7 @@ pub enum ChordExtension {
     Eleventh,
     /// Thirteenth chord.
     Thirteenth,
-    Unknown(u8)
+    Unknown(u8),
 }
 pub(crate) fn get_chord_extension(value: u8) -> ChordExtension {
     match value {
@@ -331,17 +389,17 @@ pub(crate) fn get_chord_extension(value: u8) -> ChordExtension {
 }
 pub(crate) fn from_chord_extension(value: &ChordExtension) -> u8 {
     match value {
-        ChordExtension::None              => 0,
-        ChordExtension::Ninth             => 1,
-        ChordExtension::Eleventh          => 2,
-        ChordExtension::Thirteenth        => 3,
+        ChordExtension::None => 0,
+        ChordExtension::Ninth => 1,
+        ChordExtension::Eleventh => 2,
+        ChordExtension::Thirteenth => 3,
         ChordExtension::Unknown(value) => *value, //panic!("Cannot read chord type (new format)"),
     }
 }
 
 /// Left and right hand fingering used in tabs and chord diagram editor.
 #[repr(i8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fingering {
     /// Open or muted.
     Open = -1, //-1?
@@ -362,29 +420,29 @@ pub enum Fingering {
 pub(crate) fn get_fingering(value: i8) -> Fingering {
     match value {
         -1 => Fingering::Open,
-        0  => Fingering::Thumb,
-        1  => Fingering::Index,
-        2  => Fingering::Middle,
-        3  => Fingering::Annular,
-        4  => Fingering::Little,
-        _  => Fingering::Unknown(value), //panic!("Cannot get fingering! How can you have more than 5 fingers per hand?!?"),
+        0 => Fingering::Thumb,
+        1 => Fingering::Index,
+        2 => Fingering::Middle,
+        3 => Fingering::Annular,
+        4 => Fingering::Little,
+        _ => Fingering::Unknown(value), //panic!("Cannot get fingering! How can you have more than 5 fingers per hand?!?"),
     }
 }
 pub(crate) fn from_fingering(value: &Fingering) -> i8 {
     match value {
-        Fingering::Open           => -1,
-        Fingering::Thumb          => 0,
-        Fingering::Index          => 1,
-        Fingering::Middle         => 2,
-        Fingering::Annular        => 3,
-        Fingering::Little         => 4,
+        Fingering::Open => -1,
+        Fingering::Thumb => 0,
+        Fingering::Index => 1,
+        Fingering::Middle => 2,
+        Fingering::Annular => 3,
+        Fingering::Little => 4,
         Fingering::Unknown(value) => *value, //panic!("Cannot get fingering! How can you have more than 5 fingers per hand?!?"),
     }
 }
 
 /// All Bend presets
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BendType {
     /// No Preset.
     None,
@@ -413,7 +471,7 @@ pub enum BendType {
     /// Return the bar.
     Return,
     /// Release the bar down.
-    ReleaseDown
+    ReleaseDown,
 }
 pub(crate) fn get_bend_type(value: i8) -> GpResult<BendType> {
     match value {
@@ -429,29 +487,32 @@ pub(crate) fn get_bend_type(value: i8) -> GpResult<BendType> {
         9 => Ok(BendType::InvertedDip),
         10 => Ok(BendType::Return),
         11 => Ok(BendType::ReleaseDown),
-        _ => Err(GpError::InvalidValue { context: "bend type", value: value as i64 }),
+        _ => Err(GpError::InvalidValue {
+            context: "bend type",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_bend_type(value: &BendType) -> i8 {
     match value {
-        BendType::None             => 0,
-        BendType::Bend             => 1,
-        BendType::BendRelease      => 2,
-        BendType::BendReleaseBend  => 3,
-        BendType::Prebend          => 4,
-        BendType::PrebendRelease   => 5,
-        BendType::Dip              => 6,
-        BendType::Dive             => 7,
-        BendType::ReleaseUp        => 8,
-        BendType::InvertedDip      => 9,
-        BendType::Return          => 10,
-        BendType::ReleaseDown     => 11,
+        BendType::None => 0,
+        BendType::Bend => 1,
+        BendType::BendRelease => 2,
+        BendType::BendReleaseBend => 3,
+        BendType::Prebend => 4,
+        BendType::PrebendRelease => 5,
+        BendType::Dip => 6,
+        BendType::Dive => 7,
+        BendType::ReleaseUp => 8,
+        BendType::InvertedDip => 9,
+        BendType::Return => 10,
+        BendType::ReleaseDown => 11,
     }
 }
 
 /// All transition types for grace notes.
 #[repr(i8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GraceEffectTransition {
     ///No transition
     None = 0,
@@ -460,7 +521,7 @@ pub enum GraceEffectTransition {
     ///Perform a bend from the grace note to the real one.
     Bend,
     ///Perform a hammer on.
-    Hammer
+    Hammer,
 }
 pub(crate) fn get_grace_effect_transition(value: i8) -> GpResult<GraceEffectTransition> {
     match value {
@@ -468,20 +529,23 @@ pub(crate) fn get_grace_effect_transition(value: i8) -> GpResult<GraceEffectTran
         1 => Ok(GraceEffectTransition::Slide),
         2 => Ok(GraceEffectTransition::Bend),
         3 => Ok(GraceEffectTransition::Hammer),
-        _ => Err(GpError::InvalidValue { context: "grace effect transition", value: value as i64 }),
+        _ => Err(GpError::InvalidValue {
+            context: "grace effect transition",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_grace_effect_transition(value: &GraceEffectTransition) -> i8 {
     match value {
-        GraceEffectTransition::None   => 0,
-        GraceEffectTransition::Slide  => 1,
-        GraceEffectTransition::Bend   => 2,
+        GraceEffectTransition::None => 0,
+        GraceEffectTransition::Slide => 1,
+        GraceEffectTransition::Bend => 2,
         GraceEffectTransition::Hammer => 3,
     }
 }
 
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HarmonicType {
     Natural = 1, //1
     Artificial,
@@ -491,18 +555,25 @@ pub enum HarmonicType {
 }
 pub(crate) fn from_harmonic_type(value: &HarmonicType) -> i8 {
     match value {
-        HarmonicType::Natural       => 1,
-        HarmonicType::Artificial    => 2,
-        HarmonicType::Tapped        => 3,
-        HarmonicType::Pinch         => 4,
-        HarmonicType::Semi          => 5,
+        HarmonicType::Natural => 1,
+        HarmonicType::Artificial => 2,
+        HarmonicType::Tapped => 3,
+        HarmonicType::Pinch => 4,
+        HarmonicType::Semi => 5,
     }
 }
 
 /// Values of auto-accentuation on the beat found in track RSE settings
 #[repr(u8)]
-#[derive(Debug,Clone)]
-pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
+#[derive(Debug, Clone)]
+pub enum Accentuation {
+    None,
+    VerySoft,
+    Soft,
+    Medium,
+    Strong,
+    VeryStrong,
+}
 pub(crate) fn get_accentuation(value: u8) -> GpResult<Accentuation> {
     match value {
         0 => Ok(Accentuation::None),
@@ -511,28 +582,44 @@ pub(crate) fn get_accentuation(value: u8) -> GpResult<Accentuation> {
         3 => Ok(Accentuation::Medium),
         4 => Ok(Accentuation::Strong),
         5 => Ok(Accentuation::VeryStrong),
-        _ => Err(GpError::InvalidValue { context: "accentuation", value: value as i64 }),
+        _ => Err(GpError::InvalidValue {
+            context: "accentuation",
+            value: value as i64,
+        }),
     }
 }
 pub(crate) fn from_accentuation(value: &Accentuation) -> u8 {
     match value {
-        Accentuation::None         => 0,
-        Accentuation::VerySoft     => 1,
-        Accentuation::Soft         => 2,
-        Accentuation::Medium       => 3,
-        Accentuation::Strong       => 4,
-        Accentuation::VeryStrong   => 5,
+        Accentuation::None => 0,
+        Accentuation::VerySoft => 1,
+        Accentuation::Soft => 2,
+        Accentuation::Medium => 3,
+        Accentuation::Strong => 4,
+        Accentuation::VeryStrong => 5,
     }
 }
 
 /// A navigation sign like *Coda* (𝄌: U+1D10C) or *Segno* (𝄋 or 𝄉: U+1D10B or U+1D109).
 #[repr(u8)]
-#[derive(Debug,Clone,PartialEq,Eq,Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DirectionSign {
-    Coda, DoubleCoda,
-    Segno, SegnoSegno,
+    Coda,
+    DoubleCoda,
+    Segno,
+    SegnoSegno,
     Fine,
-    DaCapo, DaCapoAlCoda, DaCapoAlDoubleCoda, DaCapoAlFine,
-    DaSegno, DaSegnoAlCoda, DaSegnoAlDoubleCoda, DaSegnoAlFine, DaSegnoSegno, DaSegnoSegnoAlCoda, DaSegnoSegnoAlDoubleCoda, DaSegnoSegnoAlFine,
-    DaCoda, DaDoubleCoda,
+    DaCapo,
+    DaCapoAlCoda,
+    DaCapoAlDoubleCoda,
+    DaCapoAlFine,
+    DaSegno,
+    DaSegnoAlCoda,
+    DaSegnoAlDoubleCoda,
+    DaSegnoAlFine,
+    DaSegnoSegno,
+    DaSegnoSegnoAlCoda,
+    DaSegnoSegnoAlDoubleCoda,
+    DaSegnoSegnoAlFine,
+    DaCoda,
+    DaDoubleCoda,
 }

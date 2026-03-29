@@ -1,8 +1,8 @@
-use std::io::{Read, Cursor};
-use zip::ZipArchive;
-use crate::io::gpif::Gpif;
 use crate::error::GpResult;
+use crate::io::gpif::Gpif;
 use quick_xml::de::from_str;
+use std::io::{Cursor, Read};
+use zip::ZipArchive;
 
 /// Reads a .gp (GP7+) file which is a ZIP archive containing 'Content/score.gpif'.
 pub fn read_gp(data: &[u8]) -> GpResult<Gpif> {
@@ -10,10 +10,13 @@ pub fn read_gp(data: &[u8]) -> GpResult<Gpif> {
     let mut zip = ZipArchive::new(cursor).map_err(|e| format!("Zip error: {}", e))?;
 
     // Standard path for GP7 files
-    let mut file = zip.by_name("Content/score.gpif").map_err(|e| format!("Could not find score.gpif: {}", e))?;
+    let mut file = zip
+        .by_name("Content/score.gpif")
+        .map_err(|e| format!("Could not find score.gpif: {}", e))?;
 
     let mut contents = String::new();
-    file.read_to_string(&mut contents).map_err(|e| format!("Read error: {}", e))?;
+    file.read_to_string(&mut contents)
+        .map_err(|e| format!("Read error: {}", e))?;
 
     let gpif: Gpif = from_str(&contents).map_err(|e| format!("XML Parse error: {}", e))?;
     Ok(gpif)
@@ -36,7 +39,10 @@ struct BitStream<'a> {
 
 impl<'a> BitStream<'a> {
     fn new(data: &'a [u8]) -> Self {
-        BitStream { data, bit_position: 0 }
+        BitStream {
+            data,
+            bit_position: 0,
+        }
     }
 
     fn byte_offset(&self) -> usize {
@@ -104,7 +110,8 @@ fn decompress_bcfz(data: &[u8]) -> Result<Vec<u8>, String> {
             if offset == 0 || offset > output.len() {
                 return Err(format!(
                     "BCFZ: invalid back-reference offset {} (output len {})",
-                    offset, output.len()
+                    offset,
+                    output.len()
                 ));
             }
             let source_start = output.len() - offset;
@@ -175,7 +182,10 @@ fn parse_bcfs(data: &[u8]) -> Result<Vec<BcfsFile>, String> {
             let name_start = sector_offset + 4;
             let name_end = (name_start + 127).min(disk.len());
             let name_bytes = &disk[name_start..name_end];
-            let name_len = name_bytes.iter().position(|&b| b == 0).unwrap_or(name_bytes.len());
+            let name_len = name_bytes
+                .iter()
+                .position(|&b| b == 0)
+                .unwrap_or(name_bytes.len());
             let name = String::from_utf8_lossy(&name_bytes[..name_len]).to_string();
 
             let file_size = read_le_i32(disk, sector_offset + 0x8C) as usize;
@@ -201,7 +211,10 @@ fn parse_bcfs(data: &[u8]) -> Result<Vec<BcfsFile>, String> {
 
             file_data.truncate(file_size);
             if !name.is_empty() {
-                files.push(BcfsFile { name, data: file_data });
+                files.push(BcfsFile {
+                    name,
+                    data: file_data,
+                });
             }
         }
 
@@ -216,18 +229,22 @@ pub fn read_gpx(data: &[u8]) -> GpResult<Gpif> {
     let decompressed = decompress_bcfz(data)?;
     let files = parse_bcfs(&decompressed)?;
 
-    let score_file = files.iter()
+    let score_file = files
+        .iter()
         .find(|f| f.name == "score.gpif")
         .ok_or_else(|| {
             let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
-            format!("score.gpif not found in GPX archive. Files found: {:?}", names)
+            format!(
+                "score.gpif not found in GPX archive. Files found: {:?}",
+                names
+            )
         })?;
 
     let xml_str = std::str::from_utf8(&score_file.data)
         .map_err(|e| format!("UTF-8 error in score.gpif: {}", e))?;
 
-    let gpif: Gpif = from_str(xml_str)
-        .map_err(|e| format!("XML parse error in score.gpif: {}", e))?;
+    let gpif: Gpif =
+        from_str(xml_str).map_err(|e| format!("XML parse error in score.gpif: {}", e))?;
 
     Ok(gpif)
 }
