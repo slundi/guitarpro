@@ -1,0 +1,41 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: master
+    hooks:
+      - id: fmt
+        args: ["--verbose", "--"]
+      # - id: cargo-check
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.23.6
+    hooks:
+      - id: typos
+
+  # detect secrets
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
+  # - repo: https://github.com/trufflesecurity/trufflehog
+  #   hooks:
+  #     - id: trufflehog
+  #       name: TruffleHog
+  #       description: Detect secrets in your data.
+  #       entry: bash -c 'trufflehog git file://.'
+  #       language: system
+  #       stages: ["pre-commit", "pre-push"]
+  # - repo: https://github.com/sirwart/ripsecrets
+  #   rev: v0.1.8 # Use latest tag on GitHub
+  #   hooks:
+  #     - id: ripsecrets
+  #       # uncomment to check additional patterns
+  #       # args:
+  #       # - --additional-pattern 'mytoken*'
+  #       # - --additional-pattern 'mykey*'

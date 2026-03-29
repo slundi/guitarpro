@@ -1,0 +1,38 @@
+steps:
+  # setup: Prepare Nix environment and cache (optional but recommended)
+  setup:
+    image: nixos/nix:latest
+    commands:
+      - mkdir -p ~/.config/nix && echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
+
+  # lint: Check formatting and run clippy
+  lint:
+    image: nixos/nix:latest
+    commands:
+      - nix develop --command just lint
+    depends_on: [setup]
+
+  # test: Run the test suite using nextest
+  test:
+    image: nixos/nix:latest
+    commands:
+      - nix develop --command just test
+    depends_on: [setup]
+
+  # security: Scan for secrets and run cargo-audit/deny
+  security:
+    image: nixos/nix:latest
+    commands:
+      - nix develop --command just scan-secrets
+      - nix develop --command just health-check
+    depends_on: [setup]
+
+  # unused_deps: Check for unused dependencies
+  unused_deps:
+    image: nixos/nix:latest
+    commands:
+      - nix develop --command cargo-machete
+    depends_on: [setup]
+
+when:
+  event: [push, pull_request]
