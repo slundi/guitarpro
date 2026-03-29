@@ -1,47 +1,50 @@
-# Guitarpro
+# scorelib
 
-A Rust safe library to parse and write guitar pro files.
+A safe, modular Rust library to parse and write Guitar Pro files.
 
-[![Tests](https://github.com/slundi/guitarpro/actions/workflows/rust.yml/badge.svg)](https://github.com/slundi/guitarpro/actions/workflows/rust.yml) [![rust-clippy](https://github.com/slundi/guitarpro/actions/workflows/rust-clippy.yml/badge.svg)](https://github.com/slundi/guitarpro/actions/workflows/rust-clippy.yml)
+## Usage
 
-It is based on [Perlence/PyGuitarPro](https://github.com/Perlence/PyGuitarPro), [TuxGuitar](http://tuxguitar.com.ar/) and [MuseScore](https://musescore.org) sources.
+Add this to your `Cargo.toml`:
 
-## usage
+```toml
+[dependencies]
+scorelib = { path = "../lib" }
+```
+
+Basic usage:
 
 ```rust
-use guitarpro;
+use scorelib::model::song::Song;
+use scorelib::model::track::SongTrackOps;
 
 fn main() {
-    let f = fs::OpenOptions::new().read(true).open("my_awesome_song.gp5").unwrap_or_else(|_error| {
-        panic!("Unknown error while opening my_awesome_song.gp5");
-    });
-    let mut data: Vec<u8> = Vec::with_capacity(size);
-    f.take(u64::from_ne_bytes(size.to_ne_bytes())).read_to_end(&mut data).unwrap_or_else(|_error|{panic!("Unable to read file contents");});
-    let mut song: guitarpro::Song = gp::Song::default();
-    match ext.as_str() {
-        "GP3" => song.read_gp3(&data),
-        "GP4" => song.read_gp4(&data),
-        "GP5" => song.read_gp5(&data),
-        "GPX" => println!("Guitar pro file (new version) is not supported yet"), //new Guitar Pro files
-        _ => panic!("Unable to process a {} file (GP1 and GP2 files are not supported)", ext),
+    let data = std::fs::read("my_awesome_song.gp5").expect("Unable to read file");
+    
+    let mut song = Song::default();
+    // Use the trait-based reader (e.g., SongTrackOps is needed for internal track reading)
+    song.read_gp5(&data);
+    
+    println!("Song Title: {}", song.name);
+    for track in &song.tracks {
+        println!("Track: {}", track.name);
     }
 }
 ```
 
+## Features
+
+- **GP3, GP4, GP5**: High-fidelity reading and writing support.
+- **GP6/GP7 (.gp, .gpx)**: Initial experimental reading support.
+- **MuseScore (.mscz)**: Basic XML/ZIP parsing.
+- **Modular Design**: Separated into `model`, `io` (low-level primitives), and `audio` (MIDI).
+- **Extensible**: Uses Rust traits to add format-specific functionality to the core `Song` model.
+
 ## Roadmap
 
-### Library
-
-* [ ] Documentation
-* [x] Read GP3 files
-* [x] Read GP4 files
-* [ ] Read GP5 files: almost working, Coda and similar directions are not working, use `test/Demo v5.gp5` to test/fix/pull request/...
-* [ ] Read GPX files (version 6)
-* [ ] Read GPX files (version 7)
-* [ ] Read MuseScore files (ZIP + XML)
-* [ ] Write GP3 files
-* [ ] Write GP4 files
-* [ ] Write GP5 files
-* [ ] Write GPX files (version 6)
-* [ ] Write GPX files (version 7)
-* [ ] Write MuseScore files
+- [x] Refactor into `model`, `io`, and `audio` modules.
+- [x] Convert `impl Song` blocks into specialized traits.
+- [x] Improve GP5 parsing (better handling of complex directions).
+- [ ] Stabilize GP6/7 support.
+- [ ] Support for chords and rhythm details in GP6/7.
+- [ ] Write support for newer formats.
+- [ ] Comprehensive documentation of the data model.

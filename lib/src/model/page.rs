@@ -1,6 +1,7 @@
 use fraction::ToPrimitive;
 
-use crate::{gp::*, io::*};
+use crate::{io::primitive::*, model::song::*};
+use crate::error::GpResult;
 
 ///A padding construct
 #[derive(Debug,Clone)]
@@ -67,7 +68,12 @@ impl Default for PageSetup {fn default() -> Self { PageSetup { page_size:Point{x
     page_number:String::from("Page %N%/%P%"),
 }}}
 
-impl Song {
+pub trait SongPageOps {
+    fn read_page_setup(&mut self, data: &[u8], seek: &mut usize) -> GpResult<()>;
+    fn write_page_setup(&self, data: &mut Vec<u8>);
+}
+
+impl SongPageOps for Song {
     /// Read page setup. Page setup is read as follows:
     /// - Page size: 2 `Ints <int>`. Width and height of the page.
     /// - Page padding: 4 `Ints <int>`. Left, right, top, bottom padding of the page.
@@ -84,30 +90,31 @@ impl Song {
     ///   * copyright1, e.g. *"Copyright %copyright%"*
     ///   * copyright2, e.g. *"All Rights Reserved - International Copyright Secured"*
     ///   * pageNumber
-    pub(crate) fn read_page_setup(&mut self, data: &[u8], seek: &mut usize) {
-        self.page_setup.page_size.x = read_int(data, seek).to_u16().unwrap();
-        self.page_setup.page_size.y = read_int(data, seek).to_u16().unwrap();
-        self.page_setup.page_margin.left   = read_int(data, seek).to_u16().unwrap();
-        self.page_setup.page_margin.right  = read_int(data, seek).to_u16().unwrap();
-        self.page_setup.page_margin.top    = read_int(data, seek).to_u16().unwrap();
-        self.page_setup.page_margin.bottom = read_int(data, seek).to_u16().unwrap();
-        self.page_setup.score_size_proportion = read_int(data, seek).to_f32().unwrap() / 100.0;
-        self.page_setup.header_and_footer = read_short(data, seek).to_u16().unwrap();
-        self.page_setup.title =          read_int_size_string(data, seek);
-        self.page_setup.subtitle =       read_int_size_string(data, seek);
-        self.page_setup.artist =         read_int_size_string(data, seek);
-        self.page_setup.album =          read_int_size_string(data, seek);
-        self.page_setup.words =          read_int_size_string(data, seek);
-        self.page_setup.music =          read_int_size_string(data, seek);
-        self.page_setup.word_and_music = read_int_size_string(data, seek);
-        let mut c = read_int_size_string(data, seek);
+    fn read_page_setup(&mut self, data: &[u8], seek: &mut usize) -> GpResult<()> {
+        self.page_setup.page_size.x = read_int(data, seek)?.to_u16().unwrap();
+        self.page_setup.page_size.y = read_int(data, seek)?.to_u16().unwrap();
+        self.page_setup.page_margin.left   = read_int(data, seek)?.to_u16().unwrap();
+        self.page_setup.page_margin.right  = read_int(data, seek)?.to_u16().unwrap();
+        self.page_setup.page_margin.top    = read_int(data, seek)?.to_u16().unwrap();
+        self.page_setup.page_margin.bottom = read_int(data, seek)?.to_u16().unwrap();
+        self.page_setup.score_size_proportion = read_int(data, seek)?.to_f32().unwrap() / 100.0;
+        self.page_setup.header_and_footer = read_short(data, seek)?.to_u16().unwrap();
+        self.page_setup.title =          read_int_size_string(data, seek)?;
+        self.page_setup.subtitle =       read_int_size_string(data, seek)?;
+        self.page_setup.artist =         read_int_size_string(data, seek)?;
+        self.page_setup.album =          read_int_size_string(data, seek)?;
+        self.page_setup.words =          read_int_size_string(data, seek)?;
+        self.page_setup.music =          read_int_size_string(data, seek)?;
+        self.page_setup.word_and_music = read_int_size_string(data, seek)?;
+        let mut c = read_int_size_string(data, seek)?;
         c.push('\n');
-        c.push_str(&read_int_size_string(data, seek));
+        c.push_str(&read_int_size_string(data, seek)?);
         self.page_setup.copyright = c;
-        self.page_setup.page_number = read_int_size_string(data, seek);
+        self.page_setup.page_number = read_int_size_string(data, seek)?;
+        Ok(())
     }
 
-    pub(crate) fn write_page_setup(&self, data: &mut Vec<u8>) {
+    fn write_page_setup(&self, data: &mut Vec<u8>) {
         write_i32(data, self.page_setup.page_size.x.to_i32().unwrap());
         write_i32(data, self.page_setup.page_size.y.to_i32().unwrap());
 
@@ -126,7 +133,7 @@ impl Song {
         write_int_byte_size_string(data, &self.page_setup.subtitle);
         write_int_byte_size_string(data, &self.page_setup.artist);
         write_int_byte_size_string(data, &self.page_setup.album);
-        write_int_byte_size_string(data, &self.page_setup.word_and_music);
+        write_int_byte_size_string(data, &self.page_setup.words);
         write_int_byte_size_string(data, &self.page_setup.music);
         write_int_byte_size_string(data, &self.page_setup.word_and_music);
         let c: Vec<&str> = self.page_setup.copyright.split('\n').collect();

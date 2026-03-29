@@ -1,14 +1,16 @@
+use crate::error::{GpError, GpResult};
+
 
 /// An enumeration of different triplet feels.
 #[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum TripletFeel { None, Eighth, Sixteenth }
-pub(crate) fn get_triplet_feel(value: i8) -> TripletFeel {
+pub(crate) fn get_triplet_feel(value: i8) -> GpResult<TripletFeel> {
     match value {
-        0 => TripletFeel::None,
-        1 => TripletFeel::Eighth,
-        2 => TripletFeel::Sixteenth,
-        _ => panic!("Invalid triplet feel"),
+        0 => Ok(TripletFeel::None),
+        1 => Ok(TripletFeel::Eighth),
+        2 => Ok(TripletFeel::Sixteenth),
+        _ => Err(GpError::InvalidValue { context: "triplet feel", value: value as i64 }),
     }
 }
 pub(crate) fn from_triplet_feel(value: &TripletFeel) -> u8 {
@@ -55,16 +57,16 @@ pub enum SlideType {
     OutDownwards,
     OutUpWards
 }
-pub(crate) fn get_slide_type(value: i8) -> SlideType {
+pub(crate) fn get_slide_type(value: i8) -> GpResult<SlideType> {
     match value {
-        -2 => SlideType::IntoFromAbove,
-        -1 => SlideType::IntoFromBelow,
-        0  => SlideType::None,
-        1  => SlideType::ShiftSlideTo,
-        2  => SlideType::LegatoSlideTo,
-        3  => SlideType::OutDownwards,
-        4  => SlideType::OutUpWards,
-        _ => panic!("Invalid slide type"),
+        -2 => Ok(SlideType::IntoFromAbove),
+        -1 => Ok(SlideType::IntoFromBelow),
+        0  => Ok(SlideType::None),
+        1  => Ok(SlideType::ShiftSlideTo),
+        2  => Ok(SlideType::LegatoSlideTo),
+        3  => Ok(SlideType::OutDownwards),
+        4  => Ok(SlideType::OutUpWards),
+        _ => Err(GpError::InvalidValue { context: "slide type", value: value as i64 }),
     }
 }
 pub(crate) fn from_slide_type(value: &SlideType) -> i8 {
@@ -133,14 +135,14 @@ pub enum TupletBracket {None, Start, End}
 #[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum Octave { None, Ottava, Quindicesima, OttavaBassa, QuindicesimaBassa }
-pub(crate) fn get_octave(value: u8) -> Octave {
+pub(crate) fn get_octave(value: u8) -> GpResult<Octave> {
     match value {
-        0 => Octave::None,
-        1 => Octave::Ottava,
-        2 => Octave::Quindicesima,
-        3 => Octave::OttavaBassa,
-        4 => Octave::QuindicesimaBassa,
-        _ => panic!("Cannot get octave value"),
+        0 => Ok(Octave::None),
+        1 => Ok(Octave::Ottava),
+        2 => Ok(Octave::Quindicesima),
+        3 => Ok(Octave::OttavaBassa),
+        4 => Ok(Octave::QuindicesimaBassa),
+        _ => Err(GpError::InvalidValue { context: "octave", value: value as i64 }),
     }
 }
 pub(crate) fn from_octave(value: &Octave) -> u8 {
@@ -157,12 +159,12 @@ pub(crate) fn from_octave(value: &Octave) -> u8 {
 #[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum BeatStrokeDirection { None, Up, Down }
-pub(crate) fn get_beat_stroke_direction(value: i8) -> BeatStrokeDirection {
+pub(crate) fn get_beat_stroke_direction(value: i8) -> GpResult<BeatStrokeDirection> {
     match value {
-        0 => BeatStrokeDirection::None,
-        1 => BeatStrokeDirection::Up,
-        2 => BeatStrokeDirection::Down,
-        _ => panic!("Cannot read beat stroke direction"),
+        0 => Ok(BeatStrokeDirection::None),
+        1 => Ok(BeatStrokeDirection::Up),
+        2 => Ok(BeatStrokeDirection::Down),
+        _ => Err(GpError::InvalidValue { context: "beat stroke direction", value: value as i64 }),
     }
 }
 pub(crate) fn from_beat_stroke_direction(value: &BeatStrokeDirection) -> i8 {
@@ -176,13 +178,13 @@ pub(crate) fn from_beat_stroke_direction(value: &BeatStrokeDirection) -> i8 {
 #[repr(u8)]
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub enum SlapEffect { None, Tapping, Slapping, Popping }
-pub(crate) fn get_slap_effect(value: u8) -> SlapEffect {
+pub(crate) fn get_slap_effect(value: u8) -> GpResult<SlapEffect> {
     match value {
-        0 => SlapEffect::None,
-        1 => SlapEffect::Tapping,
-        2 => SlapEffect::Slapping,
-        3 => SlapEffect::Popping,
-        _ => panic!("Cannot read slap effect for the beat effects"),
+        0 => Ok(SlapEffect::None),
+        1 => Ok(SlapEffect::Tapping),
+        2 => Ok(SlapEffect::Slapping),
+        3 => Ok(SlapEffect::Popping),
+        _ => Err(GpError::InvalidValue { context: "slap effect", value: value as i64 }),
     }
 }
 pub(crate) fn from_slap_effect(value: &SlapEffect) -> u8 {
@@ -289,12 +291,12 @@ pub enum ChordAlteration {
     /// Augmented.
     Augmented,
 }
-pub(crate) fn get_chord_alteration(value: u8) -> ChordAlteration {
+pub(crate) fn get_chord_alteration(value: u8) -> GpResult<ChordAlteration> {
     match value {
-        0 => ChordAlteration::Perfect,
-        1 => ChordAlteration::Diminished,
-        2 => ChordAlteration::Augmented,
-        _ => panic!("Cannot read chord fifth (new format)"),
+        0 => Ok(ChordAlteration::Perfect),
+        1 => Ok(ChordAlteration::Diminished),
+        2 => Ok(ChordAlteration::Augmented),
+        _ => Err(GpError::InvalidValue { context: "chord alteration", value: value as i64 }),
     }
 }
 pub(crate) fn from_chord_alteration(value: &ChordAlteration) -> u8 {
@@ -413,21 +415,21 @@ pub enum BendType {
     /// Release the bar down.
     ReleaseDown
 }
-pub(crate) fn get_bend_type(value: i8) -> BendType {
+pub(crate) fn get_bend_type(value: i8) -> GpResult<BendType> {
     match value {
-        0 => BendType::None,
-        1 => BendType::Bend,
-        2 => BendType::BendRelease,
-        3 => BendType::BendReleaseBend,
-        4 => BendType::Prebend,
-        5 => BendType::PrebendRelease,
-        6 => BendType::Dip,
-        7 => BendType::Dive,
-        8 => BendType::ReleaseUp,
-        9 => BendType::InvertedDip,
-        10 => BendType::Return,
-        11 => BendType::ReleaseDown,
-        _ => panic!("Cannot read bend type"),
+        0 => Ok(BendType::None),
+        1 => Ok(BendType::Bend),
+        2 => Ok(BendType::BendRelease),
+        3 => Ok(BendType::BendReleaseBend),
+        4 => Ok(BendType::Prebend),
+        5 => Ok(BendType::PrebendRelease),
+        6 => Ok(BendType::Dip),
+        7 => Ok(BendType::Dive),
+        8 => Ok(BendType::ReleaseUp),
+        9 => Ok(BendType::InvertedDip),
+        10 => Ok(BendType::Return),
+        11 => Ok(BendType::ReleaseDown),
+        _ => Err(GpError::InvalidValue { context: "bend type", value: value as i64 }),
     }
 }
 pub(crate) fn from_bend_type(value: &BendType) -> i8 {
@@ -460,13 +462,13 @@ pub enum GraceEffectTransition {
     ///Perform a hammer on.
     Hammer
 }
-pub(crate) fn get_grace_effect_transition(value: i8) -> GraceEffectTransition {
+pub(crate) fn get_grace_effect_transition(value: i8) -> GpResult<GraceEffectTransition> {
     match value {
-        0 => GraceEffectTransition::None,
-        1 => GraceEffectTransition::Slide,
-        2 => GraceEffectTransition::Bend,
-        3 => GraceEffectTransition::Hammer,
-        _ => panic!("Cannot get transition for the grace effect"),
+        0 => Ok(GraceEffectTransition::None),
+        1 => Ok(GraceEffectTransition::Slide),
+        2 => Ok(GraceEffectTransition::Bend),
+        3 => Ok(GraceEffectTransition::Hammer),
+        _ => Err(GpError::InvalidValue { context: "grace effect transition", value: value as i64 }),
     }
 }
 pub(crate) fn from_grace_effect_transition(value: &GraceEffectTransition) -> i8 {
@@ -501,15 +503,15 @@ pub(crate) fn from_harmonic_type(value: &HarmonicType) -> i8 {
 #[repr(u8)]
 #[derive(Debug,Clone)]
 pub enum Accentuation { None, VerySoft, Soft, Medium, Strong, VeryStrong }
-pub(crate) fn get_accentuation(value: u8) -> Accentuation {
+pub(crate) fn get_accentuation(value: u8) -> GpResult<Accentuation> {
     match value {
-        0 => Accentuation::None,
-        1 => Accentuation::VerySoft,
-        2 => Accentuation::Soft,
-        3 => Accentuation::Medium,
-        4 => Accentuation::Strong,
-        5 => Accentuation::VeryStrong,
-        _ => panic!("Cannot get accentuation"),
+        0 => Ok(Accentuation::None),
+        1 => Ok(Accentuation::VerySoft),
+        2 => Ok(Accentuation::Soft),
+        3 => Ok(Accentuation::Medium),
+        4 => Ok(Accentuation::Strong),
+        5 => Ok(Accentuation::VeryStrong),
+        _ => Err(GpError::InvalidValue { context: "accentuation", value: value as i64 }),
     }
 }
 pub(crate) fn from_accentuation(value: &Accentuation) -> u8 {

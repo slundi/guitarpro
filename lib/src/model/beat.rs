@@ -1,6 +1,7 @@
 use fraction::ToPrimitive;
 
-use crate::{mix_table::*, effects::*, chord::*, key_signature::*, note::*, io::*, gp::*, enums::*};
+use crate::{model::{mix_table::*, effects::*, chord::*, key_signature::*, note::*, enums::*, song::*}, io::primitive::*};
+use crate::error::GpResult;
 
 /// Parameters of beat display
 #[derive(Debug,Clone,PartialEq,Eq)]
@@ -21,8 +22,9 @@ impl Default for BeatDisplay { fn default() -> Self { BeatDisplay { break_beam:f
 pub struct BeatStroke {
     pub direction: BeatStrokeDirection,
     pub value: u16,
+    pub swap: bool,
 }
-impl Default for BeatStroke { fn default() -> Self { BeatStroke { direction: BeatStrokeDirection::None, value: 0 }}}
+impl Default for BeatStroke { fn default() -> Self { BeatStroke { direction: BeatStrokeDirection::None, value: 0, swap: false }}}
 impl BeatStroke {
     pub(crate) fn swap_direction(&mut self) {
         if self.direction == BeatStrokeDirection::Up {self.direction = BeatStrokeDirection::Down}
@@ -117,7 +119,24 @@ impl Beat {
     }
 }
 
-impl Song {
+pub trait SongBeatOps {
+    fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> GpResult<i64>;
+    fn read_beat_v5(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: &mut i64, track_index: usize) -> GpResult<i64>;
+    fn read_beat_effects_v3(&self, data: &[u8], seek: &mut usize, note_effect: &mut NoteEffect) -> GpResult<BeatEffects>;
+    fn read_beat_effects_v4(&self, data: &[u8], seek: &mut usize) -> GpResult<BeatEffects>;
+    fn read_beat_stroke(&self, data: &[u8], seek: &mut usize) -> GpResult<BeatStroke>;
+    fn stroke_value(&self, value: i8) -> u8;
+    fn read_tremolo_bar(&self, data: &[u8], seek: &mut usize) -> GpResult<BendEffect>;
+    fn write_beat_v3(&self, data: &mut Vec<u8>, beat: &Beat);
+    fn write_beat(&self, data: &mut Vec<u8>, beat: &Beat, strings: &[(i8,i8)], version: &(u8,u8,u8));
+    fn write_beat_effect_v3(&self, data: &mut  Vec<u8>, beat: &Beat);
+    fn write_beat_effect_v4(&self, data: &mut  Vec<u8>, beat: &Beat, version: &(u8,u8,u8));
+    fn write_tremolo_bar(&self, data: &mut Vec<u8>, bar: &Option<BendEffect>);
+    fn write_beat_stroke(&self, data: &mut Vec<u8>, stroke: &BeatStroke, version: &(u8,u8,u8));
+    fn from_stroke_value(value: u8) -> i8;
+}
+
+impl SongBeatOps for Song {
     /// Read beat. The first byte is the beat flags. It lists the data present in the current beat:
     /// - *0x01*: dotted notes- *0x02*: presence of a chord diagram
     /// - *0x04*: presence of a text
@@ -134,8 +153,8 @@ impl Song {
     /// - Text: `int-byte-size-string`.
     /// - Beat effects. See `BeatEffects::read()`.
     /// - Mix table change effect. See `MixTableChange::read()`.
-    pub(crate) fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> i64 {
-        let flags = read_byte(data, seek);
+    fn read_beat(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: i64, track_index: usize) -> GpResult<i64> {
+        let flags = read_byte(data, seek)?;
         //println!("read_beat(),    flags: {} \t seek: {}", flags, *seek);
         //get a beat
         let mut b = 0;
@@ -149,24 +168,24 @@ impl Song {
             voice.beats.push(Beat{start: Some(start), ..Default::default() });
             b = voice.beats.len() - 1;
         }
-        
-        if (flags & 0x40) == 0x40 { voice.beats[b].status = get_beat_status(read_byte(data, seek));} //else { voice.beats[b].status = BeatStatus::Normal;}
-        let duration = read_duration(data, seek, flags);
+
+        if (flags & 0x40) == 0x40 { voice.beats[b].status = get_beat_status(read_byte(data, seek)?);} //else { voice.beats[b].status = BeatStatus::Normal;}
+        let duration = read_duration(data, seek, flags)?;
         let mut note_effect = NoteEffect::default();
-        if (flags & 0x02) == 0x02 {voice.beats[b].effect.chord = Some(self.read_chord(data, seek, self.tracks[track_index].strings.len().to_u8().unwrap()));}
-        if (flags & 0x04) == 0x04 {voice.beats[b].text = read_int_byte_size_string(data, seek);}
+        if (flags & 0x02) == 0x02 {voice.beats[b].effect.chord = Some(self.read_chord(data, seek, self.tracks[track_index].strings.len().to_u8().unwrap())?);}
+        if (flags & 0x04) == 0x04 {voice.beats[b].text = read_int_byte_size_string(data, seek)?;}
         if (flags & 0x08) == 0x08 {
             let chord = voice.beats[b].effect.chord.clone();
-            if   self.version.number.0 == 3 {voice.beats[b].effect = self.read_beat_effects_v3(data, seek, &mut note_effect); }
-            else                            {voice.beats[b].effect = self.read_beat_effects_v4(data, seek);}
+            if   self.version.number.0 == 3 {voice.beats[b].effect = self.read_beat_effects_v3(data, seek, &mut note_effect)?; }
+            else                            {voice.beats[b].effect = self.read_beat_effects_v4(data, seek)?;}
             voice.beats[b].effect.chord = chord;
         }
         if (flags & 0x10) == 0x10 {
-            let mtc = self.read_mix_table_change(data, seek);
+            let mtc = self.read_mix_table_change(data, seek)?;
             voice.beats[b].effect.mix_table_change = Some(mtc);
         }
-        self.read_notes(data, seek, track_index, &mut voice.beats[b], &duration, note_effect);
-        if voice.beats[b].status == BeatStatus::Empty {0} else {duration.time().to_i64().unwrap()}
+        self.read_notes(data, seek, track_index, &mut voice.beats[b], &duration, note_effect)?;
+        Ok(if voice.beats[b].status == BeatStatus::Empty {0} else {duration.time().to_i64().unwrap()})
     }
     /// Read beat. First, beat is read is in Guitar Pro 3 `guitarpro.gp3.readBeat`. Then it is followed by set of flags stored in `short`.
     /// - *0x0001*: break beams
@@ -183,12 +202,12 @@ impl Song {
     /// - *0x1000*: break secondary tuplet
     /// - *0x2000*: force tuplet bracket
     /// - Break secondary beams: `byte`. Appears if flag at *0x0800* is set. Signifies how much beams should be broken.
-    pub(crate) fn read_beat_v5(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: &mut i64, track_index: usize) -> i64 {
-        let duration = self.read_beat(data, seek, voice, *start, track_index);
+    fn read_beat_v5(&mut self, data: &[u8], seek: &mut usize, voice: &mut Voice, start: &mut i64, track_index: usize) -> GpResult<i64> {
+        let duration = self.read_beat(data, seek, voice, *start, track_index)?;
         //get the beat used in read_beat()
         let b = voice.beats.len() - 1;
 
-        let flags2 = read_short(data, seek);
+        let flags2 = read_short(data, seek)?;
         //println!("read_beat_v5(), flags2: {} \t seek: {}", flags2, *seek);
         if (flags2 & 0x0010) == 0x0010 {voice.beats[b].octave = Octave::Ottava;}
         if (flags2 & 0x0020) == 0x0020 {voice.beats[b].octave = Octave::OttavaBassa;}
@@ -203,9 +222,9 @@ impl Song {
         if (flags2 & 0x0008) == 0x0008 {voice.beats[b].display.beam_direction = VoiceDirection::Up;}
         if (flags2 & 0x0200) == 0x0200 {voice.beats[b].display.tuplet_bracket = TupletBracket::Start;}
         if (flags2 & 0x0400) == 0x0400 {voice.beats[b].display.tuplet_bracket = TupletBracket::End;}
-        if (flags2 & 0x0800) == 0x0800 {voice.beats[b].display.break_secondary = read_byte(data, seek);}
+        if (flags2 & 0x0800) == 0x0800 {voice.beats[b].display.break_secondary = read_byte(data, seek)?;}
 
-        duration
+        Ok(duration)
     }
 
     /// Read beat effects. The first byte is effects flags:
@@ -221,22 +240,22 @@ impl Song {
     /// - *2*: slap
     /// - *3*: pop
     /// - Beat stroke direction. See `BeatStroke::read()`
-    fn read_beat_effects_v3(&self, data: &[u8], seek: &mut usize, note_effect: &mut NoteEffect) -> BeatEffects {
+    fn read_beat_effects_v3(&self, data: &[u8], seek: &mut usize, note_effect: &mut NoteEffect) -> GpResult<BeatEffects> {
         //println!("read_beat_effects()");
         let mut be = BeatEffects::default();
-        let flags = read_byte(data, seek);
+        let flags = read_byte(data, seek)?;
         note_effect.vibrato = (flags & 0x01) == 0x01 || note_effect.vibrato;
         be.vibrato = (flags & 0x02) == 0x02 || be.vibrato;
         be.fade_in = (flags & 0x10) == 0x10;
         if (flags & 0x20) == 0x20 {
-            be.slap_effect = get_slap_effect(read_byte(data, seek));
-            if be.slap_effect == SlapEffect::None {be.tremolo_bar = Some(self.read_tremolo_bar(data, seek));} else {read_int(data, seek);}
+            be.slap_effect = get_slap_effect(read_byte(data, seek)?)?;
+            if be.slap_effect == SlapEffect::None {be.tremolo_bar = Some(self.read_tremolo_bar(data, seek)?);} else {read_int(data, seek)?;}
         }
-        if (flags & 0x40) == 0x40 {be.stroke = self.read_beat_stroke(data, seek);}
+        if (flags & 0x40) == 0x40 {be.stroke = self.read_beat_stroke(data, seek)?;}
         //In GP3 harmonics apply to the whole beat, not the individual notes. Here we set the noteEffect for all the notes in the beat.
         if (flags & 0x04) == 0x04 {note_effect.harmonic = Some(HarmonicEffect::default());}
         if (flags & 0x08) == 0x08 {note_effect.harmonic = Some(HarmonicEffect {kind: HarmonicType::Artificial, ..Default::default()});}
-        be
+        Ok(be)
     }
     ///Read beat effects. Beat effects are read using two byte flags. The first byte of flags is:
     /// - *0x01*: *blank*
@@ -263,27 +282,27 @@ impl Song {
     /// - Tremolo bar. See `readTremoloBar`.
     /// - Beat stroke. See `readBeatStroke`.
     /// - Pick stroke: `signed-byte`. For value mapping see `BeatStrokeDirection`.
-    fn read_beat_effects_v4(&self, data: &[u8], seek: &mut usize) -> BeatEffects {
+    fn read_beat_effects_v4(&self, data: &[u8], seek: &mut usize) -> GpResult<BeatEffects> {
         let mut be = BeatEffects::default();
-        let flags1 = read_signed_byte(data, seek);
-        let flags2 = read_signed_byte(data, seek);
+        let flags1 = read_signed_byte(data, seek)?;
+        let flags2 = read_signed_byte(data, seek)?;
         be.vibrato = (flags1 & 0x02) == 0x02 || be.vibrato;
         be.fade_in = (flags1 & 0x10) == 0x10;
-        if (flags1 & 0x20) == 0x20 {be.slap_effect = get_slap_effect(read_signed_byte(data, seek).to_u8().unwrap());}
-        if (flags2 & 0x04) == 0x04 {be.tremolo_bar = self.read_bend_effect(data, seek);}
-        if (flags1 & 0x40) == 0x40 {be.stroke = self.read_beat_stroke(data, seek);}
+        if (flags1 & 0x20) == 0x20 {be.slap_effect = get_slap_effect(read_signed_byte(data, seek)?.to_u8().unwrap())?;}
+        if (flags2 & 0x04) == 0x04 {be.tremolo_bar = self.read_bend_effect(data, seek)?;}
+        if (flags1 & 0x40) == 0x40 {be.stroke = self.read_beat_stroke(data, seek)?;}
         be.has_rasgueado = (flags2 &0x01) == 0x01;
-        if (flags2 & 0x02) == 0x02 {be.pick_stroke = get_beat_stroke_direction(read_signed_byte(data, seek));}
+        if (flags2 & 0x02) == 0x02 {be.pick_stroke = get_beat_stroke_direction(read_signed_byte(data, seek)?)?;}
         //println!("Beat effect: {:?}", be);
-        be
+        Ok(be)
     }
     /// Read beat stroke. Beat stroke consists of two `Bytes <byte>` which correspond to stroke up
     /// and stroke down speed. See `BeatStrokeDirection` for value mapping.
-    fn read_beat_stroke(&self, data: &[u8], seek: &mut usize) -> BeatStroke {
+    fn read_beat_stroke(&self, data: &[u8], seek: &mut usize) -> GpResult<BeatStroke> {
         //println!("read_beat_stroke()");
         let mut bs = BeatStroke::default();
-        let down = read_signed_byte(data, seek);
-        let up = read_signed_byte(data, seek);
+        let down = read_signed_byte(data, seek)?;
+        let up = read_signed_byte(data, seek)?;
         if up > 0 {
             bs.direction = BeatStrokeDirection::Up;
             bs.value = self.stroke_value(up).to_u16().unwrap();
@@ -293,7 +312,7 @@ impl Song {
             bs.value = self.stroke_value(down).to_u16().unwrap();
         }
         if self.version.number >= (5,0,0) {bs.swap_direction();}
-        bs
+        Ok(bs)
     }
 
     fn stroke_value(&self, value: i8) -> u8 {
@@ -309,19 +328,19 @@ impl Song {
     }
     /// Read tremolo bar beat effect. The only type of tremolo bar effect Guitar Pro 3 supports is `dip <BendType::Dip>`. The value of the
     /// effect is encoded in `Int` and shows how deep tremolo bar is pressed.
-    fn read_tremolo_bar(&self, data: &[u8], seek: &mut usize) -> BendEffect {
+    fn read_tremolo_bar(&self, data: &[u8], seek: &mut usize) -> GpResult<BendEffect> {
         //println!("read_tremolo_bar()");
         let mut be = BendEffect{kind: BendType::Dip, ..Default::default()};
-        be.value = read_int(data, seek).to_i16().unwrap();
+        be.value = read_int(data, seek)?.to_i16().unwrap();
         be.points.push(BendPoint{ position: 0, value: 0, ..Default::default() });
         be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION / 2,
                                   value: (-f32::from(be.value) / GP_BEND_SEMITONE).round().to_i8().unwrap(),
                                   ..Default::default() });
         be.points.push(BendPoint{ position: BEND_EFFECT_MAX_POSITION, value: 0, ..Default::default() });
-        be
+        Ok(be)
     }
 
-    pub(crate) fn write_beat_v3(&self, data: &mut Vec<u8>, beat: &Beat) {
+    fn write_beat_v3(&self, data: &mut Vec<u8>, beat: &Beat) {
         let mut flags = 0u8;
         if beat.duration.dotted {flags |= 0x01;}
         if beat.effect.is_chord() {flags |= 0x02;}
@@ -342,7 +361,7 @@ impl Song {
         self.write_notes(data, beat, &Vec::new(), &(3,0,0));
     }
 
-    pub(crate) fn write_beat(&self, data: &mut Vec<u8>, beat: &Beat, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
+    fn write_beat(&self, data: &mut Vec<u8>, beat: &Beat, strings: &[(i8,i8)], version: &(u8,u8,u8)) {
         let mut flags = 0u8;
         if beat.duration.dotted {flags |= 0x01;}
         if beat.effect.is_chord() {flags |= 0x02;}
@@ -433,8 +452,8 @@ impl Song {
         if version.0 == 5 {stroke.swap_direction();}
         let mut stroke_down = 0i8;
         let mut stroke_up = 0i8;
-        if stroke.direction == BeatStrokeDirection::Up        { stroke_up   = Song::from_stroke_value(stroke.value.to_u8().unwrap()); }
-        else if stroke.direction == BeatStrokeDirection::Down { stroke_down = Song::from_stroke_value(stroke.value.to_u8().unwrap()); }
+        if stroke.direction == BeatStrokeDirection::Up        { stroke_up   = Self::from_stroke_value(stroke.value.to_u8().unwrap()); }
+        else if stroke.direction == BeatStrokeDirection::Down { stroke_down = Self::from_stroke_value(stroke.value.to_u8().unwrap()); }
         write_signed_byte(data, stroke_down);
         write_signed_byte(data, stroke_up);
     }

@@ -1,6 +1,7 @@
 use fraction::ToPrimitive;
 
-use crate::{io::*, gp::*, enums::*, rse::*, measure::*};
+use crate::{io::primitive::*, model::{song::*, enums::*, measure::*, rse::*}, audio::midi::*};
+use crate::error::GpResult;
 
 /// Settings of the track.
 #[derive(Debug,Clone)]
@@ -41,6 +42,7 @@ pub struct Track {
 	pub mute: bool,
     pub visible: bool,
 	pub name: String,
+    pub short_name: String,
     /// A guitar string with a special tuning.
 	pub strings: Vec<(i8, i8)>,
 	pub color: i32,
@@ -54,6 +56,12 @@ pub struct Track {
     pub rse: TrackRse,
     pub measures: Vec<Measure>,
     pub settings: TrackSettings,
+    /// MIDI program from GPIF (GP6/GP7)
+    pub midi_program_gpif: Option<i32>,
+    /// Chromatic transposition (GP6/GP7)
+    pub transpose_chromatic: i32,
+    /// Octave transposition (GP6/GP7)
+    pub transpose_octave: i32,
 }
 impl Default for Track {
     fn default() -> Self { Track {
@@ -62,6 +70,7 @@ impl Default for Track {
         channel_index: 0, //channel_id: 25,
         solo: false, mute: false, visible: true,
         name: String::from("Track 1"),
+        short_name: String::new(),
         strings: vec![(1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)],
         banjo_track: false, twelve_stringed_guitar_track: false, percussion_track: false,
         fret_count: 24,
@@ -71,24 +80,40 @@ impl Default for Track {
         use_rse: false, rse: TrackRse::default(),
         measures: Vec::new(),
         settings: TrackSettings::default(),
+        midi_program_gpif: None,
+        transpose_chromatic: 0,
+        transpose_octave: 0,
     }}
 }
-impl Song {
+
+pub trait SongTrackOps {
+    fn read_tracks(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()>;
+    fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()>;
+    fn read_track(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()>;
+    fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()>;
+    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8,u8,u8));
+    fn write_track(&self, data: &mut Vec<u8>, number: usize);
+    fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8,u8,u8));
+}
+
+impl SongTrackOps for Song {
     /// Read tracks. The tracks are written one after another, their number having been specified previously in :meth:`GP3File.readSong`.
     /// - `track_count`: number of tracks to expect.
-    pub(crate) fn read_tracks(&mut self, data: &[u8], seek: &mut usize, track_count: usize) {
+    fn read_tracks(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()> {
         //println!("read_tracks()");
-        for i in 0..track_count {self.read_track(data, seek, i);}
+        for i in 0..track_count {self.read_track(data, seek, i)?;}
+        Ok(())
     }
 
-    pub(crate) fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize) {
+    fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()> {
         //println!("read_tracks_v5(): {:?} {}", self.version.number, self.version.number == (5,1,0));
-        for i in 0..track_count { self.read_track_v5(data, seek, i); }
+        for i in 0..track_count { self.read_track_v5(data, seek, i)?; }
         *seek += if self.version.number == (5,0,0) {2} else {1};
+        Ok(())
     }
 
     /// Read a  track. The first byte is the track's flags. It presides the track's attributes:
-    /// 
+    ///
     /// | **bit 7 to 3** | **bit 2**   | **bit 1**                | **bit 0**   |
     /// |----------------|-------------|--------------------------|-------------|
     /// | Blank bits     | Banjo track | 12 stringed guitar track | Drums track |
@@ -104,31 +129,32 @@ impl Song {
     /// * **Number of frets**: `integer`. The number of frets of the instrument.
     /// * **Height of the capo**: `integer`. The number of the fret on which a capo is present. If no capo is used, the value is `0x00000000`.
     /// * **Track's color**: `color`. The track's displayed color in Guitar Pro.
-    fn read_track(&mut self, data: &[u8], seek: &mut usize, number: usize) {
+    fn read_track(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()> {
         let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
         //read the flag
-        let flags = read_byte(data, seek);
+        let flags = read_byte(data, seek)?;
         //println!("read_track(), flags: {}", flags);
         track.percussion_track = (flags & 0x01) == 0x01; //Drums track
         track.twelve_stringed_guitar_track = (flags & 0x02) == 0x02; //12 stringed guitar track
         track.banjo_track = (flags & 0x04) == 0x04; //Banjo track
 
-        track.name = read_byte_size_string(data, seek, 40);
-        let string_count = read_int(data, seek).to_u8().unwrap();
+        track.name = read_byte_size_string(data, seek, 40)?;
+        let string_count = read_int(data, seek)?.to_u8().unwrap();
         track.strings.clear();
         for i in 0..7i8 {
-            let i_tuning = read_int(data, seek).to_i8().unwrap();
+            let i_tuning = read_int(data, seek)?.to_i8().unwrap();
             if string_count.to_i8().unwrap() > i { track.strings.push((i + 1, i_tuning)); }
         }
         //println!("tuning: {:?}", track.strings);
-        track.port = read_int(data, seek).to_u8().unwrap();
-        let index = self.read_channel(data, seek);
+        track.port = read_int(data, seek)?.to_u8().unwrap();
+        let index = self.read_channel(data, seek)?;
         if self.channels[index].channel == 9 {track.percussion_track = true;}
-        track.fret_count = read_int(data, seek).to_u8().unwrap();
-        track.offset = read_int(data, seek);
-        track.color = read_color(data, seek);
-        println!("\tInstrument: {} \t Strings: {}/{} ({:?})", self.channels[index].get_instrument_name(), string_count, track.strings.len(), track.strings);
+        track.fret_count = read_int(data, seek)?.to_u8().unwrap();
+        track.offset = read_int(data, seek)?;
+        track.color = read_color(data, seek)?;
+        //println!("\tInstrument: {} \t Strings: {}/{} ({:?})", self.channels[index].get_instrument_name(), string_count, track.strings.len(), track.strings);
         self.tracks.push(track);
+        Ok(())
     }
 
     /// Read track. If it's Guitar Pro 5.0 format and track is first then one blank byte is read. Then go track's flags. It presides the track's attributes:
@@ -140,7 +166,7 @@ impl Song {
     /// - *0x20*: track is muted
     /// - *0x40*: RSE is enabled
     /// - *0x80*: show tuning in the header of the sheet.
-    /// 
+    ///
     /// Flags are followed by:
     /// - Name: `String`. A 40 characters long string containing the track's name.
     /// - Number of strings: :ref:`int`. An integer equal to the number of strings of the track.
@@ -150,7 +176,7 @@ impl Song {
     /// - Number of frets: :ref:`int`. The number of frets of the instrument.
     /// - Height of the capo: :ref:`int`. The number of the fret on which a capo is set. If no capo is used, the value is 0.
     /// - Track's color. The track's displayed color in Guitar Pro.
-    /// 
+    ///
     /// The properties are followed by second set of flags stored in a :ref:`short`:
     /// - *0x0001*: show tablature
     /// - *0x0002*: show standard notation
@@ -163,15 +189,15 @@ impl Song {
     /// - *0x0200*: auto let-ring
     /// - *0x0400*: auto brush
     /// - *0x0800*: extend rhythmic inside the tab
-    /// 
+    ///
     /// Then follow:
     /// - Auto accentuation: :ref:`byte`. See :class:`guitarpro.models.Accentuation`.
     /// - MIDI bank: :ref:`byte`.
     /// - Track RSE. See `readTrackRSE`.
-    fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) {
+    fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()> {
         let mut track = Track{number: number.to_i32().unwrap(), ..Default::default()};
         if number == 0 || self.version.number == (5,0,0) {*seek += 1;} //always 0 //missing 3 skips?
-        let flags1 = read_byte(data, seek);
+        let flags1 = read_byte(data, seek)?;
         //println!("read_track_v5(), flags1: {} \t seek: {}", flags1, *seek);
         track.percussion_track  = (flags1 & 0x01) == 0x01;
         track.banjo_track       = (flags1 & 0x02) == 0x02;
@@ -180,24 +206,24 @@ impl Song {
         track.mute              = (flags1 & 0x20) == 0x20;
         track.use_rse           = (flags1 & 0x40) == 0x40;
         track.indicate_tuning   = (flags1 & 0x80) == 0x80;
-        track.name              = read_byte_size_string(data, seek, 40);
+        track.name              = read_byte_size_string(data, seek, 40)?;
         //let string_count = read_int(data, seek).to_u8().unwrap();
-        let sc = read_int(data, seek);
+        let sc = read_int(data, seek)?;
         //println!("read_track_v5(), track:name: \"{}\", string count: {}", track.name, sc);
         let string_count = sc.to_u8().unwrap();
         track.strings.clear();
         for i in 0i8..7i8 {
-            let i_tuning = read_int(data, seek).to_i8().unwrap();
+            let i_tuning = read_int(data, seek)?.to_i8().unwrap();
             if string_count.to_i8().unwrap() > i { track.strings.push((i + 1, i_tuning)); }
         }
-        track.port = read_int(data, seek).to_u8().unwrap();
-        self.read_channel(data, seek);
+        track.port = read_int(data, seek)?.to_u8().unwrap();
+        self.read_channel(data, seek)?;
         if self.channels[number].channel == 9 {track.percussion_track = true;}
-        track.fret_count    = read_int(data, seek).to_u8().unwrap();
-        track.offset        = read_int(data, seek);
-        track.color         = read_color(data, seek);
+        track.fret_count    = read_int(data, seek)?.to_u8().unwrap();
+        track.offset        = read_int(data, seek)?;
+        track.color         = read_color(data, seek)?;
 
-        let flags2 = read_short(data, seek);
+        let flags2 = read_short(data, seek)?;
         //println!("read_track_v5(), flags2: {}", flags2);
         track.settings.tablature            = (flags2 & 0x0001) == 0x0001;
         track.settings.notation             = (flags2 & 0x0002) == 0x0002;
@@ -212,13 +238,14 @@ impl Song {
         track.settings.auto_brush           = (flags2 & 0x0400) == 0x0400;
         track.settings.extend_rythmic       = (flags2 & 0x0800) == 0x0800;
 
-        track.rse.auto_accentuation = get_accentuation(read_byte(data, seek));
-        self.channels[number].bank = read_byte(data, seek);
-        self.read_track_rse(data, seek, &mut track);
+        track.rse.auto_accentuation = get_accentuation(read_byte(data, seek)?)?;
+        self.channels[number].bank = read_byte(data, seek)?;
+        self.read_track_rse(data, seek, &mut track)?;
         self.tracks.push(track);
+        Ok(())
     }
 
-    pub(crate) fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8,u8,u8)) {
+    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8,u8,u8)) {
         for i in 0..self.tracks.len() {
             //self.current_track = Some(i);
             if version.0 < 5 {self.write_track(data, i);}
