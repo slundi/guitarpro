@@ -13,6 +13,23 @@ struct Args {
     /// Input file path (.gp3, .gp4, .gp5)
     #[clap(short, long)]
     input: String,
+    
+    /// Action
+    #[clap(
+        short = 'a',
+        long = "action",
+        help = "Available actions are: find-duplicates, convert, extract, print, search and apply"
+    )]
+    action: String,
+
+    #[clap(short = 'p', long = "print", help = "Print informations")]
+    print: bool,
+    #[clap(short = 'd', long = "duplicates", help = "Find duplicates")]
+    print: bool,
+
+    /// Input file
+    #[clap(short = 'i', long, help = "Input file path")]
+    input: String,
 
     /// Show full tablature for the first track
     #[clap(short, long)]
