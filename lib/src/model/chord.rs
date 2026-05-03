@@ -291,11 +291,11 @@ impl SongChordOps for Song {
         for _ in 0u8..2u8 {
             barre_ends.push(read_int(data, seek)?);
         }
-        for i in 0..barre_count {
+        for i in 0..barre_count.min(2) {
             chord.barres.push(Barre {
-                fret: barre_frets[i].to_i8().unwrap(),
-                start: barre_starts[i].to_i8().unwrap(),
-                end: barre_ends[i].to_i8().unwrap(),
+                fret: barre_frets[i] as i8,
+                start: barre_starts[i] as i8,
+                end: barre_ends[i] as i8,
             });
         }
 
@@ -340,26 +340,23 @@ impl SongChordOps for Song {
         chord.sharp = Some(read_bool(data, seek)?);
         *seek += 3;
         chord.root = Some(PitchClass::from(
-            read_byte(data, seek)?.to_i8().unwrap(),
+            read_byte(data, seek)? as i8,
             None,
             chord.sharp,
         ));
         chord.kind = Some(get_chord_type(read_byte(data, seek)?));
         chord.extension = Some(get_chord_extension(read_byte(data, seek)?));
         let i = read_int(data, seek)?;
-        //println!("{:?}", i);
-        chord.bass = Some(PitchClass::from(i.to_i8().unwrap(), None, chord.sharp));
-        chord.tonality = Some(get_chord_alteration(
-            read_int(data, seek)?.to_u8().unwrap(),
-        )?);
+        chord.bass = Some(PitchClass::from(i as i8, None, chord.sharp));
+        chord.tonality = Some(get_chord_alteration(read_int(data, seek)? as u8)?);
         chord.add = Some(read_bool(data, seek)?);
         chord.name = read_byte_size_string(data, seek, 22)?;
         chord.fifth = Some(get_chord_alteration(read_byte(data, seek)?)?);
         chord.ninth = Some(get_chord_alteration(read_byte(data, seek)?)?);
         chord.eleventh = Some(get_chord_alteration(read_byte(data, seek)?)?);
-        chord.first_fret = Some(read_int(data, seek)?.to_u8().unwrap());
+        chord.first_fret = Some(read_int(data, seek)? as u8);
         for i in 0u8..7u8 {
-            let fret = read_int(data, seek)?.to_i8().unwrap();
+            let fret = read_int(data, seek)? as i8;
             if i < chord.strings.len().to_u8().unwrap() {
                 chord.strings.push(fret);
             } //chord.strings[i] = fret;
@@ -378,11 +375,11 @@ impl SongChordOps for Song {
         for _ in 0u8..5u8 {
             barre_ends.push(read_byte(data, seek)?);
         }
-        for i in 0..barre_count {
+        for i in 0..barre_count.min(5) {
             chord.barres.push(Barre {
-                fret: barre_frets[i].to_i8().unwrap(),
-                start: barre_starts[i].to_i8().unwrap(),
-                end: barre_ends[i].to_i8().unwrap(),
+                fret: barre_frets[i] as i8,
+                start: barre_starts[i] as i8,
+                end: barre_ends[i] as i8,
             });
         }
         for _ in 0u8..7u8 {
@@ -533,31 +530,31 @@ impl SongChordOps for Song {
             write_signed_byte(data, 1); //signify GP4 chord format
             write_bool(data, c.sharp == Some(true));
             write_placeholder_default(data, 3);
-            //root
+            //root (byte in GP4)
             if let Some(r) = &c.root {
-                write_i32(data, r.value.to_i32().unwrap());
+                write_byte(data, r.value as u8);
             } else {
-                write_i32(data, 0);
+                write_byte(data, 0);
             }
-            //chord type
+            //chord type (byte in GP4)
             if let Some(t) = &c.kind {
-                write_i32(data, from_chord_type(t).to_i32().unwrap());
+                write_byte(data, from_chord_type(t));
             } else {
-                write_i32(data, 0);
+                write_byte(data, 0);
             }
-            //chord extension
+            //chord extension (byte in GP4)
             if let Some(e) = &c.extension {
-                write_i32(data, from_chord_extension(e).to_i32().unwrap());
+                write_byte(data, from_chord_extension(e));
             } else {
-                write_i32(data, 0);
+                write_byte(data, 0);
             }
-            //bass
+            //bass (int)
             if let Some(b) = &c.bass {
                 write_i32(data, b.value.to_i32().unwrap());
             } else {
                 write_i32(data, 0);
             }
-            //tonality
+            //tonality (int)
             if let Some(t) = &c.tonality {
                 write_i32(data, from_chord_alteration(t).to_i32().unwrap());
             } else {
@@ -565,48 +562,43 @@ impl SongChordOps for Song {
             }
             //
             write_bool(data, c.add == Some(true));
+            let name_bytes = c.name.len().min(22);
             write_byte_size_string(data, &c.name);
-            write_placeholder_default(data, 22 - c.name.len());
-            //fifth, ninth, eleventh
+            write_placeholder_default(data, 22 - name_bytes);
+            //fifth, ninth, eleventh (bytes in GP4)
             if let Some(f) = &c.fifth {
-                write_i32(data, from_chord_alteration(f).to_i32().unwrap());
+                write_byte(data, from_chord_alteration(f));
             } else {
-                write_i32(data, 0);
+                write_byte(data, 0);
             }
             if let Some(n) = &c.ninth {
-                write_i32(data, from_chord_alteration(n).to_i32().unwrap());
+                write_byte(data, from_chord_alteration(n));
             } else {
-                write_i32(data, 0);
+                write_byte(data, 0);
             }
             if let Some(e) = &c.eleventh {
-                write_i32(data, from_chord_alteration(e).to_i32().unwrap());
+                write_byte(data, from_chord_alteration(e));
             } else {
-                write_i32(data, 0);
+                write_byte(data, 0);
             }
-            //first fret
+            //first fret (int)
             if let Some(ff) = c.first_fret {
                 write_i32(data, ff.to_i32().unwrap());
             } else {
                 write_i32(data, 0);
             }
-            //strings
-            for i in 0..6 {
+            //strings: 7 ints in GP4
+            for i in 0..7 {
                 if i < c.strings.len() {
                     write_i32(data, c.strings[i].to_i32().unwrap());
                 } else {
                     write_i32(data, -1);
                 }
             }
-            //barre
-            let mut barres: Vec<Barre> = Vec::with_capacity(2);
-            for i in 0..2usize {
-                if i < c.barres.len() {
-                    barres.push(c.barres[i].clone());
-                } else {
-                    break;
-                }
-            }
-            write_i32(data, barres.len().to_i32().unwrap());
+            //barre: count is byte, arrays are 5 bytes each in GP4
+            let barre_count = c.barres.len().min(5);
+            write_byte(data, barre_count as u8);
+            let mut barres = c.barres.clone();
             while barres.len() < 5 {
                 barres.push(Barre {
                     fret: 0,
@@ -615,13 +607,13 @@ impl SongChordOps for Song {
                 });
             }
             for b in barres.iter().take(5) {
-                write_i32(data, b.fret.to_i32().unwrap());
+                write_byte(data, b.fret as u8);
             }
             for b in barres.iter().take(5) {
-                write_i32(data, b.start.to_i32().unwrap());
+                write_byte(data, b.start as u8);
             }
             for b in barres.iter().take(5) {
-                write_i32(data, b.end.to_i32().unwrap());
+                write_byte(data, b.end as u8);
             }
             //omissions
             for i in 0..7usize {

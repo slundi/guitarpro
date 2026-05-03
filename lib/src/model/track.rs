@@ -316,7 +316,7 @@ impl SongTrackOps for Song {
         }
         write_byte(data, flags);
         write_byte_size_string(data, &self.tracks[number].name);
-        write_placeholder_default(data, 30 - self.tracks[number].name.len());
+        write_placeholder_default(data, 40 - self.tracks[number].name.len());
         write_i32(data, self.tracks[number].strings.len().to_i32().unwrap());
         for i in 0..7usize {
             let mut tuning = 0i8;
@@ -349,7 +349,7 @@ impl SongTrackOps for Song {
         write_color(data, self.tracks[number].color);
     }
     fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8, u8, u8)) {
-        if number == 1 || version == &(5, 0, 0) {
+        if number == 0 || version == &(5, 0, 0) {
             write_placeholder_default(data, 1);
         }
         let mut flags1 = 0u8;

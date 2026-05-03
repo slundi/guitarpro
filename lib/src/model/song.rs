@@ -277,7 +277,7 @@ impl Song {
         }
         if version.0 >= 5 {
             self.write_page_setup(&mut data);
-            write_int_byte_size_string(&mut data, &self.tempo_name);
+            write_int_size_string(&mut data, &self.tempo_name);
         }
         write_i32(&mut data, self.tempo.to_i32_gp("tempo")?);
         if version > (5, 0, 0) {

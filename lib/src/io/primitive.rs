@@ -270,24 +270,29 @@ pub(crate) fn write_color(data: &mut Vec<u8>, value: i32) {
     write_byte(data, b);
     write_placeholder_default(data, 1);
 }
+fn encode_windows1252(value: &str) -> std::borrow::Cow<'_, [u8]> {
+    let (encoded, _, _) = WINDOWS_1252.encode(value);
+    encoded
+}
+
 pub(crate) fn write_byte_size_string(data: &mut Vec<u8>, value: &str) {
-    // Truncate to 255 if longer (max u8)
-    let count = value.chars().count().min(255) as u8;
+    let encoded = encode_windows1252(value);
+    let count = encoded.len().min(255) as u8;
     write_byte(data, count);
-    data.extend(value.as_bytes().iter().take(count as usize));
+    data.extend(encoded.iter().take(count as usize));
 }
 pub(crate) fn write_int_size_string(data: &mut Vec<u8>, value: &str) {
-    let count = value.chars().count() as i32;
-    write_i32(data, count + 1);
-    data.extend(value.as_bytes());
+    let encoded = encode_windows1252(value);
+    write_i32(data, encoded.len() as i32);
+    data.extend(encoded.iter());
 }
 
 pub(crate) fn write_int_byte_size_string(data: &mut Vec<u8>, value: &str) {
-    let count = value.chars().count();
+    let encoded = encode_windows1252(value);
+    let count = encoded.len().min(255);
     write_i32(data, count as i32 + 1);
-    // Truncate byte length to 255 if longer
-    write_byte(data, count.min(255) as u8);
-    data.extend(value.as_bytes());
+    write_byte(data, count as u8);
+    data.extend(encoded.iter().take(count));
 }
 
 pub(crate) fn write_version(data: &mut Vec<u8>, version: (u8, u8, u8)) {
@@ -352,9 +357,9 @@ mod test {
     fn test_write_int_size_string() {
         let mut out: Vec<u8> = Vec::with_capacity(16);
         write_int_size_string(&mut out, "%ARTIST%");
-        // int_size_string = int(length+1), then string bytes (no byte length)
+        // int_size_string = int(length), then string bytes (no byte length prefix)
         let expected_result: Vec<u8> = vec![
-            0x09, 0x00, 0x00, 0x00, 0x25, 0x41, 0x52, 0x54, 0x49, 0x53, 0x54, 0x25,
+            0x08, 0x00, 0x00, 0x00, 0x25, 0x41, 0x52, 0x54, 0x49, 0x53, 0x54, 0x25,
         ];
         assert_eq!(out, expected_result);
     }

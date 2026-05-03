@@ -205,10 +205,7 @@ pub(crate) fn get_beat_stroke_direction(value: i8) -> GpResult<BeatStrokeDirecti
         0 => Ok(BeatStrokeDirection::None),
         1 => Ok(BeatStrokeDirection::Up),
         2 => Ok(BeatStrokeDirection::Down),
-        _ => Err(GpError::InvalidValue {
-            context: "beat stroke direction",
-            value: value as i64,
-        }),
+        _ => Ok(BeatStrokeDirection::None),
     }
 }
 pub(crate) fn from_beat_stroke_direction(value: &BeatStrokeDirection) -> i8 {
@@ -233,10 +230,7 @@ pub(crate) fn get_slap_effect(value: u8) -> GpResult<SlapEffect> {
         1 => Ok(SlapEffect::Tapping),
         2 => Ok(SlapEffect::Slapping),
         3 => Ok(SlapEffect::Popping),
-        _ => Err(GpError::InvalidValue {
-            context: "slap effect",
-            value: value as i64,
-        }),
+        _ => Ok(SlapEffect::None),
     }
 }
 pub(crate) fn from_slap_effect(value: &SlapEffect) -> u8 {
@@ -351,10 +345,7 @@ pub(crate) fn get_chord_alteration(value: u8) -> GpResult<ChordAlteration> {
         0 => Ok(ChordAlteration::Perfect),
         1 => Ok(ChordAlteration::Diminished),
         2 => Ok(ChordAlteration::Augmented),
-        _ => Err(GpError::InvalidValue {
-            context: "chord alteration",
-            value: value as i64,
-        }),
+        _ => Ok(ChordAlteration::Perfect),
     }
 }
 pub(crate) fn from_chord_alteration(value: &ChordAlteration) -> u8 {
@@ -487,10 +478,7 @@ pub(crate) fn get_bend_type(value: i8) -> GpResult<BendType> {
         9 => Ok(BendType::InvertedDip),
         10 => Ok(BendType::Return),
         11 => Ok(BendType::ReleaseDown),
-        _ => Err(GpError::InvalidValue {
-            context: "bend type",
-            value: value as i64,
-        }),
+        _ => Ok(BendType::None),
     }
 }
 pub(crate) fn from_bend_type(value: &BendType) -> i8 {
@@ -529,10 +517,7 @@ pub(crate) fn get_grace_effect_transition(value: i8) -> GpResult<GraceEffectTran
         1 => Ok(GraceEffectTransition::Slide),
         2 => Ok(GraceEffectTransition::Bend),
         3 => Ok(GraceEffectTransition::Hammer),
-        _ => Err(GpError::InvalidValue {
-            context: "grace effect transition",
-            value: value as i64,
-        }),
+        _ => Ok(GraceEffectTransition::None),
     }
 }
 pub(crate) fn from_grace_effect_transition(value: &GraceEffectTransition) -> i8 {

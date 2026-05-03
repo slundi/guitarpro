@@ -225,7 +225,6 @@ impl SongRseOps for Song {
         for i in 0..equalizer.knobs.len() {
             write_signed_byte(data, self.pack_volume_value(equalizer.knobs[i]));
         }
-        write_signed_byte(data, self.pack_volume_value(equalizer.gain));
     }
     fn pack_volume_value(&self, value: f32) -> i8 {
         (-value * 10f32).round().to_i8().unwrap() //int(-round(value, 1) * 10)

@@ -260,25 +260,18 @@ impl SongMidiOps for Song {
 
     fn write_midi_channels(&self, data: &mut Vec<u8>) {
         for i in 0..self.channels.len() {
-            println!("writing channel: {:?}", self.channels[i]);
             if self.channels[i].is_percussion_channel() && self.channels[i].instrument == 0 {
                 write_i32(data, -1);
             } else {
                 write_i32(data, self.channels[i].instrument);
             }
-            write_signed_byte(data, Self::from_channel_short(self.channels[i].volume));
-            write_signed_byte(data, Self::from_channel_short(self.channels[i].balance));
-            write_signed_byte(data, Self::from_channel_short(self.channels[i].chorus));
-            write_signed_byte(data, Self::from_channel_short(self.channels[i].reverb));
-            write_signed_byte(data, Self::from_channel_short(self.channels[i].phaser));
-            write_signed_byte(data, Self::from_channel_short(self.channels[i].tremolo));
+            write_signed_byte(data, self.channels[i].volume);
+            write_signed_byte(data, self.channels[i].balance);
+            write_signed_byte(data, self.channels[i].chorus);
+            write_signed_byte(data, self.channels[i].reverb);
+            write_signed_byte(data, self.channels[i].phaser);
+            write_signed_byte(data, self.channels[i].tremolo);
             write_placeholder_default(data, 2); //Backward compatibility with version 3.0
         }
-    }
-}
-
-impl Song {
-    fn from_channel_short(data: i8) -> i8 {
-        ((data >> 3) - 1).clamp(-128, 127) + 1
     }
 }

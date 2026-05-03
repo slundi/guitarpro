@@ -149,10 +149,7 @@ fn from_tremolo_value(value: i8) -> GpResult<u8> {
         1 => Ok(DURATION_EIGHTH),
         3 => Ok(DURATION_SIXTEENTH),
         2 => Ok(DURATION_THIRTY_SECOND),
-        _ => Err(crate::error::GpError::InvalidValue {
-            context: "tremolo picking value",
-            value: value as i64,
-        }),
+        _ => Ok(DURATION_SIXTEENTH),
     }
 }
 
@@ -203,10 +200,7 @@ fn from_trill_period(period: i8) -> GpResult<u16> {
         1 => Ok(DURATION_SIXTEENTH),
         2 => Ok(DURATION_THIRTY_SECOND),
         3 => Ok(DURATION_SIXTY_FOURTH),
-        _ => Err(crate::error::GpError::InvalidValue {
-            context: "trill period",
-            value: period as i64,
-        }),
+        _ => Ok(DURATION_SIXTEENTH),
     }
     .map(|v| v.to_u16().unwrap())
 }
@@ -294,12 +288,17 @@ impl SongEffectOps for Song {
     ///   - *0x02*: grace note is on beat
     fn read_grace_effect_v5(&self, data: &[u8], seek: &mut usize) -> GpResult<GraceEffect> {
         let mut g = GraceEffect {
-            fret: read_byte(data, seek)?.to_i8().unwrap(),
+            fret: read_byte(data, seek)? as i8,
             ..Default::default()
         };
-        g.velocity = unpack_velocity(read_byte(data, seek)?.to_i16().unwrap());
-        g.transition = get_grace_effect_transition(read_byte(data, seek)?.to_i8().unwrap())?;
-        g.duration = 1 << (7 - read_byte(data, seek)?);
+        g.velocity = unpack_velocity(read_byte(data, seek)? as i16);
+        g.transition = get_grace_effect_transition(read_byte(data, seek)? as i8)?;
+        let dur_byte = read_byte(data, seek)?;
+        g.duration = if dur_byte <= 7 {
+            1 << (7 - dur_byte)
+        } else {
+            1
+        };
         let flags = read_byte(data, seek)?;
         g.is_dead = (flags & 0x01) == 0x01;
         g.is_on_beat = (flags & 0x02) == 0x02;
@@ -404,12 +403,7 @@ impl SongEffectOps for Song {
                 he.octave = Some(Octave::Ottava);
                 he.kind = HarmonicType::Artificial;
             }
-            v => {
-                return Err(crate::error::GpError::InvalidValue {
-                    context: "harmonic type",
-                    value: v as i64,
-                })
-            }
+            _ => he.kind = HarmonicType::Natural,
         };
         Ok(he)
     }
@@ -437,23 +431,18 @@ impl SongEffectOps for Song {
                 // b = -1, # = 1
                 // loco = 0, 8va = 1, 15ma = 2
                 he.kind = HarmonicType::Artificial;
-                let semitone = read_byte(data, seek)?.to_i8().unwrap();
+                let semitone = read_byte(data, seek)? as i8;
                 let accidental = read_signed_byte(data, seek)?;
                 he.pitch = Some(PitchClass::from(semitone, Some(accidental), None));
                 he.octave = Some(get_octave(read_byte(data, seek)?)?);
             }
             3 => {
                 he.kind = HarmonicType::Tapped;
-                he.fret = Some(read_byte(data, seek)?.to_i8().unwrap());
+                he.fret = Some(read_byte(data, seek)? as i8);
             }
             4 => he.kind = HarmonicType::Pinch,
             5 => he.kind = HarmonicType::Semi,
-            v => {
-                return Err(crate::error::GpError::InvalidValue {
-                    context: "harmonic type",
-                    value: v as i64,
-                })
-            }
+            _ => he.kind = HarmonicType::Natural,
         };
         Ok(he)
     }
@@ -528,16 +517,20 @@ impl SongEffectOps for Song {
     ) -> GpResult<()> {
         if let Some(h) = &note.effect.harmonic {
             let mut byte = from_harmonic_type(&h.kind);
-            if h.kind != HarmonicType::Artificial {
+            if h.kind == HarmonicType::Artificial {
+                // Default to 22 for Artificial harmonics
+                byte = 22;
+
                 if let (Some(p), Some(o)) = (&h.pitch, &h.octave) {
                     let real_val = note.real_value(strings)?;
                     if p.value == ((real_val + 7) % 12) && *o == Octave::Ottava {
                         byte = 15;
                     } else if p.value == (real_val % 12) && *o == Octave::Quindicesima {
                         byte = 17;
-                    } else if p.value == (real_val % 12) && *o == Octave::Ottava {
-                        byte = 22;
                     }
+                    /* else if p.value == (real_val % 12) && *o == Octave::Ottava {
+                        byte = 22;
+                    }*/
                 } else {
                     byte = 22;
                 }
@@ -554,12 +547,18 @@ impl SongEffectOps for Song {
     ) -> GpResult<()> {
         if let Some(h) = &note.effect.harmonic {
             write_signed_byte(data, from_harmonic_type(&h.kind));
-            if h.kind == HarmonicType::Artificial && (h.pitch.is_none() || h.octave.is_none()) {
-                let p = PitchClass::from(note.real_value(strings)? % 12, None, None);
-                let o = Octave::Ottava;
-                write_byte(data, p.just.to_u8_gp("pitch class just")?);
-                write_signed_byte(data, p.accidental);
-                write_byte(data, from_octave(&o));
+            if h.kind == HarmonicType::Artificial {
+                if let (Some(p), Some(o)) = (&h.pitch, &h.octave) {
+                    write_byte(data, p.just.to_u8_gp("pitch class just")?);
+                    write_signed_byte(data, p.accidental);
+                    write_byte(data, from_octave(o));
+                } else {
+                    let p = PitchClass::from(note.real_value(strings)? % 12, None, None);
+                    let o = Octave::Ottava;
+                    write_byte(data, p.just.to_u8_gp("pitch class just")?);
+                    write_signed_byte(data, p.accidental);
+                    write_byte(data, from_octave(&o));
+                }
             } else if h.kind == HarmonicType::Tapped {
                 let fret = h.fret.ok_or(GpError::MissingState {
                     field: "harmonic fret",

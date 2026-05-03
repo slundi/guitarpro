@@ -676,7 +676,7 @@ impl SongNoteOps for Song {
         if note.effect.ghost_note {
             flags |= 0x04;
         }
-        if note.effect.is_default() {
+        if !note.effect.is_default() {
             flags |= 0x08;
         }
         if note.velocity != DEFAULT_VELOCITY {
@@ -750,22 +750,22 @@ impl SongNoteOps for Song {
             flags2 |= 0x01;
         }
         if note.effect.palm_mute {
-            flags2 |= 0x01;
+            flags2 |= 0x02;
         }
         if note.effect.is_tremollo_picking() {
-            flags2 |= 0x01;
+            flags2 |= 0x04;
         }
         if !note.effect.slides.is_empty() {
-            flags2 |= 0x01;
+            flags2 |= 0x08;
         }
         if note.effect.is_harmonic() {
-            flags2 |= 0x01;
+            flags2 |= 0x10;
         }
         if note.effect.is_trill() {
-            flags2 |= 0x01;
+            flags2 |= 0x20;
         }
         if note.effect.vibrato {
-            flags2 |= 0x01;
+            flags2 |= 0x40;
         }
         write_signed_byte(data, flags2);
 

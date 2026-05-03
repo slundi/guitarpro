@@ -165,16 +165,16 @@ impl SongPageOps for Song {
             flags2 |= 0x01;
         } //TODO: check
         write_byte(data, flags2);
-        write_int_byte_size_string(data, &self.page_setup.title);
-        write_int_byte_size_string(data, &self.page_setup.subtitle);
-        write_int_byte_size_string(data, &self.page_setup.artist);
-        write_int_byte_size_string(data, &self.page_setup.album);
-        write_int_byte_size_string(data, &self.page_setup.words);
-        write_int_byte_size_string(data, &self.page_setup.music);
-        write_int_byte_size_string(data, &self.page_setup.word_and_music);
+        write_int_size_string(data, &self.page_setup.title);
+        write_int_size_string(data, &self.page_setup.subtitle);
+        write_int_size_string(data, &self.page_setup.artist);
+        write_int_size_string(data, &self.page_setup.album);
+        write_int_size_string(data, &self.page_setup.words);
+        write_int_size_string(data, &self.page_setup.music);
+        write_int_size_string(data, &self.page_setup.word_and_music);
         let c: Vec<&str> = self.page_setup.copyright.split('\n').collect();
-        write_int_byte_size_string(data, c[0]);
-        write_int_byte_size_string(data, c[1]);
-        write_int_byte_size_string(data, &self.page_setup.page_number);
+        write_int_size_string(data, c[0]);
+        write_int_size_string(data, c[1]);
+        write_int_size_string(data, &self.page_setup.page_number);
     }
 }

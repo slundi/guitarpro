@@ -483,18 +483,18 @@ impl SongHeaderOps for Song {
                 flags |= 0x20;
             }
         }
+        if self.measure_headers[header].double_bar {
+            flags |= 0x80;
+        }
         if version.0 >= 4 {
             if previous.is_none() {
                 flags |= 0x40;
             } else if let Some(p) = previous {
                 if self.measure_headers[header].key_signature
-                    == self.measure_headers[p].key_signature
+                    != self.measure_headers[p].key_signature
                 {
                     flags |= 0x40;
                 }
-            }
-            if self.measure_headers[header].double_bar {
-                flags |= 0x80;
             }
         }
         if version.0 >= 5 {
@@ -560,11 +560,11 @@ impl SongHeaderOps for Song {
         if (flags & 0x20) == 0x20 {
             //write marker
             if let Some(marker) = &self.measure_headers[header].marker {
-                write_int_byte_size_string(data, &marker.title);
+                write_int_size_string(data, &marker.title);
                 write_color(data, marker.color);
             }
         }
-        if version.0 >= 4 {
+        if version.0 >= 4 && (flags & 0x40) == 0x40 {
             write_signed_byte(data, self.measure_headers[header].key_signature.key);
             write_signed_byte(
                 data,
@@ -577,7 +577,7 @@ impl SongHeaderOps for Song {
                     write_byte(data, self.measure_headers[header].time_signature.beams[i]);
                 }
             }
-            if (flags & 0x10) == 0x10 {
+            if (flags & 0x10) == 0 {
                 write_placeholder_default(data, 1);
             }
             write_byte(

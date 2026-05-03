@@ -404,7 +404,7 @@ impl SongMixTableOps for Song {
     ) {
         //instrument
         if let Some(i) = &mix_table_change.instrument {
-            write_signed_byte(data, i.value.to_i8().unwrap());
+            write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
@@ -416,53 +416,48 @@ impl SongMixTableOps for Song {
         }
         //volume
         if let Some(i) = &mix_table_change.volume {
-            write_signed_byte(data, i.value.to_i8().unwrap());
+            write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
         //balance
         if let Some(i) = &mix_table_change.balance {
-            write_signed_byte(data, i.value.to_i8().unwrap());
+            write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
         //chorus
         if let Some(i) = &mix_table_change.chorus {
-            write_signed_byte(data, i.value.to_i8().unwrap());
+            write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
         //reverb
         if let Some(i) = &mix_table_change.reverb {
-            write_signed_byte(data, i.value.to_i8().unwrap());
+            write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
         //phaser
         if let Some(i) = &mix_table_change.phaser {
-            write_signed_byte(data, i.value.to_i8().unwrap());
+            write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
         //tremolo
         if let Some(i) = &mix_table_change.tremolo {
-            write_signed_byte(data, i.value.to_i8().unwrap());
+            write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
-        //tempo
-        if let Some(i) = &mix_table_change.tempo {
-            write_signed_byte(data, i.value.to_i8().unwrap());
-        } else {
-            write_signed_byte(data, -1);
-        }
+        //tempo: int in spec (can be > 127 for BPM)
         if version.0 >= 5 {
             write_int_byte_size_string(data, &mix_table_change.tempo_name);
-            if let Some(t) = &mix_table_change.tempo {
-                write_i32(data, t.value.to_i32().unwrap());
-            } else {
-                write_i32(data, -1);
-            }
+        }
+        if let Some(t) = &mix_table_change.tempo {
+            write_i32(data, t.value.to_i32().unwrap());
+        } else {
+            write_i32(data, -1);
         }
     }
     fn write_mix_table_change_durations(
@@ -471,50 +466,30 @@ impl SongMixTableOps for Song {
         mix_table_change: &MixTableChange,
         version: &(u8, u8, u8),
     ) {
-        //volume
+        //only write duration for fields that are actually set (reader skips None fields)
         if let Some(i) = &mix_table_change.volume {
-            write_signed_byte(data, i.duration.to_i8().unwrap());
-        } else {
-            write_signed_byte(data, -1);
+            write_signed_byte(data, i.duration as i8);
         }
-        //balance
         if let Some(i) = &mix_table_change.balance {
-            write_signed_byte(data, i.duration.to_i8().unwrap());
-        } else {
-            write_signed_byte(data, -1);
+            write_signed_byte(data, i.duration as i8);
         }
-        //chorus
         if let Some(i) = &mix_table_change.chorus {
-            write_signed_byte(data, i.duration.to_i8().unwrap());
-        } else {
-            write_signed_byte(data, -1);
+            write_signed_byte(data, i.duration as i8);
         }
-        //reverb
         if let Some(i) = &mix_table_change.reverb {
-            write_signed_byte(data, i.duration.to_i8().unwrap());
-        } else {
-            write_signed_byte(data, -1);
+            write_signed_byte(data, i.duration as i8);
         }
-        //phaser
         if let Some(i) = &mix_table_change.phaser {
-            write_signed_byte(data, i.duration.to_i8().unwrap());
-        } else {
-            write_signed_byte(data, -1);
+            write_signed_byte(data, i.duration as i8);
         }
-        //tremolo
         if let Some(i) = &mix_table_change.tremolo {
-            write_signed_byte(data, i.duration.to_i8().unwrap());
-        } else {
-            write_signed_byte(data, -1);
+            write_signed_byte(data, i.duration as i8);
         }
-        //tempo
         if let Some(i) = &mix_table_change.tempo {
-            write_signed_byte(data, i.duration.to_i8().unwrap());
-            if version > &(5, 0, 0) {
+            write_signed_byte(data, i.duration as i8);
+            if version >= &(5, 0, 0) {
                 write_bool(data, mix_table_change.hide_tempo);
             }
-        } else {
-            write_signed_byte(data, -1);
         }
     }
     fn write_mix_table_change_flags_v4(

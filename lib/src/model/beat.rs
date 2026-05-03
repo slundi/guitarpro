@@ -462,8 +462,12 @@ impl SongBeatOps for Song {
         be.vibrato = (flags1 & 0x02) == 0x02 || be.vibrato;
         be.fade_in = (flags1 & 0x10) == 0x10;
         if (flags1 & 0x20) == 0x20 {
-            be.slap_effect =
-                get_slap_effect(read_signed_byte(data, seek)?.to_u8_gp("slap effect")?)?;
+            let v = read_signed_byte(data, seek)?;
+            be.slap_effect = if v < 0 {
+                SlapEffect::None
+            } else {
+                get_slap_effect(v as u8)?
+            };
         }
         if (flags2 & 0x04) == 0x04 {
             be.tremolo_bar = self.read_bend_effect(data, seek)?;
@@ -550,7 +554,7 @@ impl SongBeatOps for Song {
         if !beat.text.is_empty() {
             flags |= 0x04;
         }
-        if beat.effect.is_default() {
+        if !beat.effect.is_default() || beat.has_harmonic() || beat.has_vibrato() {
             flags |= 0x08;
         }
         if let Some(mtc) = &beat.effect.mix_table_change {
@@ -602,7 +606,7 @@ impl SongBeatOps for Song {
         if !beat.text.is_empty() {
             flags |= 0x04;
         }
-        if beat.effect.is_default() {
+        if !beat.effect.is_default() {
             flags |= 0x08;
         }
         if let Some(mtc) = &beat.effect.mix_table_change {
@@ -732,8 +736,8 @@ impl SongBeatOps for Song {
         version: &(u8, u8, u8),
     ) -> GpResult<()> {
         let mut flags1: i8 = 0;
-        if beat.has_vibrato() {
-            flags1 |= 0x01;
+        if beat.effect.vibrato {
+            flags1 |= 0x02;
         }
         if beat.effect.fade_in {
             flags1 |= 0x10;
@@ -769,7 +773,7 @@ impl SongBeatOps for Song {
         if (flags2 & 0x04) == 0x04 {
             self.write_bend(data, &beat.effect.tremolo_bar);
         } //write tremolo bar
-        if (flags2 & 0x40) == 0x40 {
+        if (flags1 & 0x40) == 0x40 {
             self.write_beat_stroke(data, &beat.effect.stroke, version)?;
         }
         if (flags2 & 0x02) == 0x02 {
