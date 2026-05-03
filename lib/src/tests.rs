@@ -794,6 +794,63 @@ fn test_debug_gp3_roundtrip() {
         );
     }
 
+    // Compare beats between song1 and song2
+    'outer: for (ti, track1) in song1.tracks.iter().enumerate() {
+        let track2 = &song2.tracks[ti];
+        for (mi, meas1) in track1.measures.iter().enumerate() {
+            let meas2 = &track2.measures[mi];
+            for (vi, voice1) in meas1.voices.iter().enumerate() {
+                let voice2 = &meas2.voices[vi];
+                for (bi, beat1) in voice1.beats.iter().enumerate() {
+                    if bi >= voice2.beats.len() {
+                        break;
+                    }
+                    let beat2 = &voice2.beats[bi];
+                    if beat1.effect != beat2.effect || beat1.notes.len() != beat2.notes.len() {
+                        eprintln!("Beat diff at track={ti} measure={mi} voice={vi} beat={bi}");
+                        eprintln!("  beat1.effect={:?}", beat1.effect);
+                        eprintln!("  beat2.effect={:?}", beat2.effect);
+                        eprintln!(
+                            "  beat1.has_harmonic={} beat1.has_vibrato={}",
+                            beat1.has_harmonic(),
+                            beat1.has_vibrato()
+                        );
+                        eprintln!(
+                            "  beat2.has_harmonic={} beat2.has_vibrato={}",
+                            beat2.has_harmonic(),
+                            beat2.has_vibrato()
+                        );
+                        for (ni, n1) in beat1.notes.iter().enumerate() {
+                            if ni < beat2.notes.len() {
+                                let n2 = &beat2.notes[ni];
+                                if n1.effect != n2.effect {
+                                    eprintln!(
+                                        "  note[{ni}] effect diff: {:?} vs {:?}",
+                                        n1.effect, n2.effect
+                                    );
+                                }
+                            }
+                        }
+                        break 'outer;
+                    }
+                    // Also check note effects
+                    for (ni, n1) in beat1.notes.iter().enumerate() {
+                        if ni >= beat2.notes.len() {
+                            break;
+                        }
+                        let n2 = &beat2.notes[ni];
+                        if n1.effect != n2.effect {
+                            eprintln!("Note diff at track={ti} measure={mi} voice={vi} beat={bi} note={ni}");
+                            eprintln!("  n1.effect={:?}", n1.effect);
+                            eprintln!("  n2.effect={:?}", n2.effect);
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let written2 = song2.write(song2.version.number, None).unwrap();
     if written1 != written2 {
         let pos = written1
@@ -813,11 +870,45 @@ fn test_debug_gp3_roundtrip() {
 #[test]
 fn test_debug_gp5_roundtrip() {
     use std::fs;
-    let path = "../test/Effects.gp5";
+    let path = "../test/Demo v5.gp5";
     let data = fs::read(path).unwrap();
     let mut song1 = Song::default();
     song1.read_gp5(&data).unwrap();
     let written1 = song1.write(song1.version.number, None).unwrap();
+
+    eprintln!(
+        "original size: {} written1 size: {}",
+        data.len(),
+        written1.len()
+    );
+    // find first diff between original and written1
+    let first_diff = data
+        .iter()
+        .zip(written1.iter())
+        .position(|(a, b)| a != b)
+        .unwrap_or(data.len().min(written1.len()));
+    eprintln!("first diff original vs written1: byte {}", first_diff);
+    // find first diff in measures section
+    let measures_start = 2342usize;
+    let first_meas_diff = data[measures_start..]
+        .iter()
+        .zip(written1[measures_start..].iter())
+        .position(|(a, b)| a != b);
+    if let Some(d) = first_meas_diff {
+        eprintln!(
+            "first diff in measures section: byte {} (offset {} from start)",
+            measures_start + d,
+            d
+        );
+        let ctx_o =
+            &data[measures_start + d.saturating_sub(4)..data.len().min(measures_start + d + 8)];
+        let ctx_w = &written1
+            [measures_start + d.saturating_sub(4)..written1.len().min(measures_start + d + 8)];
+        eprintln!("  original:  {:?}", ctx_o);
+        eprintln!("  written1:  {:?}", ctx_w);
+    } else {
+        eprintln!("measures section identical (up to shorter len)");
+    }
 
     let mut song2 = Song::default();
     song2.read_gp5(&written1).unwrap();
@@ -899,6 +990,46 @@ fn test_debug_gp4_roundtrip() {
     song2.read_gp4(&written1).unwrap();
     let written2 = song2.write(song2.version.number, None).unwrap();
     assert_eq!(written1, written2, "round-trip mismatch");
+}
+
+// ==================== Debug volta test ====================
+#[test]
+fn test_debug_volta_gp3() {
+    use std::fs;
+    let path = "../test/volta.gp3";
+    let data = fs::read(path).unwrap();
+    let mut song1 = Song::default();
+    song1.read_gp3(&data).unwrap();
+    for (i, mh) in song1.measure_headers.iter().enumerate() {
+        if mh.repeat_open || mh.repeat_alternative > 0 || mh.repeat_close >= 0 {
+            eprintln!(
+                "MH[{}]: repeat_open={} repeat_alternative={} repeat_close={}",
+                i, mh.repeat_open, mh.repeat_alternative, mh.repeat_close
+            );
+        }
+    }
+    let written1 = song1.write(song1.version.number, None).unwrap();
+    let mut song2 = Song::default();
+    song2.read_gp3(&written1).unwrap();
+    for (i, mh) in song2.measure_headers.iter().enumerate() {
+        if mh.repeat_open || mh.repeat_alternative > 0 || mh.repeat_close >= 0 {
+            eprintln!(
+                "Song2 MH[{}]: repeat_open={} repeat_alternative={} repeat_close={}",
+                i, mh.repeat_open, mh.repeat_alternative, mh.repeat_close
+            );
+        }
+    }
+    let written2 = song2.write(song2.version.number, None).unwrap();
+    if written1 != written2 {
+        let pos = written1
+            .iter()
+            .zip(written2.iter())
+            .position(|(a, b)| a != b)
+            .unwrap_or(written1.len().min(written2.len()));
+        let w1 = &written1[pos.saturating_sub(4)..written1.len().min(pos + 8)];
+        let w2 = &written2[pos.saturating_sub(4)..written2.len().min(pos + 8)];
+        panic!("diff at byte {pos}: {w1:?} vs {w2:?}");
+    }
 }
 
 // ==================== GPX (Guitar Pro 6) tests ====================

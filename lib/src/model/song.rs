@@ -204,6 +204,7 @@ impl Song {
             track_count, measure_count
         ); //OK
         self.read_measure_headers_v5(data, &mut seek, measure_count, &directions)?;
+        println!("read_gp5(), after meas_hdrs\t seek: {}", seek);
         self.read_tracks_v5(data, &mut seek, track_count)?;
         println!("read_gp5(), after tracks   \t seek: {}", seek);
         self.read_measures(data, &mut seek)?;

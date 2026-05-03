@@ -693,7 +693,7 @@ impl SongBeatOps for Song {
             flags1 |= 0x01;
         }
         if beat.effect.vibrato {
-            flags1 |= 0x01;
+            flags1 |= 0x02;
         }
         if beat.has_harmonic() {
             for n in 0..beat.notes.len() {

@@ -147,8 +147,8 @@ pub struct TremoloPickingEffect {
 fn from_tremolo_value(value: i8) -> GpResult<u8> {
     match value {
         1 => Ok(DURATION_EIGHTH),
-        3 => Ok(DURATION_SIXTEENTH),
-        2 => Ok(DURATION_THIRTY_SECOND),
+        2 => Ok(DURATION_SIXTEENTH),
+        3 => Ok(DURATION_THIRTY_SECOND),
         _ => Ok(DURATION_SIXTEENTH),
     }
 }

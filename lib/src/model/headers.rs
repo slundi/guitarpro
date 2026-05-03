@@ -470,18 +470,18 @@ impl SongHeaderOps for Song {
         } else {
             flags |= 0x01;
             flags |= 0x02;
-            if self.measure_headers[header].repeat_open {
-                flags |= 0x04;
-            }
-            if self.measure_headers[header].repeat_close > -1 {
-                flags |= 0x08;
-            }
-            if self.measure_headers[header].repeat_alternative > 0 {
-                flags |= 0x10;
-            }
-            if self.measure_headers[header].marker.is_some() {
-                flags |= 0x20;
-            }
+        }
+        if self.measure_headers[header].repeat_open {
+            flags |= 0x04;
+        }
+        if self.measure_headers[header].repeat_close > -1 {
+            flags |= 0x08;
+        }
+        if self.measure_headers[header].repeat_alternative > 0 {
+            flags |= 0x10;
+        }
+        if self.measure_headers[header].marker.is_some() {
+            flags |= 0x20;
         }
         if self.measure_headers[header].double_bar {
             flags |= 0x80;
@@ -539,22 +539,18 @@ impl SongHeaderOps for Song {
             if version.0 == 5 {
                 write_byte(data, self.measure_headers[header].repeat_alternative);
             } else {
+                let ra = self.measure_headers[header].repeat_alternative;
                 let mut first_one = false;
-                let mut ra: u8 = 0;
-                for i in 0u8..9 - self.measure_headers[header]
-                    .repeat_alternative
-                    .leading_zeros()
-                    .to_u8()
-                    .unwrap()
-                {
-                    ra = i;
-                    if (self.measure_headers[header].repeat_alternative & 1 << i) > 0 {
+                let mut out: u8 = 0;
+                for i in 0u8..9 - ra.leading_zeros().to_u8().unwrap() {
+                    out = i;
+                    if (ra as u16 & (1u16 << i)) > 0 {
                         first_one = true;
                     } else if first_one {
                         break;
                     }
                 }
-                write_byte(data, ra);
+                write_byte(data, out);
             }
         }
         if (flags & 0x20) == 0x20 {
@@ -602,9 +598,9 @@ impl SongHeaderOps for Song {
     }
     fn write_directions(&self, data: &mut Vec<u8>) {
         let mut map: HashMap<DirectionSign, i16> = HashMap::with_capacity(19);
-        for i in 1..self.measure_headers.len() {
+        for i in 0..self.measure_headers.len() {
             if let Some(d) = &self.measure_headers[i].direction {
-                map.insert(d.clone(), i.to_i16().unwrap());
+                map.insert(d.clone(), (i + 1).to_i16().unwrap());
             }
         }
         let order: Vec<DirectionSign> = vec![
