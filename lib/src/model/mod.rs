@@ -7,6 +7,7 @@ pub mod key_signature;
 pub mod lyric;
 pub mod measure;
 pub mod mix_table;
+pub mod mnx;
 pub mod note;
 pub mod page;
 pub mod rse;
