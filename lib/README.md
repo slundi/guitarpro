@@ -48,3 +48,5 @@ fn main() {
 - [ ] Support for chords and rhythm details in GP6/7.
 - [ ] Write support for newer formats.
 - [ ] Comprehensive documentation of the data model.
+- [ ] Better error management (remove use of expect, unwrap) using crathe thiserror
+- [ ] Change model for [MNX](https://w3c-cg.github.io/mnx/docs/) (or separate in a legacy mod)
