@@ -15,11 +15,11 @@ name = "scorelib"
 path = "src/lib.rs"
 
 [dependencies]
-clap = { version = "4", features = ["derive"], optional = true } 
+clap = { version = "4", features = ["derive"], optional = true }
 fraction = "0.15"
 encoding_rs = "0.8"
 thiserror = "2"
-zip = "8.4"
+zip = "8.6"
 quick-xml = { version = "0.39", features = ["serialize"] }
 serde = { version = "1.0", features = ["derive"] }
 
