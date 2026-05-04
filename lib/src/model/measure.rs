@@ -110,7 +110,6 @@ impl SongMeasureOps for Song {
     fn read_measures(&mut self, data: &[u8], seek: &mut usize) -> GpResult<()> {
         for h in 0..self.measure_headers.len() {
             for t in 0..self.tracks.len() {
-                //println!("Reading measure H:{} T:{} Seek:{}", h, t, seek);
                 self.current_track = Some(t);
                 let mut m = Measure {
                     track_index: t,
@@ -224,15 +223,11 @@ impl SongMeasureOps for Song {
     }
 
     fn write_measures(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()> {
-        for i in 0..self.tracks.len() {
-            //self.current_track = Some(i);
-            for m in 0..self.tracks[i].measures.len() {
-                //self.current_measure_number = Some(self.tracks[i].measure.number);
-                self.write_measure(data, i, m, version)?;
+        for h in 0..self.measure_headers.len() {
+            for t in 0..self.tracks.len() {
+                self.write_measure(data, t, h, version)?;
             }
         }
-        //self.current_track = None;
-        //self.current_measure_number = None;
         Ok(())
     }
     fn write_measure(

@@ -392,7 +392,9 @@ impl SongMixTableOps for Song {
                 } else {
                     write_signed_byte(data, WAH_EFFECT_NONE);
                 } //write wah effect
-                self.write_rse_instrument_effect(data, &mtc.rse);
+                if *version > (5, 0, 0) {
+                    self.write_rse_instrument_effect(data, &mtc.rse);
+                }
             }
         }
     }

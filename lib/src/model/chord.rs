@@ -168,12 +168,9 @@ impl SongChordOps for Song {
     fn read_chord(&self, data: &[u8], seek: &mut usize, string_count: u8) -> GpResult<Chord> {
         let mut c = Chord {
             length: string_count,
-            strings: vec![-1; string_count.into()],
+            strings: Vec::new(),
             ..Default::default()
         };
-        for _ in 0..string_count {
-            c.strings.push(-1);
-        }
         c.new_format = Some(read_bool(data, seek)?);
         if c.new_format == Some(true) {
             if self.version.number.0 == 3 {
@@ -203,11 +200,8 @@ impl SongChordOps for Song {
         chord.name = read_int_byte_size_string(data, seek)?;
         chord.first_fret = Some(read_int(data, seek)? as u8);
         if chord.first_fret.is_some() {
-            for i in 0u8..6u8 {
-                let fret = read_int(data, seek)? as i8;
-                if i < chord.strings.len().to_u8().unwrap() {
-                    chord.strings.push(fret);
-                } //chord.strings[i] = fret;
+            for _ in 0u8..6u8 {
+                chord.strings.push(read_int(data, seek)? as i8);
             }
         }
         Ok(())
@@ -271,11 +265,8 @@ impl SongChordOps for Song {
             read_int(data, seek)?.to_u8().unwrap(),
         )?);
         chord.first_fret = Some(read_int(data, seek)?.to_u8().unwrap());
-        for i in 0u8..6u8 {
-            let fret = read_int(data, seek)?.to_i8().unwrap();
-            if i < chord.strings.len().to_u8().unwrap() {
-                chord.strings.push(fret);
-            } //chord.strings[i] = fret;
+        for _ in 0u8..6u8 {
+            chord.strings.push(read_int(data, seek)?.to_i8().unwrap());
         }
         //barre
         let barre_count = read_int(data, seek)?.to_usize().unwrap();
@@ -355,11 +346,8 @@ impl SongChordOps for Song {
         chord.ninth = Some(get_chord_alteration(read_byte(data, seek)?)?);
         chord.eleventh = Some(get_chord_alteration(read_byte(data, seek)?)?);
         chord.first_fret = Some(read_int(data, seek)? as u8);
-        for i in 0u8..7u8 {
-            let fret = read_int(data, seek)? as i8;
-            if i < chord.strings.len().to_u8().unwrap() {
-                chord.strings.push(fret);
-            } //chord.strings[i] = fret;
+        for _ in 0u8..7u8 {
+            chord.strings.push(read_int(data, seek)? as i8);
         }
         //barre
         let barre_count = read_byte(data, seek)?.to_usize().unwrap();

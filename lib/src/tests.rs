@@ -909,6 +909,48 @@ fn test_debug_gp5_roundtrip() {
     } else {
         eprintln!("measures section identical (up to shorter len)");
     }
+    // Print T0M0 + T1M0 bytes from both original and written1
+    eprintln!("T0M0 original[0..80]: {:?}", &data[measures_start..measures_start+80]);
+    eprintln!("T0M0 written1[0..80]: {:?}", &written1[measures_start..measures_start+80]);
+    eprintln!("T1M0 original[271..292]: {:?}", &data[measures_start+271..measures_start+292]);
+    eprintln!("T1M0 written1[271..292]: {:?}", &written1[measures_start+271..written1.len().min(measures_start+292)]);
+    eprintln!("measures section original size: {}", data.len() - 2342 - 4); eprintln!("measures section written1 size: {}", written1.len() - 2342 - 4);
+    // Find insertion points: look for regions where written1 has extra bytes vs original
+    {
+        let orig = &data[2342..];
+        let writ = &written1[2342..];
+        let mut oi = 0usize;
+        let mut wi = 0usize;
+        let mut total_extra = 0i64;
+        let mut insert_count = 0usize;
+        while oi < orig.len() && wi < writ.len() {
+            if orig[oi] == writ[wi] { oi += 1; wi += 1; continue; }
+            // look ahead for insertion in writ (extra bytes in writ not in orig)
+            let mut found = false;
+            for skip in 1..=32usize {
+                if wi + skip + 4 <= writ.len() && wi + skip < writ.len() {
+                    // check if orig[oi..oi+4] == writ[wi+skip..wi+skip+4]
+                    let end_o = (oi + 4).min(orig.len());
+                    let end_w = (wi + skip + 4).min(writ.len());
+                    if end_o - oi == end_w - (wi+skip) && orig[oi..end_o] == writ[wi+skip..end_w] {
+                        if insert_count < 5 {
+                            eprintln!("Insert at orig_off={} writ_off={}: +{} bytes {:?}", oi, wi, skip, &writ[wi..wi+skip.min(16)]);
+                        }
+                        total_extra += skip as i64;
+                        wi += skip;
+                        insert_count += 1;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if !found {
+                // just a content diff, skip one byte in both
+                oi += 1; wi += 1;
+            }
+        }
+        eprintln!("Total insertions found: {}, total extra bytes: {}", insert_count, total_extra);
+    }
 
     let mut song2 = Song::default();
     song2.read_gp5(&written1).unwrap();
