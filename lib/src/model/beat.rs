@@ -252,14 +252,16 @@ impl SongBeatOps for Song {
     ) -> GpResult<i64> {
         let flags = read_byte(data, seek)?;
         //println!("read_beat(),    flags: {} \t seek: {}", flags, *seek);
-        //get a beat
+        //get a beat — for GP5+, never merge beats at the same start time
         let mut b = 0;
         let mut new_beat = true;
-        for i in (0usize..voice.beats.len()).rev() {
-            if voice.beats[i].start == Some(start) {
-                b = i;
-                new_beat = false;
-                break;
+        if self.version.number < (5, 0, 0) {
+            for i in (0usize..voice.beats.len()).rev() {
+                if voice.beats[i].start == Some(start) {
+                    b = i;
+                    new_beat = false;
+                    break;
+                }
             }
         }
         if new_beat {
