@@ -2,7 +2,7 @@
 name = "guitarpro"
 version = "0.3.0"
 authors = ["slundi"]
-edition = "2021"
+edition = "2024"
 description = "Rust library and command line interface (CLI) for guitar tab files."
 repository = "https://gitlab.com/slundi/guitar-io"
 license = "MIT"

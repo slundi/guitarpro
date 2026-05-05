@@ -1,6 +1,6 @@
 use clap::Parser;
-use scorelib::Song;
-use scorelib::Track;
+use guitarpro::Song;
+use guitarpro::Track;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
