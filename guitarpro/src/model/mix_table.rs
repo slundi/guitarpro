@@ -1,6 +1,4 @@
-use fraction::ToPrimitive;
-
-use crate::error::{GpError, GpResult};
+use crate::error::{GpError, GpResult, ToPrimitiveGp};
 use crate::io::primitive::*;
 use crate::model::{rse::*, song::*};
 // use crate::gp::*;
@@ -200,7 +198,7 @@ impl SongMixTableOps for Song {
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.instrument = Some(MixTableItem {
-                value: b.to_u8().unwrap(),
+                value: b.to_u8_gp("mix table instrument")?,
                 ..Default::default()
             });
         }
@@ -215,7 +213,7 @@ impl SongMixTableOps for Song {
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.volume = Some(MixTableItem {
-                value: b.to_u8().unwrap(),
+                value: b.to_u8_gp("mix table volume")?,
                 ..Default::default()
             });
         }
@@ -223,7 +221,7 @@ impl SongMixTableOps for Song {
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.balance = Some(MixTableItem {
-                value: b.to_u8().unwrap(),
+                value: b.to_u8_gp("mix table balance")?,
                 ..Default::default()
             });
         }
@@ -231,7 +229,7 @@ impl SongMixTableOps for Song {
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.chorus = Some(MixTableItem {
-                value: b.to_u8().unwrap(),
+                value: b.to_u8_gp("mix table chorus")?,
                 ..Default::default()
             });
         }
@@ -239,7 +237,7 @@ impl SongMixTableOps for Song {
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.reverb = Some(MixTableItem {
-                value: b.to_u8().unwrap(),
+                value: b.to_u8_gp("mix table reverb")?,
                 ..Default::default()
             });
         }
@@ -247,7 +245,7 @@ impl SongMixTableOps for Song {
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.phaser = Some(MixTableItem {
-                value: b.to_u8().unwrap(),
+                value: b.to_u8_gp("mix table phaser")?,
                 ..Default::default()
             });
         }
@@ -255,7 +253,7 @@ impl SongMixTableOps for Song {
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.tremolo = Some(MixTableItem {
-                value: b.to_u8().unwrap(),
+                value: b.to_u8_gp("mix table tremolo")?,
                 ..Default::default()
             });
         }
@@ -282,25 +280,25 @@ impl SongMixTableOps for Song {
         mtc: &mut MixTableChange,
     ) -> GpResult<()> {
         if let Some(ref mut item) = mtc.volume {
-            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+            item.duration = read_signed_byte(data, seek)?.max(0) as u8;
         }
         if let Some(ref mut item) = mtc.balance {
-            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+            item.duration = read_signed_byte(data, seek)?.max(0) as u8;
         }
         if let Some(ref mut item) = mtc.chorus {
-            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+            item.duration = read_signed_byte(data, seek)?.max(0) as u8;
         }
         if let Some(ref mut item) = mtc.reverb {
-            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+            item.duration = read_signed_byte(data, seek)?.max(0) as u8;
         }
         if let Some(ref mut item) = mtc.phaser {
-            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+            item.duration = read_signed_byte(data, seek)?.max(0) as u8;
         }
         if let Some(ref mut item) = mtc.tremolo {
-            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+            item.duration = read_signed_byte(data, seek)?.max(0) as u8;
         }
         if let Some(ref mut item) = mtc.tempo {
-            item.duration = read_signed_byte(data, seek)?.to_u8().unwrap_or(0);
+            item.duration = read_signed_byte(data, seek)?.max(0) as u8;
             mtc.hide_tempo = false;
             if self.version.number >= (5, 0, 0) {
                 mtc.hide_tempo = read_bool(data, seek)?;
@@ -328,33 +326,27 @@ impl SongMixTableOps for Song {
     ) -> GpResult<i8> {
         let flags = read_signed_byte(data, seek)?;
         //println!("read_mix_table_change_flags(), flags:  {}", flags);
-        if mtc.volume.is_some() {
-            let mut e = mtc.volume.take().unwrap();
+        if let Some(mut e) = mtc.volume.take() {
             e.all_tracks = (flags & 0x01) == 0x01;
             mtc.volume = Some(e);
         }
-        if mtc.balance.is_some() {
-            let mut e = mtc.balance.take().unwrap();
+        if let Some(mut e) = mtc.balance.take() {
             e.all_tracks = (flags & 0x01) == 0x01;
             mtc.balance = Some(e);
         }
-        if mtc.chorus.is_some() {
-            let mut e = mtc.chorus.take().unwrap();
+        if let Some(mut e) = mtc.chorus.take() {
             e.all_tracks = (flags & 0x01) == 0x01;
             mtc.chorus = Some(e);
         }
-        if mtc.reverb.is_some() {
-            let mut e = mtc.reverb.take().unwrap();
+        if let Some(mut e) = mtc.reverb.take() {
             e.all_tracks = (flags & 0x01) == 0x01;
             mtc.reverb = Some(e);
         }
-        if mtc.phaser.is_some() {
-            let mut e = mtc.phaser.take().unwrap();
+        if let Some(mut e) = mtc.phaser.take() {
             e.all_tracks = (flags & 0x01) == 0x01;
             mtc.phaser = Some(e);
         }
-        if mtc.tremolo.is_some() {
-            let mut e = mtc.tremolo.take().unwrap();
+        if let Some(mut e) = mtc.tremolo.take() {
             e.all_tracks = (flags & 0x01) == 0x01;
             mtc.tremolo = Some(e);
         }
@@ -457,7 +449,7 @@ impl SongMixTableOps for Song {
             write_int_byte_size_string(data, &mix_table_change.tempo_name);
         }
         if let Some(t) = &mix_table_change.tempo {
-            write_i32(data, t.value.to_i32().unwrap());
+            write_i32(data, t.value as i32);
         } else {
             write_i32(data, -1);
         }
