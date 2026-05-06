@@ -316,7 +316,7 @@ impl SongBeatOps for Song {
         Ok(if voice.beats[b].status == BeatStatus::Empty {
             0
         } else {
-            duration.time().to_i64_gp("beat duration time")?
+            duration.time()?.to_i64_gp("beat duration time")?
         })
     }
     /// Read beat. First, beat is read is in Guitar Pro 3 `guitarpro.gp3.readBeat`. Then it is followed by set of flags stored in `short`.
@@ -574,7 +574,7 @@ impl SongBeatOps for Song {
         if (flags & 0x40) == 0x40 {
             write_byte(data, from_beat_status(&beat.status));
         }
-        beat.duration.write_duration(data, flags);
+        beat.duration.write_duration(data, flags)?;
         if (flags & 0x02) == 0x02 {
             self.write_chord(data, beat);
         }
@@ -626,7 +626,7 @@ impl SongBeatOps for Song {
         if (flags & 0x40) == 0x40 {
             write_byte(data, from_beat_status(&beat.status));
         }
-        beat.duration.write_duration(data, flags);
+        beat.duration.write_duration(data, flags)?;
         if (flags & 0x02) == 0x02 {
             self.write_chord_v4(data, beat);
         }
@@ -773,7 +773,7 @@ impl SongBeatOps for Song {
             );
         }
         if (flags2 & 0x04) == 0x04 {
-            self.write_bend(data, &beat.effect.tremolo_bar);
+            self.write_bend(data, &beat.effect.tremolo_bar)?;
         } //write tremolo bar
         if (flags1 & 0x40) == 0x40 {
             self.write_beat_stroke(data, &beat.effect.stroke, version)?;

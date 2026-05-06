@@ -1,4 +1,4 @@
-use crate::error::GpResult;
+use crate::error::{GpError, GpResult, ToPrimitiveGp};
 use crate::io::primitive::*;
 use fraction::ToPrimitive;
 
@@ -73,12 +73,15 @@ pub struct KeySignature {
 //impl Default for KeySignature { fn default() -> Self { KeySignature { key: 0, is_minor: false, }} }
 impl std::fmt::Display for KeySignature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let index: usize = if self.is_minor {
-            (23i8 + self.key).to_usize().unwrap()
-        } else {
-            (8i8 + self.key).to_usize().unwrap()
-        };
-        write!(f, "{}", KEY_SIGNATURES[index])
+        let base: i8 = if self.is_minor { 23 } else { 8 };
+        match base
+            .checked_add(self.key)
+            .and_then(|v| usize::try_from(v).ok())
+            .and_then(|i| KEY_SIGNATURES.get(i))
+        {
+            Some(name) => write!(f, "{}", name),
+            None => write!(f, "Unknown key ({}, minor={})", self.key, self.is_minor),
+        }
     }
 }
 
@@ -109,7 +112,7 @@ pub struct Duration {
 impl Default for Duration {
     fn default() -> Self {
         Duration {
-            value: DURATION_QUARTER.to_u16().unwrap(),
+            value: DURATION_QUARTER as u16,
             dotted: false,
             double_dotted: false,
             tuplet_enters: 1,
@@ -125,29 +128,42 @@ impl Duration {
         SUPPORTED_TUPLETS.contains(&(self.tuplet_enters, self.tuplet_times))
     }
 
-    pub(crate) fn convert_time(&self, time: u32) -> u32 {
-        let result = fraction::Fraction::new(
-            time * self.tuplet_enters.to_u32().unwrap(),
-            self.tuplet_times.to_u32().unwrap(),
-        );
-        if *result.denom().unwrap() == 1 {
-            (*result.numer().unwrap()).to_u32().unwrap()
+    pub(crate) fn convert_time(&self, time: u32) -> GpResult<u32> {
+        let result =
+            fraction::Fraction::new(time * self.tuplet_enters as u32, self.tuplet_times as u32);
+        let denom = *result
+            .denom()
+            .ok_or_else(|| GpError::FormatError("fraction denom is None".to_string()))?;
+        if denom == 1 {
+            let numer = *result
+                .numer()
+                .ok_or_else(|| GpError::FormatError("fraction numer is None".to_string()))?;
+            numer.to_u32().ok_or(GpError::TypeConversion {
+                context: "fraction numer to u32",
+                value: numer as i64,
+            })
         } else {
-            result.trunc().to_u32().unwrap()
+            result.trunc().to_u32().ok_or(GpError::TypeConversion {
+                context: "fraction trunc to u32",
+                value: 0,
+            })
         }
     }
 
-    pub(crate) fn time(&self) -> u32 {
-        let mut result = (f64::from(DURATION_QUARTER_TIME.to_i32().unwrap()) * 4f64
-            / f64::from(self.value))
-        .trunc();
+    pub(crate) fn time(&self) -> GpResult<u32> {
+        let mut result =
+            (f64::from(DURATION_QUARTER_TIME as i32) * 4f64 / f64::from(self.value)).trunc();
         //println!("\tDuration.time(): result: {}", result);
         if self.dotted {
             result += (result / 2f64).trunc();
         }
         //if self.dotted { result += (result/4f64).trunc() * 3f64; }
         //println!("\tDuration.time(): result: {}", result);
-        self.convert_time(result.to_u32().unwrap())
+        let time = result.to_u32().ok_or(GpError::TypeConversion {
+            context: "duration time to u32",
+            value: result as i64,
+        })?;
+        self.convert_time(time)
     }
 
     pub(crate) fn _index(&self) -> u8 {
@@ -168,15 +184,16 @@ impl Duration {
     }
     //@classmethod def fromFraction(cls, frac): return cls(frac.denominator, frac.numerator)
 
-    pub(crate) fn write_duration(&self, data: &mut Vec<u8>, flags: u8) {
-        let value = (16 - self.value.leading_zeros()).to_i8().unwrap() - 3; //value = duration.value.bit_length() - 3
+    pub(crate) fn write_duration(&self, data: &mut Vec<u8>, flags: u8) -> GpResult<()> {
+        let value = (16 - self.value.leading_zeros()).to_i8_gp("duration value bits")? - 3; //value = duration.value.bit_length() - 3
         write_signed_byte(data, value);
         if (flags & 0x20) == 0x20 {
             if !self.is_supported() {
-                return;
+                return Ok(());
             }
-            write_i32(data, self.tuplet_enters.to_i32().unwrap()); //write iTuplet
+            write_i32(data, self.tuplet_enters as i32); //write iTuplet
         }
+        Ok(())
     }
 }
 /// Read beat duration.
