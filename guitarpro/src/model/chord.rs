@@ -241,8 +241,12 @@ impl SongChordOps for Song {
             None,
             chord.sharp,
         ));
-        chord.kind = Some(get_chord_type(read_int(data, seek)?.to_u8_gp("chord type")?));
-        chord.extension = Some(get_chord_extension(read_int(data, seek)?.to_u8_gp("chord extension")?));
+        chord.kind = Some(get_chord_type(
+            read_int(data, seek)?.to_u8_gp("chord type")?,
+        ));
+        chord.extension = Some(get_chord_extension(
+            read_int(data, seek)?.to_u8_gp("chord extension")?,
+        ));
         chord.bass = Some(PitchClass::from(
             read_int(data, seek)?.to_i8_gp("chord bass")?,
             None,
@@ -264,7 +268,9 @@ impl SongChordOps for Song {
         )?);
         chord.first_fret = Some(read_int(data, seek)?.to_u8_gp("chord first fret")?);
         for _ in 0u8..6u8 {
-            chord.strings.push(read_int(data, seek)?.to_i8_gp("chord string fret")?);
+            chord
+                .strings
+                .push(read_int(data, seek)?.to_i8_gp("chord string fret")?);
         }
         //barre
         let barre_count = read_int(data, seek)?.to_usize_gp("chord barre count")?;

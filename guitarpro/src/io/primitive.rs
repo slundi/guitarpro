@@ -1,6 +1,5 @@
 use crate::error::{GpError, GpResult, ToPrimitiveGp};
 use encoding_rs::*;
-use fraction::ToPrimitive;
 
 //reading functions
 
@@ -136,7 +135,7 @@ pub(crate) fn read_int_byte_size_string(data: &[u8], seek: &mut usize) -> GpResu
     if val <= 0 {
         return Ok(String::new());
     }
-    let s = (val - 1).to_usize().unwrap_or(0);
+    let s = (val - 1).to_usize_gp("int_byte_size_string length")?;
     if *seek + 1 + s > data.len() {
         return Ok(String::new());
     } // Safety check
@@ -172,12 +171,13 @@ fn read_string(
     }
     let (cow, _encoding_used, had_errors) = WINDOWS_1252.decode(&data[*seek..*seek + length]);
     if had_errors {
-        let parse = std::str::from_utf8(&data[*seek..*seek + length]);
-        if parse.is_err() {
-            return Err(GpError::StringDecode { offset: *seek });
+        match std::str::from_utf8(&data[*seek..*seek + length]) {
+            Ok(s) => {
+                *seek += size;
+                return Ok(s.to_string());
+            }
+            Err(_) => return Err(GpError::StringDecode { offset: *seek }),
         }
-        *seek += size;
-        return Ok(parse.unwrap().to_string());
     }
     *seek += size;
     Ok(cow.to_string())
