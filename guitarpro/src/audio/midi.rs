@@ -1,6 +1,8 @@
-use fraction::ToPrimitive;
-
-use crate::{error::GpResult, io::primitive::*, model::song::*};
+use crate::{
+    error::{GpResult, ToPrimitiveGp},
+    io::primitive::*,
+    model::song::*,
+};
 
 //MIDI channels
 
@@ -246,16 +248,17 @@ impl SongMidiOps for Song {
         //TODO: fixme for writing
         let index = read_int(data, seek)? - 1;
         let effect_channel = read_int(data, seek)? - 1;
-        if 0 <= index && index < self.channels.len().to_i32().unwrap() {
-            if self.channels[index.to_usize().unwrap()].instrument < 0 {
-                self.channels[index.to_usize().unwrap()].instrument = 0;
+        let channels_len = self.channels.len().to_i32_gp("channels length")?;
+        if 0 <= index && index < channels_len {
+            let idx = index.to_usize_gp("channel index")?;
+            if self.channels[idx].instrument < 0 {
+                self.channels[idx].instrument = 0;
             }
-            if !self.channels[index.to_usize().unwrap()].is_percussion_channel() {
-                self.channels[index.to_usize().unwrap()].effect_channel =
-                    effect_channel.to_u8().unwrap();
+            if !self.channels[idx].is_percussion_channel() {
+                self.channels[idx].effect_channel = effect_channel.to_u8_gp("effect channel")?;
             }
         }
-        Ok(index.to_usize().unwrap())
+        Ok(index.to_usize_gp("channel index")?)
     }
 
     fn write_midi_channels(&self, data: &mut Vec<u8>) {
