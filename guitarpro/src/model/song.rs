@@ -1,5 +1,3 @@
-use fraction::ToPrimitive;
-
 use crate::audio::midi::*;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::io::gpif_import::*;
@@ -121,12 +119,12 @@ impl Song {
             TripletFeel::None
         };
         //println!("Triplet feel: {}", self.triplet_feel);
-        self.tempo = read_int(data, &mut seek)?.to_i16().unwrap();
-        self.key.key = read_int(data, &mut seek)?.to_i8().unwrap();
+        self.tempo = read_int(data, &mut seek)?.to_i16_gp("tempo")?;
+        self.key.key = read_int(data, &mut seek)?.to_i8_gp("key")?;
         //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
         self.read_midi_channels(data, &mut seek)?;
-        let measure_count = read_int(data, &mut seek)?.to_usize().unwrap();
-        let track_count = read_int(data, &mut seek)?.to_usize().unwrap();
+        let measure_count = read_int(data, &mut seek)?.to_usize_gp("measure count")?;
+        let track_count = read_int(data, &mut seek)?.to_usize_gp("track count")?;
         //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
         self.read_measure_headers(data, &mut seek, measure_count)?;
@@ -161,13 +159,13 @@ impl Song {
         };
         //println!("Triplet feel: {}", self.triplet_feel);
         self.lyrics = self.read_lyrics(data, &mut seek)?; //read lyrics
-        self.tempo = read_int(data, &mut seek)?.to_i16().unwrap();
-        self.key.key = read_int(data, &mut seek)?.to_i8().unwrap();
+        self.tempo = read_int(data, &mut seek)?.to_i16_gp("tempo")?;
+        self.key.key = read_int(data, &mut seek)?.to_i8_gp("key")?;
         //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
         read_signed_byte(data, &mut seek)?; //octave
         self.read_midi_channels(data, &mut seek)?;
-        let measure_count = read_int(data, &mut seek)?.to_usize().unwrap();
-        let track_count = read_int(data, &mut seek)?.to_usize().unwrap();
+        let measure_count = read_int(data, &mut seek)?.to_usize_gp("measure count")?;
+        let track_count = read_int(data, &mut seek)?.to_usize_gp("track count")?;
         //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
         self.read_measure_headers(data, &mut seek, measure_count)?;
@@ -185,7 +183,7 @@ impl Song {
         self.master_effect = self.read_rse_master_effect(data, &mut seek)?;
         self.read_page_setup(data, &mut seek)?;
         self.tempo_name = read_int_size_string(data, &mut seek)?;
-        self.tempo = read_int(data, &mut seek)?.to_i16().unwrap();
+        self.tempo = read_int(data, &mut seek)?.to_i16_gp("tempo")?;
         self.hide_tempo = if self.version.number > (5, 0, 0) {
             read_bool(data, &mut seek)?
         } else {
@@ -195,9 +193,9 @@ impl Song {
         read_int(data, &mut seek)?; //octave
         self.read_midi_channels(data, &mut seek)?;
         let directions = self.read_directions(data, &mut seek)?;
-        self.master_effect.reverb = read_int(data, &mut seek)?.to_f32().unwrap();
-        let measure_count = read_int(data, &mut seek)?.to_usize().unwrap();
-        let track_count = read_int(data, &mut seek)?.to_usize().unwrap();
+        self.master_effect.reverb = read_int(data, &mut seek)?.to_f32_gp("reverb")?;
+        let measure_count = read_int(data, &mut seek)?.to_usize_gp("measure count")?;
+        let track_count = read_int(data, &mut seek)?.to_usize_gp("track count")?;
         self.read_measure_headers_v5(data, &mut seek, measure_count, &directions)?;
         self.read_tracks_v5(data, &mut seek, track_count)?;
         self.read_measures(data, &mut seek)?;
@@ -235,8 +233,8 @@ impl Song {
         self.copyright = read_int_byte_size_string(data, seek)?;
         self.writer = read_int_byte_size_string(data, seek)?; //tabbed by
         self.instructions = read_int_byte_size_string(data, seek)?; //instructions
-                                                                    //notices
-        let nc = read_int(data, seek)?.to_usize().unwrap(); //notes count
+        //notices
+        let nc = read_int(data, seek)?.to_usize_gp("notice count")?;
         for _ in 0..nc {
             self.notice.push(read_int_byte_size_string(data, seek)?);
         }
@@ -255,7 +253,7 @@ impl Song {
         if clipboard.is_some_and(|c| c) && version.0 >= 4 {
             self.write_clipboard(&mut data, &version);
         }
-        self.write_info(&mut data, version);
+        self.write_info(&mut data, version)?;
         if version.0 < 5 {
             write_bool(&mut data, self.triplet_feel != TripletFeel::None);
         }
@@ -279,7 +277,7 @@ impl Song {
             write_signed_byte(&mut data, 0);
         } //octave
         self.write_midi_channels(&mut data); //TODO: fixme for writing
-                                             //return data;
+        //return data;
 
         if version.0 == 5 {
             self.write_directions(&mut data);
@@ -297,7 +295,7 @@ impl Song {
         write_i32(&mut data, 0);
         Ok(data)
     }
-    fn write_info(&self, data: &mut Vec<u8>, version: (u8, u8, u8)) {
+    fn write_info(&self, data: &mut Vec<u8>, version: (u8, u8, u8)) -> GpResult<()> {
         write_int_byte_size_string(data, &self.name);
         write_int_byte_size_string(data, &self.subtitle);
         write_int_byte_size_string(data, &self.artist);
@@ -311,10 +309,11 @@ impl Song {
         write_int_byte_size_string(data, &self.copyright);
         write_int_byte_size_string(data, &self.writer);
         write_int_byte_size_string(data, &self.instructions);
-        write_i32(data, self.notice.len().to_i32().unwrap());
+        write_i32(data, self.notice.len().to_i32_gp("notice count")?);
         for i in 0..self.notice.len() {
             write_int_byte_size_string(data, &self.notice[i]);
         }
+        Ok(())
     }
     fn pack_author(&self) -> String {
         if !self.words.is_empty() && !self.author.is_empty() {
