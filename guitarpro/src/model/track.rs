@@ -1,6 +1,4 @@
-use fraction::ToPrimitive;
-
-use crate::error::GpResult;
+use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     audio::midi::*,
     io::primitive::*,
@@ -103,12 +101,17 @@ impl Default for Track {
 pub trait SongTrackOps {
     fn read_tracks(&mut self, data: &[u8], seek: &mut usize, track_count: usize) -> GpResult<()>;
     fn read_tracks_v5(&mut self, data: &[u8], seek: &mut usize, track_count: usize)
-        -> GpResult<()>;
+    -> GpResult<()>;
     fn read_track(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()>;
     fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()>;
-    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8, u8, u8));
-    fn write_track(&self, data: &mut Vec<u8>, number: usize);
-    fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8, u8, u8));
+    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()>;
+    fn write_track(&self, data: &mut Vec<u8>, number: usize) -> GpResult<()>;
+    fn write_track_v5(
+        &self,
+        data: &mut Vec<u8>,
+        number: usize,
+        version: &(u8, u8, u8),
+    ) -> GpResult<()>;
 }
 
 impl SongTrackOps for Song {
@@ -159,7 +162,7 @@ impl SongTrackOps for Song {
     /// * **Track's color**: `color`. The track's displayed color in Guitar Pro.
     fn read_track(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()> {
         let mut track = Track {
-            number: number.to_i32().unwrap(),
+            number: number.to_i32_gp("track number")?,
             ..Default::default()
         };
         //read the flag
@@ -170,21 +173,21 @@ impl SongTrackOps for Song {
         track.banjo_track = (flags & 0x04) == 0x04; //Banjo track
 
         track.name = read_byte_size_string(data, seek, 40)?;
-        let string_count = read_int(data, seek)?.to_u8().unwrap();
+        let string_count = read_int(data, seek)?.to_u8_gp("string count")?;
         track.strings.clear();
         for i in 0..7i8 {
-            let i_tuning = read_int(data, seek)?.to_i8().unwrap();
-            if string_count.to_i8().unwrap() > i {
+            let i_tuning = read_int(data, seek)?.to_i8_gp("string tuning")?;
+            if string_count.to_i8_gp("string count")? > i {
                 track.strings.push((i + 1, i_tuning));
             }
         }
         //println!("tuning: {:?}", track.strings);
-        track.port = read_int(data, seek)?.to_u8().unwrap();
+        track.port = read_int(data, seek)?.to_u8_gp("port")?;
         let index = self.read_channel(data, seek)?;
         if self.channels[index].channel == 9 {
             track.percussion_track = true;
         }
-        track.fret_count = read_int(data, seek)?.to_u8().unwrap();
+        track.fret_count = read_int(data, seek)?.to_u8_gp("fret count")?;
         track.offset = read_int(data, seek)?;
         track.color = read_color(data, seek)?;
         //println!("\tInstrument: {} \t Strings: {}/{} ({:?})", self.channels[index].get_instrument_name(), string_count, track.strings.len(), track.strings);
@@ -231,7 +234,7 @@ impl SongTrackOps for Song {
     /// - Track RSE. See `readTrackRSE`.
     fn read_track_v5(&mut self, data: &[u8], seek: &mut usize, number: usize) -> GpResult<()> {
         let mut track = Track {
-            number: number.to_i32().unwrap(),
+            number: number.to_i32_gp("track number")?,
             ..Default::default()
         };
         if number == 0 || self.version.number == (5, 0, 0) {
@@ -247,23 +250,22 @@ impl SongTrackOps for Song {
         track.use_rse = (flags1 & 0x40) == 0x40;
         track.indicate_tuning = (flags1 & 0x80) == 0x80;
         track.name = read_byte_size_string(data, seek, 40)?;
-        //let string_count = read_int(data, seek).to_u8().unwrap();
         let sc = read_int(data, seek)?;
         //println!("read_track_v5(), track:name: \"{}\", string count: {}", track.name, sc);
-        let string_count = sc.to_u8().unwrap();
+        let string_count = sc.to_u8_gp("string count")?;
         track.strings.clear();
         for i in 0i8..7i8 {
-            let i_tuning = read_int(data, seek)?.to_i8().unwrap();
-            if string_count.to_i8().unwrap() > i {
+            let i_tuning = read_int(data, seek)?.to_i8_gp("string tuning")?;
+            if string_count.to_i8_gp("string count")? > i {
                 track.strings.push((i + 1, i_tuning));
             }
         }
-        track.port = read_int(data, seek)?.to_u8().unwrap();
+        track.port = read_int(data, seek)?.to_u8_gp("port")?;
         self.read_channel(data, seek)?;
         if self.channels[number].channel == 9 {
             track.percussion_track = true;
         }
-        track.fret_count = read_int(data, seek)?.to_u8().unwrap();
+        track.fret_count = read_int(data, seek)?.to_u8_gp("fret count")?;
         track.offset = read_int(data, seek)?;
         track.color = read_color(data, seek)?;
 
@@ -289,21 +291,20 @@ impl SongTrackOps for Song {
         Ok(())
     }
 
-    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) {
+    fn write_tracks(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()> {
         for i in 0..self.tracks.len() {
-            //self.current_track = Some(i);
             if version.0 < 5 {
-                self.write_track(data, i);
+                self.write_track(data, i)?;
             } else {
-                self.write_track_v5(data, i, version);
+                self.write_track_v5(data, i, version)?;
             }
         }
         if version.0 == 5 {
             write_placeholder_default(data, if version == &(5, 0, 0) { 2 } else { 1 });
         }
-        //self.current_track = None;
+        Ok(())
     }
-    fn write_track(&self, data: &mut Vec<u8>, number: usize) {
+    fn write_track(&self, data: &mut Vec<u8>, number: usize) -> GpResult<()> {
         let mut flags = 0x00;
         if self.tracks[number].percussion_track {
             flags |= 0x01;
@@ -317,38 +318,48 @@ impl SongTrackOps for Song {
         write_byte(data, flags);
         write_byte_size_string(data, &self.tracks[number].name);
         write_placeholder_default(data, 40 - self.tracks[number].name.len());
-        write_i32(data, self.tracks[number].strings.len().to_i32().unwrap());
+        write_i32(
+            data,
+            self.tracks[number].strings.len().to_i32_gp("strings len")?,
+        );
         for i in 0..7usize {
             let mut tuning = 0i8;
             if i < self.tracks[number].strings.len() {
                 tuning = self.tracks[number].strings[i].1;
             }
-            write_i32(data, tuning.to_i32().unwrap());
+            write_i32(data, tuning.to_i32_gp("string tuning")?);
         }
-        write_i32(data, self.tracks[number].port.to_i32().unwrap());
+        write_i32(data, self.tracks[number].port.to_i32_gp("port")?);
         //write channel
         write_i32(
             data,
             self.channels[self.tracks[number].channel_index]
                 .channel
-                .to_i32()
-                .unwrap()
+                .to_i32_gp("channel")?
                 + 1,
         );
         write_i32(
             data,
             self.channels[self.tracks[number].channel_index]
                 .effect_channel
-                .to_i32()
-                .unwrap()
+                .to_i32_gp("effect channel")?
                 + 1,
         );
         //end write channel
-        write_i32(data, self.tracks[number].fret_count.to_i32().unwrap());
+        write_i32(
+            data,
+            self.tracks[number].fret_count.to_i32_gp("fret count")?,
+        );
         write_i32(data, self.tracks[number].offset);
         write_color(data, self.tracks[number].color);
+        Ok(())
     }
-    fn write_track_v5(&self, data: &mut Vec<u8>, number: usize, version: &(u8, u8, u8)) {
+    fn write_track_v5(
+        &self,
+        data: &mut Vec<u8>,
+        number: usize,
+        version: &(u8, u8, u8),
+    ) -> GpResult<()> {
         if number == 0 || version == &(5, 0, 0) {
             write_placeholder_default(data, 1);
         }
@@ -382,34 +393,38 @@ impl SongTrackOps for Song {
         write_byte_size_string(data, &self.tracks[number].name);
         write_placeholder_default(data, 40 - self.tracks[number].name.len());
 
-        write_i32(data, self.tracks[number].strings.len().to_i32().unwrap());
+        write_i32(
+            data,
+            self.tracks[number].strings.len().to_i32_gp("strings len")?,
+        );
         for i in 0..7usize {
             let mut tuning = 0i8;
             if i < self.tracks[number].strings.len() {
                 tuning = self.tracks[number].strings[i].1;
             }
-            write_i32(data, tuning.to_i32().unwrap());
+            write_i32(data, tuning.to_i32_gp("string tuning")?);
         }
-        write_i32(data, self.tracks[number].port.to_i32().unwrap());
+        write_i32(data, self.tracks[number].port.to_i32_gp("port")?);
         //write channel
         write_i32(
             data,
             self.channels[self.tracks[number].channel_index]
                 .channel
-                .to_i32()
-                .unwrap()
+                .to_i32_gp("channel")?
                 + 1,
         );
         write_i32(
             data,
             self.channels[self.tracks[number].channel_index]
                 .effect_channel
-                .to_i32()
-                .unwrap()
+                .to_i32_gp("effect channel")?
                 + 1,
         );
         //end write channel
-        write_i32(data, self.tracks[number].fret_count.to_i32().unwrap());
+        write_i32(
+            data,
+            self.tracks[number].fret_count.to_i32_gp("fret count")?,
+        );
         write_i32(data, self.tracks[number].offset);
         write_color(data, self.tracks[number].color);
 
@@ -455,5 +470,6 @@ impl SongTrackOps for Song {
         );
         write_byte(data, self.channels[self.tracks[number].channel_index].bank);
         self.write_track_rse(data, &self.tracks[number].rse, version);
+        Ok(())
     }
 }

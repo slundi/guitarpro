@@ -290,7 +290,7 @@ impl Song {
         );
         write_i32(&mut data, self.tracks.len().to_i32_gp("tracks count")?);
         self.write_measure_headers(&mut data, &version);
-        self.write_tracks(&mut data, &version);
+        self.write_tracks(&mut data, &version)?;
         self.write_measures(&mut data, &version)?;
         write_i32(&mut data, 0);
         Ok(data)
