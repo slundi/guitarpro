@@ -1,5 +1,3 @@
-use fraction::ToPrimitive;
-
 use crate::error::{GpError, GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
@@ -287,7 +285,7 @@ impl SongNoteOps for Song {
         if (flags & 0x10) == 0x10 {
             let v = read_signed_byte(data, seek)?;
             //println!("read_note(), v: {}", v);
-            note.velocity = crate::model::effects::unpack_velocity(v.to_i16().unwrap());
+            note.velocity = crate::model::effects::unpack_velocity(v.to_i16_gp("velocity")?);
             //println!("read_note(), velocity: {}", note.velocity);
         }
         if (flags & 0x20) == 0x20 {
@@ -295,7 +293,7 @@ impl SongNoteOps for Song {
             let value = if note.kind == NoteType::Tie {
                 self.get_tied_note_value(guitar_string.0, track_index)
             } else {
-                fret.to_i16().unwrap()
+                fret.to_i16_gp("fret value")?
             };
             note.value = value.clamp(0, 99);
             //println!("read_note(), value: {}", note.value);
@@ -310,10 +308,9 @@ impl SongNoteOps for Song {
             } else if self.version.number.0 == 4 {
                 self.read_note_effects_v4(data, seek, note)?;
             }
-            if note.effect.is_harmonic() && note.effect.harmonic.is_some() {
-                let mut h = note.effect.harmonic.take().unwrap();
+            if let Some(mut h) = note.effect.harmonic.take() {
                 if h.kind == HarmonicType::Tapped {
-                    h.fret = Some(note.value.to_i8().unwrap() + 12);
+                    h.fret = Some(note.value.to_i8_gp("note value")? + 12);
                 }
                 note.effect.harmonic = Some(h);
             }
@@ -359,7 +356,7 @@ impl SongNoteOps for Song {
         if (flags & 0x10) == 0x10 {
             let v = read_signed_byte(data, seek)?;
             //println!("read_note(), v: {}", v);
-            note.velocity = crate::model::effects::unpack_velocity(v.to_i16().unwrap());
+            note.velocity = crate::model::effects::unpack_velocity(v.to_i16_gp("velocity")?);
             //println!("read_note(), velocity: {}", note.velocity);
         }
         if (flags & 0x20) == 0x20 {
@@ -367,7 +364,7 @@ impl SongNoteOps for Song {
             let value = if note.kind == NoteType::Tie {
                 self.get_tied_note_value(guitar_string.0, track_index)
             } else {
-                fret.to_i16().unwrap()
+                fret.to_i16_gp("fret value")?
             };
             note.value = value.clamp(0, 99);
             //println!("read_note(), value: {}", note.value);
@@ -377,7 +374,7 @@ impl SongNoteOps for Song {
             note.effect.right_hand_finger = get_fingering(read_signed_byte(data, seek)?);
         }
         if (flags & 0x01) == 0x01 {
-            note.duration_percent = read_double(data, seek)?.to_f32().unwrap();
+            note.duration_percent = read_double(data, seek)?.to_f32_gp("duration percent")?;
         }
         note.swap_accidentals = (read_byte(data, seek)? & 0x02) == 0x02;
         if (flags & 0x08) == 0x08 {
@@ -790,7 +787,7 @@ impl SongNoteOps for Song {
                         return Err(GpError::WriteError(format!(
                             "Invalid tremolo picking duration: {}",
                             duration_val
-                        )))
+                        )));
                     }
                 };
                 write_signed_byte(data, encoded);
@@ -825,7 +822,7 @@ impl SongNoteOps for Song {
                     return Err(GpError::WriteError(format!(
                         "Invalid trill duration: {}",
                         duration_val
-                    )))
+                    )));
                 }
             };
             write_signed_byte(data, encoded);
