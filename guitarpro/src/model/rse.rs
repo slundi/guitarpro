@@ -1,6 +1,4 @@
-use fraction::ToPrimitive;
-
-use crate::error::GpResult;
+use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
     model::{enums::*, song::*, track::*},
@@ -126,7 +124,7 @@ impl SongRseOps for Song {
     fn read_rse_master_effect(&self, data: &[u8], seek: &mut usize) -> GpResult<RseMasterEffect> {
         let mut me = RseMasterEffect::default();
         if self.version.number > (5, 0, 0) {
-            me.volume = read_int(data, seek)?.to_f32().unwrap();
+            me.volume = read_int(data, seek)?.to_f32_gp("rse master effect volume")?;
             read_int(data, seek)?; //???
             me.equalizer = self.read_rse_equalizer(data, seek, 11)?;
             //println!("read_rse_master_effect(): {:?}", me);
@@ -150,7 +148,7 @@ impl SongRseOps for Song {
     }
     /// Unpack equalizer volume value. Equalizer volumes are float but stored as `SignedBytes <signed-byte>`.
     fn unpack_volume_value(&self, value: i8) -> f32 {
-        -value.to_f32().unwrap() / 10.0
+        -(value as f32) / 10.0
     }
 
     /// Read track RSE. In GuitarPro 5.1 track RSE is read as follows:
@@ -178,17 +176,18 @@ impl SongRseOps for Song {
     /// - Effect number: `int`. Vestige of Guitar Pro 5.0 format.
     fn read_rse_instrument(&mut self, data: &[u8], seek: &mut usize) -> GpResult<RseInstrument> {
         let mut instrument = RseInstrument {
-            instrument: read_int(data, seek)?.to_i16().unwrap_or(0),
+            instrument: read_int(data, seek)?.to_i16_gp("rse instrument number")?,
             ..Default::default()
         };
-        instrument.unknown = read_int(data, seek)?.to_i16().unwrap_or(0); //??? mostly 1
-        instrument.sound_bank = read_int(data, seek)?.to_i16().unwrap_or(0);
+        instrument.unknown = read_int(data, seek)?.to_i16_gp("rse instrument unknown")?; //??? mostly 1
+        instrument.sound_bank = read_int(data, seek)?.to_i16_gp("rse instrument sound bank")?;
         //println!("read_rse_instrument(), instrument: {} {} {} \t\t seek: {}", instrument.instrument, instrument.unknown, instrument.sound_bank, *seek);
         if self.version.number == (5, 0, 0) {
             instrument.effect_number = read_short(data, seek)?;
             *seek += 1;
         } else {
-            instrument.effect_number = read_int(data, seek)?.to_i16().unwrap_or(0);
+            instrument.effect_number =
+                read_int(data, seek)?.to_i16_gp("rse instrument effect number")?;
         }
         //println!("read_rse_instrument(), instrument.effect_number: {} \t\t seek: {}", instrument.effect_number, *seek);
         Ok(instrument)
@@ -215,7 +214,7 @@ impl SongRseOps for Song {
             if self.master_effect.volume == 0.0 {
                 100
             } else {
-                self.master_effect.volume.ceil().to_i32().unwrap()
+                self.master_effect.volume.ceil() as i32
             },
         );
         write_i32(data, 0); //reverb?
@@ -227,10 +226,10 @@ impl SongRseOps for Song {
         }
     }
     fn pack_volume_value(&self, value: f32) -> i8 {
-        (-value * 10f32).round().to_i8().unwrap() //int(-round(value, 1) * 10)
+        (-value * 10f32).round() as i8 //int(-round(value, 1) * 10)
     }
     fn write_master_reverb(&self, data: &mut Vec<u8>) {
-        write_i32(data, self.master_effect.reverb.to_i32().unwrap());
+        write_i32(data, self.master_effect.reverb as i32);
     }
 
     fn write_track_rse(&self, data: &mut Vec<u8>, rse: &TrackRse, version: &(u8, u8, u8)) {
@@ -251,14 +250,14 @@ impl SongRseOps for Song {
         instrument: &RseInstrument,
         version: &(u8, u8, u8),
     ) {
-        write_i32(data, instrument.instrument.to_i32().unwrap());
-        write_i32(data, instrument.unknown.to_i32().unwrap());
-        write_i32(data, instrument.sound_bank.to_i32().unwrap());
+        write_i32(data, instrument.instrument as i32);
+        write_i32(data, instrument.unknown as i32);
+        write_i32(data, instrument.sound_bank as i32);
         if version == &(5, 0, 0) {
             write_i16(data, instrument.effect_number);
             write_placeholder_default(data, 1);
         } else {
-            write_i32(data, instrument.effect_number.to_i32().unwrap());
+            write_i32(data, instrument.effect_number as i32);
         }
     }
     fn write_rse_instrument_effect(&self, data: &mut Vec<u8>, instrument: &RseInstrument) {
