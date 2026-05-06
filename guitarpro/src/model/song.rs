@@ -258,7 +258,7 @@ impl Song {
             write_bool(&mut data, self.triplet_feel != TripletFeel::None);
         }
         if version.0 >= 4 {
-            self.write_lyrics(&mut data);
+            self.write_lyrics(&mut data)?;
         }
         if version > (5, 0, 0) {
             self.write_rse_master_effect(&mut data);
