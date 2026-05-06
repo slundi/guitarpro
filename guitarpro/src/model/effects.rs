@@ -72,14 +72,10 @@ pub(crate) fn unpack_velocity(v: i16) -> i16 {
     MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT
 }
 
-pub(crate) fn pack_velocity(velocity: i16) -> i8 {
-    ((velocity + VELOCITY_INCREMENT - MIN_VELOCITY)
-        .to_f32()
-        .unwrap()
-        / VELOCITY_INCREMENT.to_f32().unwrap())
-    .ceil()
-    .to_i8()
-    .unwrap()
+pub(crate) fn pack_velocity(velocity: i16) -> GpResult<i8> {
+    ((velocity + VELOCITY_INCREMENT - MIN_VELOCITY) as f32 / VELOCITY_INCREMENT as f32)
+        .ceil()
+        .to_i8_gp("pack_velocity")
 }
 
 /// A grace note effect
@@ -166,7 +162,7 @@ pub trait SongEffectOps {
     fn read_grace_effect(&self, data: &[u8], seek: &mut usize) -> GpResult<GraceEffect>;
     fn read_grace_effect_v5(&self, data: &[u8], seek: &mut usize) -> GpResult<GraceEffect>;
     fn read_tremolo_picking(&self, data: &[u8], seek: &mut usize)
-        -> GpResult<TremoloPickingEffect>;
+    -> GpResult<TremoloPickingEffect>;
     fn read_slides_v5(&self, data: &[u8], seek: &mut usize) -> GpResult<Vec<SlideType>>;
     fn read_harmonic(
         &self,
@@ -177,9 +173,9 @@ pub trait SongEffectOps {
     fn read_harmonic_v5(&mut self, data: &[u8], seek: &mut usize) -> GpResult<HarmonicEffect>;
     fn read_trill(&self, data: &[u8], seek: &mut usize) -> GpResult<TrillEffect>;
     // write methods
-    fn write_bend(&self, data: &mut Vec<u8>, bend: &Option<BendEffect>);
-    fn write_grace(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>);
-    fn write_grace_v5(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>);
+    fn write_bend(&self, data: &mut Vec<u8>, bend: &Option<BendEffect>) -> GpResult<()>;
+    fn write_grace(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) -> GpResult<()>;
+    fn write_grace_v5(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) -> GpResult<()>;
     fn write_harmonic(
         &self,
         data: &mut Vec<u8>,
@@ -197,12 +193,11 @@ pub trait SongEffectOps {
 
 fn from_trill_period(period: i8) -> GpResult<u16> {
     match period {
-        1 => Ok(DURATION_SIXTEENTH),
-        2 => Ok(DURATION_THIRTY_SECOND),
-        3 => Ok(DURATION_SIXTY_FOURTH),
-        _ => Ok(DURATION_SIXTEENTH),
+        1 => Ok(u16::from(DURATION_SIXTEENTH)),
+        2 => Ok(u16::from(DURATION_THIRTY_SECOND)),
+        3 => Ok(u16::from(DURATION_SIXTY_FOURTH)),
+        _ => Ok(u16::from(DURATION_SIXTEENTH)),
     }
-    .map(|v| v.to_u16().unwrap())
 }
 
 impl SongEffectOps for Song {
@@ -241,11 +236,7 @@ impl SongEffectOps for Song {
             be.points.push(bp);
         }
         //println!("read_bend_effect(): {:?}", be);
-        if count > 0 {
-            Ok(Some(be))
-        } else {
-            Ok(None)
-        }
+        if count > 0 { Ok(Some(be)) } else { Ok(None) }
     }
     /// Read grace note effect.
     ///
@@ -267,7 +258,7 @@ impl SongEffectOps for Song {
             fret: read_signed_byte(data, seek)?,
             ..Default::default()
         };
-        g.velocity = unpack_velocity(read_byte(data, seek)?.to_i16().unwrap());
+        g.velocity = unpack_velocity(read_byte(data, seek)? as i16);
         g.duration = 1 << (7 - read_byte(data, seek)?);
         //g.duration = 1 << (7 - read_byte(data, seek));
         g.is_dead = g.fret == -1;
@@ -312,9 +303,7 @@ impl SongEffectOps for Song {
         seek: &mut usize,
     ) -> GpResult<TremoloPickingEffect> {
         let mut tp = TremoloPickingEffect::default();
-        tp.duration.value = from_tremolo_value(read_signed_byte(data, seek)?)?
-            .to_u16()
-            .unwrap();
+        tp.duration.value = u16::from(from_tremolo_value(read_signed_byte(data, seek)?)?);
         Ok(tp)
     }
     ///// Read slides. Slide is encoded in `signed-byte`. See `SlideType` for value mapping.
@@ -371,11 +360,7 @@ impl SongEffectOps for Song {
             4 => he.kind = HarmonicType::Pinch,
             5 => he.kind = HarmonicType::Semi,
             15 => {
-                he.pitch = Some(PitchClass::from(
-                    ((note.value + 7) % 12).to_i8().unwrap(),
-                    None,
-                    None,
-                ));
+                he.pitch = Some(PitchClass::from(((note.value + 7) % 12) as i8, None, None));
                 he.octave = Some(Octave::Ottava);
                 he.kind = HarmonicType::Artificial;
             }
@@ -458,48 +443,51 @@ impl SongEffectOps for Song {
         Ok(t)
     }
 
-    fn write_bend(&self, data: &mut Vec<u8>, bend: &Option<BendEffect>) {
+    fn write_bend(&self, data: &mut Vec<u8>, bend: &Option<BendEffect>) -> GpResult<()> {
         if let Some(b) = bend {
             write_signed_byte(data, from_bend_type(&b.kind));
-            write_i32(data, b.value.to_i32().unwrap());
-            write_i32(data, b.points.len().to_i32().unwrap());
+            write_i32(data, i32::from(b.value));
+            write_i32(data, b.points.len().to_i32_gp("bend points count")?);
             for i in 0..b.points.len() {
                 write_i32(
                     data,
-                    (b.points[i].position.to_f32().unwrap() * GP_BEND_POSITION
-                        / BEND_EFFECT_MAX_POSITION.to_f32().unwrap())
+                    (f32::from(b.points[i].position) * GP_BEND_POSITION
+                        / f32::from(BEND_EFFECT_MAX_POSITION))
                     .round()
-                    .to_i32()
-                    .unwrap(),
+                    .to_i32_gp("bend point position")?,
                 );
                 write_i32(
                     data,
-                    (b.points[i].value.to_f32().unwrap() * GP_BEND_SEMITONE
-                        / GP_BEND_SEMITONE_LENGTH)
+                    (f32::from(b.points[i].value) * GP_BEND_SEMITONE / GP_BEND_SEMITONE_LENGTH)
                         .round()
-                        .to_i32()
-                        .unwrap(),
+                        .to_i32_gp("bend point value")?,
                 );
                 write_bool(data, b.points[i].vibrato);
             }
         }
+        Ok(())
     }
-    fn write_grace(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) {
-        let g = grace.clone().unwrap();
+    fn write_grace(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) -> GpResult<()> {
+        let g = grace.as_ref().ok_or(GpError::MissingState {
+            field: "grace effect",
+        })?;
         write_signed_byte(data, g.fret);
-        write_byte(data, pack_velocity(g.velocity).to_u8().unwrap());
-        write_byte(data, g.duration.leading_zeros().to_u8().unwrap()); //8 - grace.duration.bit_length()
+        write_byte(data, pack_velocity(g.velocity)?.to_u8_gp("grace velocity")?);
+        write_byte(data, g.duration.leading_zeros() as u8); //8 - grace.duration.bit_length()
         write_signed_byte(data, from_grace_effect_transition(&g.transition));
+        Ok(())
     }
-    fn write_grace_v5(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) {
-        let g = grace.clone().unwrap();
-        write_byte(data, g.fret.to_u8().unwrap());
-        write_byte(data, pack_velocity(g.velocity).to_u8().unwrap());
+    fn write_grace_v5(&self, data: &mut Vec<u8>, grace: &Option<GraceEffect>) -> GpResult<()> {
+        let g = grace.as_ref().ok_or(GpError::MissingState {
+            field: "grace effect",
+        })?;
+        write_byte(data, g.fret.to_u8_gp("grace fret")?);
+        write_byte(data, pack_velocity(g.velocity)?.to_u8_gp("grace velocity")?);
         write_byte(
             data,
-            from_grace_effect_transition(&g.transition).to_u8().unwrap(),
+            from_grace_effect_transition(&g.transition).to_u8_gp("grace transition")?,
         );
-        write_byte(data, g.duration.leading_zeros().to_u8().unwrap()); //8 - grace.duration.bit_length()
+        write_byte(data, g.duration.leading_zeros() as u8); //8 - grace.duration.bit_length()
         let mut flags = 0u8;
         if g.is_dead {
             flags |= 0x01;
@@ -508,6 +496,7 @@ impl SongEffectOps for Song {
             flags |= 0x02;
         }
         write_byte(data, flags);
+        Ok(())
     }
     fn write_harmonic(
         &self,

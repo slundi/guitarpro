@@ -184,7 +184,7 @@ pub trait SongNoteOps {
         version: &(u8, u8, u8),
     ) -> GpResult<()>;
     fn pack_note_flags(&self, note: &Note, version: &(u8, u8, u8)) -> u8;
-    fn write_note_effects_v3(&self, data: &mut Vec<u8>, note: &Note);
+    fn write_note_effects_v3(&self, data: &mut Vec<u8>, note: &Note) -> GpResult<()>;
     fn write_note_effects(
         &self,
         data: &mut Vec<u8>,
@@ -560,7 +560,7 @@ impl SongNoteOps for Song {
             );
         }
         if (flags & 0x10) == 0x10 {
-            write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity));
+            write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity)?);
         }
         if (flags & 0x20) == 0x20 {
             if note.kind != NoteType::Rest {
@@ -570,7 +570,7 @@ impl SongNoteOps for Song {
             }
         }
         if (flags & 0x08) == 0x08 {
-            self.write_note_effects_v3(data, note);
+            self.write_note_effects_v3(data, note)?;
         }
         Ok(())
     }
@@ -601,7 +601,7 @@ impl SongNoteOps for Song {
             );
         }
         if (flags & 0x10) == 0x10 {
-            write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity));
+            write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity)?);
         }
         if (flags & 0x20) == 0x20 {
             if note.kind != NoteType::Rest {
@@ -616,7 +616,7 @@ impl SongNoteOps for Song {
         }
         if (flags & 0x08) == 0x08 {
             if version.0 == 3 {
-                self.write_note_effects_v3(data, note);
+                self.write_note_effects_v3(data, note)?;
             } else {
                 self.write_note_effects(data, note, strings, version)?;
             }
@@ -636,7 +636,7 @@ impl SongNoteOps for Song {
             write_byte(data, from_note_type(&note.kind));
         }
         if (flags & 0x10) == 0x10 {
-            write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity));
+            write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity)?);
         }
         if (flags & 0x20) == 0x20 {
             if note.kind != NoteType::Tie {
@@ -693,7 +693,7 @@ impl SongNoteOps for Song {
         }
         flags
     }
-    fn write_note_effects_v3(&self, data: &mut Vec<u8>, note: &Note) {
+    fn write_note_effects_v3(&self, data: &mut Vec<u8>, note: &Note) -> GpResult<()> {
         let mut flags1 = 0u8;
         if note.effect.is_bend() {
             flags1 |= 0x01;
@@ -714,11 +714,12 @@ impl SongNoteOps for Song {
         }
         write_byte(data, flags1);
         if (flags1 & 0x01) == 0x01 {
-            self.write_bend(data, &note.effect.bend);
+            self.write_bend(data, &note.effect.bend)?;
         }
         if (flags1 & 0x10) == 0x10 {
-            self.write_grace(data, &note.effect.grace);
+            self.write_grace(data, &note.effect.grace)?;
         }
+        Ok(())
     }
     fn write_note_effects(
         &self,
@@ -767,13 +768,13 @@ impl SongNoteOps for Song {
         write_signed_byte(data, flags2);
 
         if (flags1 & 0x01) == 0x01 {
-            self.write_bend(data, &note.effect.bend);
+            self.write_bend(data, &note.effect.bend)?;
         }
         if (flags1 & 0x10) == 0x10 {
             if version.0 < 5 {
-                self.write_grace(data, &note.effect.grace);
+                self.write_grace(data, &note.effect.grace)?;
             } else {
-                self.write_grace_v5(data, &note.effect.grace);
+                self.write_grace_v5(data, &note.effect.grace)?;
             }
         }
         if (flags2 & 0x04) == 0x04 {

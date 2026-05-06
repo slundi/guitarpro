@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::model::mnx::{error::MnxError, MnxId, Orientation};
+use crate::model::mnx::{MnxId, Orientation, error::MnxError};
 
 pub enum AccidentalEnclosureSymbol {
     /// The accidental is enclosed in square brackets.
