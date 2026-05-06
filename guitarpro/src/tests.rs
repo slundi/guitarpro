@@ -587,7 +587,9 @@ fn test_gp3_all_files_roundtrip() {
                         .unwrap_or(written1.len().min(written2.len()));
                     let w1 = &written1[pos.saturating_sub(2)..written1.len().min(pos + 6)];
                     let w2 = &written2[pos.saturating_sub(2)..written2.len().min(pos + 6)];
-                    panic!("round-trip produced different bytes on second write at byte {pos}: {w1:?} vs {w2:?}");
+                    panic!(
+                        "round-trip produced different bytes on second write at byte {pos}: {w1:?} vs {w2:?}"
+                    );
                 }
             }));
             match result {
@@ -703,7 +705,10 @@ fn test_gp5_all_files_roundtrip() {
                         .unwrap_or(written1.len().min(written2.len()));
                     let w1 = &written1[pos.saturating_sub(8)..written1.len().min(pos + 8)];
                     let w2 = &written2[pos.saturating_sub(8)..written2.len().min(pos + 8)];
-                    panic!("round-trip produced different bytes on second write at byte {pos}: {:?} vs {:?}", w1, w2);
+                    panic!(
+                        "round-trip produced different bytes on second write at byte {pos}: {:?} vs {:?}",
+                        w1, w2
+                    );
                 }
             }));
             match result {
@@ -840,7 +845,9 @@ fn test_debug_gp3_roundtrip() {
                         }
                         let n2 = &beat2.notes[ni];
                         if n1.effect != n2.effect {
-                            eprintln!("Note diff at track={ti} measure={mi} voice={vi} beat={bi} note={ni}");
+                            eprintln!(
+                                "Note diff at track={ti} measure={mi} voice={vi} beat={bi} note={ni}"
+                            );
                             eprintln!("  n1.effect={:?}", n1.effect);
                             eprintln!("  n2.effect={:?}", n2.effect);
                             break 'outer;
