@@ -251,7 +251,7 @@ impl Song {
         let mut data: Vec<u8> = Vec::with_capacity(8388608); //capacity of 8MB, should be sufficient
         write_version(&mut data, version);
         if clipboard.is_some_and(|c| c) && version.0 >= 4 {
-            self.write_clipboard(&mut data, &version);
+            self.write_clipboard(&mut data, &version)?;
         }
         self.write_info(&mut data, version)?;
         if version.0 < 5 {
@@ -280,7 +280,7 @@ impl Song {
         //return data;
 
         if version.0 == 5 {
-            self.write_directions(&mut data);
+            self.write_directions(&mut data)?;
             self.write_master_reverb(&mut data);
         }
 
@@ -289,7 +289,7 @@ impl Song {
             self.tracks[0].measures.len().to_i32_gp("measures count")?,
         );
         write_i32(&mut data, self.tracks.len().to_i32_gp("tracks count")?);
-        self.write_measure_headers(&mut data, &version);
+        self.write_measure_headers(&mut data, &version)?;
         self.write_tracks(&mut data, &version)?;
         self.write_measures(&mut data, &version)?;
         write_i32(&mut data, 0);

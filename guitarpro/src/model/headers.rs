@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use fraction::ToPrimitive;
-
-use crate::error::GpResult;
+use crate::error::{GpError, GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
     model::{enums::*, key_signature::*, song::*},
@@ -85,14 +83,21 @@ impl Default for MeasureHeader {
 }
 impl MeasureHeader {
     #[allow(dead_code)]
-    pub(crate) fn length(&self) -> i64 {
-        self.time_signature.numerator.to_i64().unwrap()
+    pub(crate) fn length(&self) -> GpResult<i64> {
+        Ok(self
+            .time_signature
+            .numerator
+            .to_i64_gp("time_signature.numerator")?
             * crate::model::key_signature::DURATION_QUARTER_TIME
             * 4
-            / self.time_signature.denominator.value.to_i64().unwrap()
+            / self
+                .time_signature
+                .denominator
+                .value
+                .to_i64_gp("time_signature.denominator.value")?)
     }
-    pub(crate) fn _end(&self) -> i64 {
-        self.start + self.length()
+    pub(crate) fn _end(&self) -> GpResult<i64> {
+        Ok(self.start + self.length()?)
     }
 }
 
@@ -169,16 +174,16 @@ pub trait SongHeaderOps {
         data: &[u8],
         seek: &mut usize,
     ) -> GpResult<(HashMap<DirectionSign, i16>, HashMap<DirectionSign, i16>)>;
-    fn write_measure_headers(&self, data: &mut Vec<u8>, version: &(u8, u8, u8));
+    fn write_measure_headers(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()>;
     fn write_measure_header(
         &self,
         data: &mut Vec<u8>,
         header: usize,
         previous: Option<usize>,
         version: &(u8, u8, u8),
-    );
-    fn write_clipboard(&self, data: &mut Vec<u8>, version: &(u8, u8, u8));
-    fn write_directions(&self, data: &mut Vec<u8>);
+    ) -> GpResult<()>;
+    fn write_clipboard(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()>;
+    fn write_directions(&self, data: &mut Vec<u8>) -> GpResult<()>;
 }
 
 impl SongHeaderOps for Song {
@@ -242,12 +247,14 @@ impl SongHeaderOps for Song {
         }
         for s in &directions.0 {
             if s.1 > &-1 {
-                self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0.clone());
+                self.measure_headers[s.1.to_usize_gp("direction measure index")? - 1].direction =
+                    Some(s.0.clone());
             }
         }
         for s in &directions.1 {
             if s.1 > &-1 {
-                self.measure_headers[s.1.to_usize().unwrap() - 1].direction = Some(s.0.clone());
+                self.measure_headers[s.1.to_usize_gp("direction measure index")? - 1].direction =
+                    Some(s.0.clone());
             }
         }
         Ok(())
@@ -280,23 +287,36 @@ impl SongHeaderOps for Song {
         let flag = read_byte(data, seek)?;
         //println!("read_measure_header(), flags: {} \t N: {} \t Measure header count: {}", flag, number, self.measure_headers.len());
         let mut mh = MeasureHeader {
-            number: number.to_u16().unwrap(),
+            number: number.to_u16_gp("measure number")?,
             ..Default::default()
         };
         mh.start = 0;
         mh.triplet_feel = self.triplet_feel.clone(); //TODO: use ref & lifetime
-                                                     //we need a previous header for the next 2 flags
-                                                     //Numerator of the (key) signature
+        //we need a previous header for the next 2 flags
+        //Numerator of the (key) signature
         if (flag & 0x01) == 0x01 {
             mh.time_signature.numerator = read_signed_byte(data, seek)?;
         } else if number > 1 {
-            mh.time_signature.numerator = previous.clone().unwrap().time_signature.numerator;
+            mh.time_signature.numerator = previous
+                .clone()
+                .ok_or(GpError::MissingState {
+                    field: "previous_measure_header",
+                })?
+                .time_signature
+                .numerator;
         }
         //Denominator of the (key) signature
         if (flag & 0x02) == 0x02 {
-            mh.time_signature.denominator.value = read_signed_byte(data, seek)?.to_u16().unwrap();
+            mh.time_signature.denominator.value =
+                read_signed_byte(data, seek)?.to_u16_gp("time_signature denominator value")?;
         } else if number > 1 {
-            mh.time_signature.denominator = previous.clone().unwrap().time_signature.denominator;
+            mh.time_signature.denominator = previous
+                .clone()
+                .ok_or(GpError::MissingState {
+                    field: "previous_measure_header",
+                })?
+                .time_signature
+                .denominator;
         }
 
         mh.repeat_open = (flag & 0x04) == 0x04; //Beginning of repeat
@@ -318,7 +338,11 @@ impl SongHeaderOps for Song {
             mh.key_signature.key = read_signed_byte(data, seek)?;
             mh.key_signature.is_minor = read_signed_byte(data, seek)? != 0;
         } else if mh.number > 1 {
-            mh.key_signature = previous.unwrap().key_signature;
+            mh.key_signature = previous
+                .ok_or(GpError::MissingState {
+                    field: "previous_measure_header",
+                })?
+                .key_signature;
         }
         mh.double_bar = (flag & 0x80) == 0x80; //presence of a double bar
         Ok((mh, flag))
@@ -351,29 +375,36 @@ impl SongHeaderOps for Song {
                 mh.time_signature.beams[i] = read_byte(data, seek)?;
             }
         } else {
-            mh.time_signature.beams = previous.unwrap().time_signature.beams;
+            mh.time_signature.beams = previous
+                .ok_or(GpError::MissingState {
+                    field: "previous_measure_header",
+                })?
+                .time_signature
+                .beams;
         };
         if (flags & 0x10) == 0 {
             *seek += 1;
         } //always 0
-        mh.triplet_feel = get_triplet_feel(read_byte(data, seek)?.to_i8().unwrap())?;
+        mh.triplet_feel = get_triplet_feel(read_byte(data, seek)?.to_i8_gp("triplet feel byte")?)?;
         //println!("################################### {:?}", mh.triplet_feel);
         Ok((mh, flags))
     }
 
     fn read_repeat_alternative(&mut self, data: &[u8], seek: &mut usize) -> GpResult<u8> {
         //println!("read_repeat_alternative()");
-        let value = read_byte(data, seek)?.to_u16().unwrap();
+        let value = read_byte(data, seek)?.to_u16_gp("repeat alternative value")?;
         let mut existing_alternative = 0u16;
         for i in (0..self.measure_headers.len()).rev() {
             if self.measure_headers[i].repeat_open {
                 break;
             }
-            existing_alternative |= self.measure_headers[i].repeat_alternative.to_u16().unwrap();
+            existing_alternative |= self.measure_headers[i]
+                .repeat_alternative
+                .to_u16_gp("repeat_alternative")?;
         }
         //println!("read_repeat_alternative(), value:  {}, existing_alternative: {}", value, existing_alternative);
         //println!("read_repeat_alternative(), return: {}", ((1 << value) - 1) ^ existing_alternative);
-        Ok((((1 << value) - 1) ^ existing_alternative).to_u8().unwrap())
+        (((1 << value) - 1) ^ existing_alternative).to_u8_gp("repeat alternative result")
     }
     fn read_repeat_alternative_v5(&mut self, data: &[u8], seek: &mut usize) -> GpResult<u8> {
         read_byte(data, seek)
@@ -435,13 +466,14 @@ impl SongHeaderOps for Song {
         Ok((signs, from_signs))
     }
 
-    fn write_measure_headers(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) {
+    fn write_measure_headers(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()> {
         let mut previous: Option<usize> = None;
         for i in 0..self.measure_headers.len() {
             //self.current_measure_number = Some(self.tracks[0].measures[i].number);
-            self.write_measure_header(data, i, previous, version);
+            self.write_measure_header(data, i, previous, version)?;
             previous = Some(i);
         }
+        Ok(())
     }
 
     fn write_measure_header(
@@ -450,7 +482,7 @@ impl SongHeaderOps for Song {
         header: usize,
         previous: Option<usize>,
         version: &(u8, u8, u8),
-    ) {
+    ) -> GpResult<()> {
         //pack measure header flags
         let mut flags: u8 = 0x00;
         if let Some(p) = previous {
@@ -520,8 +552,7 @@ impl SongHeaderOps for Song {
                     .time_signature
                     .denominator
                     .value
-                    .to_i8()
-                    .unwrap(),
+                    .to_i8_gp("denominator value")?,
             );
         }
         if (flags & 0x08) == 0x08 {
@@ -542,7 +573,7 @@ impl SongHeaderOps for Song {
                 let ra = self.measure_headers[header].repeat_alternative;
                 let mut first_one = false;
                 let mut out: u8 = 0;
-                for i in 0u8..9 - ra.leading_zeros().to_u8().unwrap() {
+                for i in 0u8..9 - ra.leading_zeros().to_u8_gp("leading zeros")? {
                     out = i;
                     if (ra as u16 & (1u16 << i)) > 0 {
                         first_one = true;
@@ -581,26 +612,28 @@ impl SongHeaderOps for Song {
                 from_triplet_feel(&self.measure_headers[header].triplet_feel),
             );
         }
+        Ok(())
     }
 
-    fn write_clipboard(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) {
+    fn write_clipboard(&self, data: &mut Vec<u8>, version: &(u8, u8, u8)) -> GpResult<()> {
         if let Some(c) = &self.clipboard {
-            write_i32(data, c.start_measure.to_i32().unwrap());
-            write_i32(data, c.stop_measure.to_i32().unwrap());
-            write_i32(data, c.start_track.to_i32().unwrap());
-            write_i32(data, c.stop_track.to_i32().unwrap());
+            write_i32(data, c.start_measure.to_i32_gp("clipboard start_measure")?);
+            write_i32(data, c.stop_measure.to_i32_gp("clipboard stop_measure")?);
+            write_i32(data, c.start_track.to_i32_gp("clipboard start_track")?);
+            write_i32(data, c.stop_track.to_i32_gp("clipboard stop_track")?);
             if version.0 == 5 {
-                write_i32(data, c.start_beat.to_i32().unwrap());
-                write_i32(data, c.stop_beat.to_i32().unwrap());
+                write_i32(data, c.start_beat.to_i32_gp("clipboard start_beat")?);
+                write_i32(data, c.stop_beat.to_i32_gp("clipboard stop_beat")?);
                 write_i32(data, i32::from(c.sub_bar_copy));
             }
         }
+        Ok(())
     }
-    fn write_directions(&self, data: &mut Vec<u8>) {
+    fn write_directions(&self, data: &mut Vec<u8>) -> GpResult<()> {
         let mut map: HashMap<DirectionSign, i16> = HashMap::with_capacity(19);
         for i in 0..self.measure_headers.len() {
             if let Some(d) = &self.measure_headers[i].direction {
-                map.insert(d.clone(), (i + 1).to_i16().unwrap());
+                map.insert(d.clone(), (i + 1).to_i16_gp("direction measure index")?);
             }
         }
         let order: Vec<DirectionSign> = vec![
@@ -632,5 +665,6 @@ impl SongHeaderOps for Song {
                 write_i16(data, -1);
             }
         }
+        Ok(())
     }
 }
