@@ -1,6 +1,4 @@
-use fraction::ToPrimitive;
-
-use crate::error::GpResult;
+use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{io::primitive::*, model::song::*};
 
 ///A padding construct
@@ -93,7 +91,7 @@ impl Default for PageSetup {
 
 pub trait SongPageOps {
     fn read_page_setup(&mut self, data: &[u8], seek: &mut usize) -> GpResult<()>;
-    fn write_page_setup(&self, data: &mut Vec<u8>);
+    fn write_page_setup(&self, data: &mut Vec<u8>) -> GpResult<()>;
 }
 
 impl SongPageOps for Song {
@@ -114,14 +112,16 @@ impl SongPageOps for Song {
     ///   * copyright2, e.g. *"All Rights Reserved - International Copyright Secured"*
     ///   * pageNumber
     fn read_page_setup(&mut self, data: &[u8], seek: &mut usize) -> GpResult<()> {
-        self.page_setup.page_size.x = read_int(data, seek)?.to_u16().unwrap();
-        self.page_setup.page_size.y = read_int(data, seek)?.to_u16().unwrap();
-        self.page_setup.page_margin.left = read_int(data, seek)?.to_u16().unwrap();
-        self.page_setup.page_margin.right = read_int(data, seek)?.to_u16().unwrap();
-        self.page_setup.page_margin.top = read_int(data, seek)?.to_u16().unwrap();
-        self.page_setup.page_margin.bottom = read_int(data, seek)?.to_u16().unwrap();
-        self.page_setup.score_size_proportion = read_int(data, seek)?.to_f32().unwrap() / 100.0;
-        self.page_setup.header_and_footer = read_short(data, seek)?.to_u16().unwrap();
+        self.page_setup.page_size.x = read_int(data, seek)?.to_u16_gp("page width")?;
+        self.page_setup.page_size.y = read_int(data, seek)?.to_u16_gp("page height")?;
+        self.page_setup.page_margin.left = read_int(data, seek)?.to_u16_gp("margin left")?;
+        self.page_setup.page_margin.right = read_int(data, seek)?.to_u16_gp("margin right")?;
+        self.page_setup.page_margin.top = read_int(data, seek)?.to_u16_gp("margin top")?;
+        self.page_setup.page_margin.bottom = read_int(data, seek)?.to_u16_gp("margin bottom")?;
+        self.page_setup.score_size_proportion =
+            read_int(data, seek)?.to_f32_gp("score size proportion")? / 100.0;
+        self.page_setup.header_and_footer =
+            read_short(data, seek)?.to_u16_gp("header and footer")?;
         self.page_setup.title = read_int_size_string(data, seek)?;
         self.page_setup.subtitle = read_int_size_string(data, seek)?;
         self.page_setup.artist = read_int_size_string(data, seek)?;
@@ -137,25 +137,42 @@ impl SongPageOps for Song {
         Ok(())
     }
 
-    fn write_page_setup(&self, data: &mut Vec<u8>) {
-        write_i32(data, self.page_setup.page_size.x.to_i32().unwrap());
-        write_i32(data, self.page_setup.page_size.y.to_i32().unwrap());
+    fn write_page_setup(&self, data: &mut Vec<u8>) -> GpResult<()> {
+        write_i32(data, self.page_setup.page_size.x.to_i32_gp("page width")?);
+        write_i32(data, self.page_setup.page_size.y.to_i32_gp("page height")?);
 
-        write_i32(data, self.page_setup.page_margin.left.to_i32().unwrap());
-        write_i32(data, self.page_setup.page_margin.right.to_i32().unwrap());
-        write_i32(data, self.page_setup.page_margin.top.to_i32().unwrap());
-        write_i32(data, self.page_setup.page_margin.bottom.to_i32().unwrap());
+        write_i32(
+            data,
+            self.page_setup.page_margin.left.to_i32_gp("margin left")?,
+        );
+        write_i32(
+            data,
+            self.page_setup
+                .page_margin
+                .right
+                .to_i32_gp("margin right")?,
+        );
+        write_i32(
+            data,
+            self.page_setup.page_margin.top.to_i32_gp("margin top")?,
+        );
+        write_i32(
+            data,
+            self.page_setup
+                .page_margin
+                .bottom
+                .to_i32_gp("margin bottom")?,
+        );
         write_i32(
             data,
             (self.page_setup.score_size_proportion * 100f32)
                 .ceil()
-                .to_i32()
-                .unwrap(),
+                .to_i32_gp("score size proportion")?,
         );
 
         write_byte(
             data,
-            (self.page_setup.header_and_footer & 0xff).to_u8().unwrap(),
+            (self.page_setup.header_and_footer & 0xff).to_u8_gp("header and footer")?,
         );
 
         let mut flags2 = 0u8;
@@ -176,5 +193,6 @@ impl SongPageOps for Song {
         write_int_size_string(data, c[0]);
         write_int_size_string(data, c[1]);
         write_int_size_string(data, &self.page_setup.page_number);
+        Ok(())
     }
 }
