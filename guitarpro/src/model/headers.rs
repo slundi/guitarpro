@@ -521,23 +521,21 @@ impl SongHeaderOps for Song {
         if version.0 >= 4 {
             if previous.is_none() {
                 flags |= 0x40;
-            } else if let Some(p) = previous {
-                if self.measure_headers[header].key_signature
+            } else if let Some(p) = previous
+                && self.measure_headers[header].key_signature
                     != self.measure_headers[p].key_signature
-                {
-                    flags |= 0x40;
-                }
+            {
+                flags |= 0x40;
             }
         }
-        if version.0 >= 5 {
-            if let Some(p) = previous {
-                if self.measure_headers[header].time_signature
-                    != self.measure_headers[p].time_signature
-                {
-                    flags |= 0x03;
-                }
-                write_placeholder_default(data, 1);
+        if version.0 >= 5
+            && let Some(p) = previous
+        {
+            if self.measure_headers[header].time_signature != self.measure_headers[p].time_signature
+            {
+                flags |= 0x03;
             }
+            write_placeholder_default(data, 1);
         }
         //end pack
         //write measure header values

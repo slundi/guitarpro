@@ -559,10 +559,10 @@ impl SongBeatOps for Song {
         if !beat.effect.is_default() || beat.has_harmonic() || beat.has_vibrato() {
             flags |= 0x08;
         }
-        if let Some(mtc) = &beat.effect.mix_table_change {
-            if mtc.is_just_wah() {
-                flags |= 0x10;
-            }
+        if let Some(mtc) = &beat.effect.mix_table_change
+            && mtc.is_just_wah()
+        {
+            flags |= 0x10;
         }
         if !beat.duration.is_default_tuplet() {
             flags |= 0x20;
@@ -611,10 +611,10 @@ impl SongBeatOps for Song {
         if !beat.effect.is_default() {
             flags |= 0x08;
         }
-        if let Some(mtc) = &beat.effect.mix_table_change {
-            if mtc.is_just_wah() || version.0 > 4 {
-                flags |= 0x10;
-            }
+        if let Some(mtc) = &beat.effect.mix_table_change
+            && (mtc.is_just_wah() || version.0 > 4)
+        {
+            flags |= 0x10;
         }
         if !beat.duration.is_default_tuplet() {
             flags |= 0x20;

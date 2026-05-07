@@ -492,35 +492,35 @@ impl SongMixTableOps for Song {
         mix_table_change: &MixTableChange,
     ) {
         let mut flags = 0i8;
-        if let Some(i) = &mix_table_change.volume {
-            if i.all_tracks {
-                flags |= 0x01;
-            }
+        if let Some(i) = &mix_table_change.volume
+            && i.all_tracks
+        {
+            flags |= 0x01;
         }
-        if let Some(i) = &mix_table_change.balance {
-            if i.all_tracks {
-                flags |= 0x02;
-            }
+        if let Some(i) = &mix_table_change.balance
+            && i.all_tracks
+        {
+            flags |= 0x02;
         }
-        if let Some(i) = &mix_table_change.chorus {
-            if i.all_tracks {
-                flags |= 0x04;
-            }
+        if let Some(i) = &mix_table_change.chorus
+            && i.all_tracks
+        {
+            flags |= 0x04;
         }
-        if let Some(i) = &mix_table_change.reverb {
-            if i.all_tracks {
-                flags |= 0x08;
-            }
+        if let Some(i) = &mix_table_change.reverb
+            && i.all_tracks
+        {
+            flags |= 0x08;
         }
-        if let Some(i) = &mix_table_change.phaser {
-            if i.all_tracks {
-                flags |= 0x10;
-            }
+        if let Some(i) = &mix_table_change.phaser
+            && i.all_tracks
+        {
+            flags |= 0x10;
         }
-        if let Some(i) = &mix_table_change.tremolo {
-            if i.all_tracks {
-                flags |= 0x20;
-            }
+        if let Some(i) = &mix_table_change.tremolo
+            && i.all_tracks
+        {
+            flags |= 0x20;
         }
         write_signed_byte(data, flags);
     }
@@ -530,43 +530,43 @@ impl SongMixTableOps for Song {
         mix_table_change: &MixTableChange,
     ) {
         let mut flags = 0u8;
-        if let Some(i) = &mix_table_change.volume {
-            if i.all_tracks {
-                flags |= 0x01;
-            }
+        if let Some(i) = &mix_table_change.volume
+            && i.all_tracks
+        {
+            flags |= 0x01;
         }
-        if let Some(i) = &mix_table_change.balance {
-            if i.all_tracks {
-                flags |= 0x02;
-            }
+        if let Some(i) = &mix_table_change.balance
+            && i.all_tracks
+        {
+            flags |= 0x02;
         }
-        if let Some(i) = &mix_table_change.chorus {
-            if i.all_tracks {
-                flags |= 0x04;
-            }
+        if let Some(i) = &mix_table_change.chorus
+            && i.all_tracks
+        {
+            flags |= 0x04;
         }
-        if let Some(i) = &mix_table_change.reverb {
-            if i.all_tracks {
-                flags |= 0x08;
-            }
+        if let Some(i) = &mix_table_change.reverb
+            && i.all_tracks
+        {
+            flags |= 0x08;
         }
-        if let Some(i) = &mix_table_change.phaser {
-            if i.all_tracks {
-                flags |= 0x10;
-            }
+        if let Some(i) = &mix_table_change.phaser
+            && i.all_tracks
+        {
+            flags |= 0x10;
         }
-        if let Some(i) = &mix_table_change.tremolo {
-            if i.all_tracks {
-                flags |= 0x20;
-            }
+        if let Some(i) = &mix_table_change.tremolo
+            && i.all_tracks
+        {
+            flags |= 0x20;
         }
         if mix_table_change.use_rse {
             flags |= 0x40;
         }
-        if let Some(w) = &mix_table_change.wah {
-            if w.display {
-                flags |= 0x80;
-            }
+        if let Some(w) = &mix_table_change.wah
+            && w.display
+        {
+            flags |= 0x80;
         }
         write_byte(data, flags);
     }

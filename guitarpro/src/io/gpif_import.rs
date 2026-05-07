@@ -184,18 +184,18 @@ fn build_bend_effect(origin: f64, destination: f64) -> BendEffect {
 /// Extract tuning pitches from a property list.
 fn extract_tuning(properties: &[Property]) -> Vec<(i8, i8)> {
     for prop in properties {
-        if prop.name == "Tuning" {
-            if let Some(pitches_str) = &prop.pitches {
-                let pitches: Vec<i8> = pitches_str
-                    .split_whitespace()
-                    .filter_map(|s| s.parse::<i8>().ok())
-                    .collect();
-                return pitches
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &pitch)| ((i + 1) as i8, pitch))
-                    .collect();
-            }
+        if prop.name == "Tuning"
+            && let Some(pitches_str) = &prop.pitches
+        {
+            let pitches: Vec<i8> = pitches_str
+                .split_whitespace()
+                .filter_map(|s| s.parse::<i8>().ok())
+                .collect();
+            return pitches
+                .iter()
+                .enumerate()
+                .map(|(i, &pitch)| ((i + 1) as i8, pitch))
+                .collect();
         }
     }
     Vec::new()
@@ -226,19 +226,20 @@ impl SongGpifOps for Song {
         // 2. Tempo from MasterTrack automations
         if let Some(automations) = &gpif.master_track.automations {
             for auto in &automations.automations {
-                if auto.automation_type == "Tempo" && auto.bar == 0 {
-                    if let Some(tempo_str) = auto.value.split_whitespace().next() {
-                        self.tempo = match tempo_str.parse::<f64>() {
-                            Ok(v) => v as i16,
-                            Err(_) => {
-                                eprintln!(
-                                    "Warning: failed to parse tempo '{}', defaulting to 120",
-                                    tempo_str
-                                );
-                                120
-                            }
-                        };
-                    }
+                if auto.automation_type == "Tempo"
+                    && auto.bar == 0
+                    && let Some(tempo_str) = auto.value.split_whitespace().next()
+                {
+                    self.tempo = match tempo_str.parse::<f64>() {
+                        Ok(v) => v as i16,
+                        Err(_) => {
+                            eprintln!(
+                                "Warning: failed to parse tempo '{}', defaulting to 120",
+                                tempo_str
+                            );
+                            120
+                        }
+                    };
                 }
             }
         }
@@ -279,10 +280,11 @@ impl SongGpifOps for Song {
             // Tempo at this bar
             if let Some(automations) = &gpif.master_track.automations {
                 for auto in &automations.automations {
-                    if auto.automation_type == "Tempo" && auto.bar == mh_idx as i32 {
-                        if let Some(tempo_str) = auto.value.split_whitespace().next() {
-                            mh.tempo = tempo_str.parse::<f64>().unwrap_or(0.0) as i32;
-                        }
+                    if auto.automation_type == "Tempo"
+                        && auto.bar == mh_idx as i32
+                        && let Some(tempo_str) = auto.value.split_whitespace().next()
+                    {
+                        mh.tempo = tempo_str.parse::<f64>().unwrap_or(0.0) as i32;
                     }
                 }
             }
@@ -299,10 +301,11 @@ impl SongGpifOps for Song {
             if let Some(alt_str) = &mb.alternate_endings {
                 let mut bitmask: u8 = 0;
                 for tok in alt_str.split_whitespace() {
-                    if let Ok(n) = tok.parse::<u8>() {
-                        if n > 0 && n <= 8 {
-                            bitmask |= 1 << (n - 1);
-                        }
+                    if let Ok(n) = tok.parse::<u8>()
+                        && n > 0
+                        && n <= 8
+                    {
+                        bitmask |= 1 << (n - 1);
                     }
                 }
                 mh.repeat_alternative = bitmask;
@@ -384,14 +387,14 @@ impl SongGpifOps for Song {
             if let Some(props) = &g_track.properties {
                 track.strings = extract_tuning(&props.properties);
             }
-            if track.strings.is_empty() {
-                if let Some(staves) = &g_track.staves {
-                    for staff in &staves.staves {
-                        if let Some(props) = &staff.properties {
-                            track.strings = extract_tuning(&props.properties);
-                            if !track.strings.is_empty() {
-                                break;
-                            }
+            if track.strings.is_empty()
+                && let Some(staves) = &g_track.staves
+            {
+                for staff in &staves.staves {
+                    if let Some(props) = &staff.properties {
+                        track.strings = extract_tuning(&props.properties);
+                        if !track.strings.is_empty() {
+                            break;
                         }
                     }
                 }
@@ -487,20 +490,20 @@ fn convert_beat(
     let mut s_beat = SongBeat::default();
 
     // Duration from Rhythm
-    if let Some(rhythm_ref) = &g_beat.rhythm {
-        if let Some(rhythm) = rhythms_map.get(&rhythm_ref.r#ref) {
-            s_beat.duration.value = note_value_to_duration(&rhythm.note_value);
-            if let Some(dot) = &rhythm.augmentation_dot {
-                match dot.count {
-                    1 => s_beat.duration.dotted = true,
-                    2 => s_beat.duration.double_dotted = true,
-                    _ => {}
-                }
+    if let Some(rhythm_ref) = &g_beat.rhythm
+        && let Some(rhythm) = rhythms_map.get(&rhythm_ref.r#ref)
+    {
+        s_beat.duration.value = note_value_to_duration(&rhythm.note_value);
+        if let Some(dot) = &rhythm.augmentation_dot {
+            match dot.count {
+                1 => s_beat.duration.dotted = true,
+                2 => s_beat.duration.double_dotted = true,
+                _ => {}
             }
-            if let Some(tuplet) = &rhythm.primary_tuplet {
-                s_beat.duration.tuplet_enters = tuplet.num as u8;
-                s_beat.duration.tuplet_times = tuplet.den as u8;
-            }
+        }
+        if let Some(tuplet) = &rhythm.primary_tuplet {
+            s_beat.duration.tuplet_enters = tuplet.num as u8;
+            s_beat.duration.tuplet_times = tuplet.den as u8;
         }
     }
 
@@ -519,26 +522,25 @@ fn convert_beat(
     }
 
     // Fade in
-    if let Some(fadding) = &g_beat.fadding {
-        if fadding == "FadeIn" {
-            s_beat.effect.fade_in = true;
-        }
+    if let Some(fadding) = &g_beat.fadding
+        && fadding == "FadeIn"
+    {
+        s_beat.effect.fade_in = true;
     }
 
     // Wah effect
-    if let Some(wah_str) = &g_beat.wah {
-        if wah_str == "Open" {
-            s_beat.effect.slap_effect = SlapEffect::None; // placeholder, wah is stored at mix table level in GP5
-        }
+    if let Some(wah_str) = &g_beat.wah
+        && wah_str == "Open"
+    {
+        s_beat.effect.slap_effect = SlapEffect::None; // placeholder, wah is stored at mix table level in GP5
     }
 
     // Tremolo bar
-    if let Some(tremolo_str) = &g_beat.tremolo {
-        if let Ok(val) = tremolo_str.parse::<f64>() {
-            if val != 0.0 {
-                s_beat.effect.tremolo_bar = Some(build_bend_effect(0.0, val));
-            }
-        }
+    if let Some(tremolo_str) = &g_beat.tremolo
+        && let Ok(val) = tremolo_str.parse::<f64>()
+        && val != 0.0
+    {
+        s_beat.effect.tremolo_bar = Some(build_bend_effect(0.0, val));
     }
 
     // Beat properties
@@ -647,10 +649,10 @@ fn convert_note(
                 }
             }
             "HarmonicFret" => {
-                if let Some(hfret) = prop.hfret {
-                    if let Some(ref mut h) = s_note.effect.harmonic {
-                        h.fret = Some(hfret as i8);
-                    }
+                if let Some(hfret) = prop.hfret
+                    && let Some(ref mut h) = s_note.effect.harmonic
+                {
+                    h.fret = Some(hfret as i8);
                 }
             }
             "HopoOrigin" | "HopoDestination" => {
@@ -668,17 +670,17 @@ fn convert_note(
     }
 
     // Bend
-    if let (Some(orig), Some(dest)) = (bend_origin, bend_dest) {
-        if orig != 0.0 || dest != 0.0 {
-            s_note.effect.bend = Some(build_bend_effect(orig, dest));
-        }
+    if let (Some(orig), Some(dest)) = (bend_origin, bend_dest)
+        && (orig != 0.0 || dest != 0.0)
+    {
+        s_note.effect.bend = Some(build_bend_effect(orig, dest));
     }
 
     // Tie
-    if let Some(tie) = &g_note.tie {
-        if tie.destination == "true" {
-            s_note.kind = NoteType::Tie;
-        }
+    if let Some(tie) = &g_note.tie
+        && tie.destination == "true"
+    {
+        s_note.kind = NoteType::Tie;
     }
 
     // Vibrato

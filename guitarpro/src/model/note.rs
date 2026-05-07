@@ -777,22 +777,22 @@ impl SongNoteOps for Song {
                 self.write_grace_v5(data, &note.effect.grace)?;
             }
         }
-        if (flags2 & 0x04) == 0x04 {
-            if let Some(tp) = &note.effect.tremolo_picking {
-                let duration_val = tp.duration.value.to_u8_gp("tremolo picking duration")?;
-                let encoded = match duration_val {
-                    DURATION_EIGHTH => 1,
-                    DURATION_SIXTEENTH => 2,
-                    DURATION_THIRTY_SECOND => 3,
-                    _ => {
-                        return Err(GpError::WriteError(format!(
-                            "Invalid tremolo picking duration: {}",
-                            duration_val
-                        )));
-                    }
-                };
-                write_signed_byte(data, encoded);
-            }
+        if (flags2 & 0x04) == 0x04
+            && let Some(tp) = &note.effect.tremolo_picking
+        {
+            let duration_val = tp.duration.value.to_u8_gp("tremolo picking duration")?;
+            let encoded = match duration_val {
+                DURATION_EIGHTH => 1,
+                DURATION_SIXTEENTH => 2,
+                DURATION_THIRTY_SECOND => 3,
+                _ => {
+                    return Err(GpError::WriteError(format!(
+                        "Invalid tremolo picking duration: {}",
+                        duration_val
+                    )));
+                }
+            };
+            write_signed_byte(data, encoded);
         }
         if (flags2 & 0x08) == 0x08 {
             if version.0 < 5 {

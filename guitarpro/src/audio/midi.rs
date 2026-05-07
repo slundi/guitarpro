@@ -258,7 +258,7 @@ impl SongMidiOps for Song {
                 self.channels[idx].effect_channel = effect_channel.to_u8_gp("effect channel")?;
             }
         }
-        Ok(index.to_usize_gp("channel index")?)
+        index.to_usize_gp("channel index")
     }
 
     fn write_midi_channels(&self, data: &mut Vec<u8>) {
