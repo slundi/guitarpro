@@ -218,6 +218,11 @@ impl Song {
         Ok(())
     }
 
+    /// Write this song as a Guitar Pro 6 (.gpx) binary.
+    pub fn write_gpx(&self) -> GpResult<Vec<u8>> {
+        crate::io::gpx::write_gpx_bytes(self)
+    }
+
     /// Read information (name, artist, ...)
     fn read_info(&mut self, data: &[u8], seek: &mut usize) -> GpResult<()> {
         self.name = read_int_byte_size_string(data, seek)?; //.replace("\r", " ").replace("\n", " ").trim().to_owned();

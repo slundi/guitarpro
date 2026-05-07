@@ -20,6 +20,7 @@ pub use crate::model::track::Track;
 
 // Re-export traits for easy use
 pub use crate::audio::midi::SongMidiOps;
+pub use crate::io::gpif_export::SongGpifExportOps;
 pub use crate::io::gpif_import::SongGpifOps;
 pub use crate::model::beat::SongBeatOps;
 pub use crate::model::chord::SongChordOps;

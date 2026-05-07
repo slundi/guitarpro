@@ -4,6 +4,141 @@ use quick_xml::de::from_str;
 use std::io::{Cursor, Read};
 use zip::ZipArchive;
 
+// ---------------------------------------------------------------------------
+// GP6 (.gpx) BCFZ writer
+// ---------------------------------------------------------------------------
+
+/// Bit-level writer (MSB-first within each byte, matching `BitStream` read order).
+struct BitWriter {
+    data: Vec<u8>,
+    current: u8,
+    used: u8, // bits filled (0-7), bit 7 is written first
+}
+
+impl BitWriter {
+    fn new() -> Self {
+        BitWriter {
+            data: Vec::new(),
+            current: 0,
+            used: 0,
+        }
+    }
+
+    fn write_bit(&mut self, bit: u8) {
+        let shift = 7 - self.used;
+        self.current |= (bit & 1) << shift;
+        self.used += 1;
+        if self.used == 8 {
+            self.data.push(self.current);
+            self.current = 0;
+            self.used = 0;
+        }
+    }
+
+    /// Write `count` bits MSB-first (matches `read_bits`).
+    fn write_bits_msb(&mut self, value: u32, count: usize) {
+        for i in (0..count).rev() {
+            self.write_bit(((value >> i) & 1) as u8);
+        }
+    }
+
+    /// Write `count` bits LSB-first (matches `read_bits_reversed`).
+    fn write_bits_lsb(&mut self, value: u32, count: usize) {
+        for i in 0..count {
+            self.write_bit(((value >> i) & 1) as u8);
+        }
+    }
+
+    fn finish(mut self) -> Vec<u8> {
+        if self.used > 0 {
+            self.data.push(self.current);
+        }
+        self.data
+    }
+}
+
+/// Encode `data` as a valid BCFZ container (store-only, no back-references).
+///
+/// Each byte is emitted as a literal block:
+///   flag=0 (literal), size=1 (2 bits LSB-first), byte (8 bits MSB-first).
+pub fn compress_bcfz(data: &[u8]) -> Vec<u8> {
+    let mut bits = BitWriter::new();
+    let mut i = 0;
+    while i < data.len() {
+        // Up to 3 bytes per literal block (2-bit size field, value 1-3)
+        let batch = (data.len() - i).min(3) as u32;
+        bits.write_bit(0); // literal flag
+        bits.write_bits_lsb(batch, 2);
+        for j in 0..batch as usize {
+            bits.write_bits_msb(data[i + j] as u32, 8);
+        }
+        i += batch as usize;
+    }
+    let compressed = bits.finish();
+
+    let mut out = Vec::with_capacity(8 + compressed.len());
+    out.extend_from_slice(BCFZ_MAGIC);
+    out.extend_from_slice(&(data.len() as i32).to_le_bytes());
+    out.extend(compressed);
+    out
+}
+
+/// Pack a single file into a BCFS virtual filesystem (uncompressed BCFZ input).
+///
+/// Layout (after the 4-byte "BCFS" magic, all in 0x1000-byte sectors):
+///   sector 0: blank (header)
+///   sector 1: file directory entry for `filename`
+///   sectors 2+: file data
+pub fn pack_bcfs(filename: &str, file_data: &[u8]) -> Vec<u8> {
+    let file_size = file_data.len();
+    let num_data_sectors = file_size.div_ceil(SECTOR_SIZE);
+    let total_sectors = 2 + num_data_sectors;
+    let disk_size = total_sectors * SECTOR_SIZE;
+
+    let mut disk = vec![0u8; disk_size];
+
+    // Sector 1: directory entry (disk offset = SECTOR_SIZE)
+    let entry = SECTOR_SIZE;
+
+    // Type = 2
+    disk[entry..entry + 4].copy_from_slice(&2i32.to_le_bytes());
+
+    // Name (null-terminated, max 127 bytes)
+    let name_bytes = filename.as_bytes();
+    let name_len = name_bytes.len().min(127);
+    disk[entry + 4..entry + 4 + name_len].copy_from_slice(&name_bytes[..name_len]);
+    // disk[entry + 4 + name_len] = 0; // already zero
+
+    // File size at +0x8C
+    disk[entry + 0x8C..entry + 0x90].copy_from_slice(&(file_size as i32).to_le_bytes());
+
+    // Block index table at +0x94 (data sectors start at index 2)
+    for i in 0..num_data_sectors {
+        let idx_off = entry + 0x94 + i * 4;
+        disk[idx_off..idx_off + 4].copy_from_slice(&((2 + i) as i32).to_le_bytes());
+    }
+    // Terminator already zero
+
+    // Sectors 2+: file content
+    for (i, chunk) in file_data.chunks(SECTOR_SIZE).enumerate() {
+        let off = (2 + i) * SECTOR_SIZE;
+        disk[off..off + chunk.len()].copy_from_slice(chunk);
+    }
+
+    let mut out = Vec::with_capacity(4 + disk_size);
+    out.extend_from_slice(BCFS_MAGIC);
+    out.extend(disk);
+    out
+}
+
+/// Serialize a `Song` to GP6 (.gpx) bytes.
+pub fn write_gpx_bytes(song: &crate::model::song::Song) -> GpResult<Vec<u8>> {
+    use crate::io::gpif_export::SongGpifExportOps;
+    let xml = song.write_gpif_xml();
+    let bcfs = pack_bcfs("score.gpif", xml.as_bytes());
+    Ok(compress_bcfz(&bcfs))
+}
+
 /// Reads a .gp (GP7+) file which is a ZIP archive containing 'Content/score.gpif'.
 pub fn read_gp(data: &[u8]) -> GpResult<Gpif> {
     let cursor = Cursor::new(data);

@@ -11,7 +11,7 @@ This document outlines the development stages and future goals of the project.
 
 ### Format Support
 - [x] GP3, GP4, GP5: Stable reading/writing.
-- [ ] GP6 (.gpx) support.
+- [x] GP6 (.gpx) support.
 - [ ] Stabilize GP7 reading.
 - [ ] Full chord and rhythm support for GP6/7.
 - [ ] Write support for modern formats (.gp, .gpx).
