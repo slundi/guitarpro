@@ -2,7 +2,7 @@ use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     audio::midi::*,
     io::primitive::*,
-    model::{enums::*, measure::*, rse::*, song::*},
+    model::legacy::{enums::*, measure::*, rse::*, song::*},
 };
 
 /// Settings of the track.

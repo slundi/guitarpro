@@ -1,4 +1,4 @@
-use crate::model::song::Song;
+use crate::model::legacy::song::Song;
 use fraction::ToPrimitive;
 use std::{fs, io::Read};
 

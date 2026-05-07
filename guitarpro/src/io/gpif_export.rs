@@ -1,8 +1,8 @@
-use crate::model::beat::Beat;
-use crate::model::effects::{FORTE, GP_BEND_SEMITONE, MIN_VELOCITY, VELOCITY_INCREMENT};
-use crate::model::enums::*;
-use crate::model::note::Note;
-use crate::model::song::Song;
+use crate::model::legacy::beat::Beat;
+use crate::model::legacy::effects::{FORTE, GP_BEND_SEMITONE, MIN_VELOCITY, VELOCITY_INCREMENT};
+use crate::model::legacy::enums::*;
+use crate::model::legacy::note::Note;
+use crate::model::legacy::song::Song;
 
 pub trait SongGpifExportOps {
     /// Serialize this `Song` to a GPIF XML string (GP6 flavour).

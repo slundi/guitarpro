@@ -1,7 +1,7 @@
 use crate::{
     error::{GpResult, ToPrimitiveGp},
     io::primitive::*,
-    model::song::*,
+    model::legacy::song::*,
 };
 
 //MIDI channels

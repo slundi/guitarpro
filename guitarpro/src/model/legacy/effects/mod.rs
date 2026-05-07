@@ -3,7 +3,7 @@ pub use io::SongEffectOps;
 
 use crate::{
     error::{GpResult, ToPrimitiveGp},
-    model::{chord::PitchClass, enums::*, key_signature::*},
+    model::legacy::{chord::PitchClass, enums::*, key_signature::*},
 };
 
 /// A single point within the BendEffect
@@ -91,7 +91,7 @@ impl Default for GraceEffect {
 impl GraceEffect {
     pub(crate) fn _duration_time(self) -> GpResult<i16> {
         let quarter_time =
-            crate::model::key_signature::DURATION_QUARTER_TIME.to_i16_gp("quarter time")?;
+            crate::model::legacy::key_signature::DURATION_QUARTER_TIME.to_i16_gp("quarter time")?;
         let time = f32::from(quarter_time) / 16f32 * f32::from(self.duration);
         time.to_i16_gp("grace duration time")
     }

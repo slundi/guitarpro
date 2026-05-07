@@ -2,7 +2,7 @@ use super::*;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::{enums::*, song::*},
+    model::legacy::{enums::*, song::*},
 };
 
 pub trait SongChordOps {
@@ -25,10 +25,10 @@ pub trait SongChordOps {
         seek: &mut usize,
         chord: &mut Chord,
     ) -> GpResult<()>;
-    fn write_chord(&self, data: &mut Vec<u8>, beat: &crate::model::beat::Beat);
+    fn write_chord(&self, data: &mut Vec<u8>, beat: &crate::model::legacy::beat::Beat);
     fn write_new_format_chord(&self, data: &mut Vec<u8>, chord: &Chord);
     fn write_old_format_chord(&self, data: &mut Vec<u8>, chord: &Chord);
-    fn write_chord_v4(&self, data: &mut Vec<u8>, beat: &crate::model::beat::Beat);
+    fn write_chord_v4(&self, data: &mut Vec<u8>, beat: &crate::model::legacy::beat::Beat);
 }
 
 impl SongChordOps for Song {
@@ -201,7 +201,7 @@ impl SongChordOps for Song {
         Ok(())
     }
 
-    fn write_chord(&self, data: &mut Vec<u8>, beat: &crate::model::beat::Beat) {
+    fn write_chord(&self, data: &mut Vec<u8>, beat: &crate::model::legacy::beat::Beat) {
         if let Some(c) = &beat.effect.chord {
             write_bool(data, c.new_format == Some(true));
             if c.new_format == Some(true) {
@@ -321,7 +321,7 @@ impl SongChordOps for Song {
         }
     }
 
-    fn write_chord_v4(&self, data: &mut Vec<u8>, beat: &crate::model::beat::Beat) {
+    fn write_chord_v4(&self, data: &mut Vec<u8>, beat: &crate::model::legacy::beat::Beat) {
         if let Some(c) = &beat.effect.chord {
             write_signed_byte(data, 1);
             write_bool(data, c.sharp == Some(true));

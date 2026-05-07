@@ -4,7 +4,7 @@ use super::*;
 use crate::error::{GpError, GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::{enums::*, song::*},
+    model::legacy::{enums::*, song::*},
 };
 
 pub trait SongHeaderOps {

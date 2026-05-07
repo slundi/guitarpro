@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::io::gpif::*;
-use crate::model::{
+use crate::model::legacy::{
     beat::{Beat as SongBeat, Voice as SongVoice},
     effects::*,
     enums::*,

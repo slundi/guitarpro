@@ -53,7 +53,7 @@ impl WahEffect {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MixTableChange {
     pub instrument: Option<MixTableItem>,
-    pub rse: crate::model::rse::RseInstrument,
+    pub rse: crate::model::legacy::rse::RseInstrument,
     pub volume: Option<MixTableItem>,
     pub balance: Option<MixTableItem>,
     pub chorus: Option<MixTableItem>,
@@ -70,7 +70,7 @@ impl Default for MixTableChange {
     fn default() -> Self {
         MixTableChange {
             instrument: None,
-            rse: crate::model::rse::RseInstrument::default(),
+            rse: crate::model::legacy::rse::RseInstrument::default(),
             volume: None,
             balance: None,
             chorus: None,

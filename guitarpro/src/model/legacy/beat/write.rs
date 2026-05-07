@@ -2,7 +2,7 @@ use super::*;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::{effects::*, enums::*, key_signature::*, song::Song},
+    model::legacy::{effects::*, enums::*, key_signature::*, song::Song},
 };
 
 pub(super) fn write_beat_v3(song: &Song, data: &mut Vec<u8>, beat: &Beat) -> GpResult<()> {
@@ -36,7 +36,7 @@ pub(super) fn write_beat_v3(song: &Song, data: &mut Vec<u8>, beat: &Beat) -> GpR
     }
     beat.duration.write_duration(data, flags)?;
     if (flags & 0x02) == 0x02 {
-        use crate::model::chord::SongChordOps;
+        use crate::model::legacy::chord::SongChordOps;
         song.write_chord(data, beat);
     }
     if (flags & 0x04) == 0x04 {
@@ -46,10 +46,10 @@ pub(super) fn write_beat_v3(song: &Song, data: &mut Vec<u8>, beat: &Beat) -> GpR
         song.write_beat_effect_v3(data, beat)?;
     }
     if (flags & 0x10) == 0x10 {
-        use crate::model::mix_table::SongMixTableOps;
+        use crate::model::legacy::mix_table::SongMixTableOps;
         song.write_mix_table_change(data, &beat.effect.mix_table_change, &(3, 0, 0));
     }
-    use crate::model::note::SongNoteOps;
+    use crate::model::legacy::note::SongNoteOps;
     song.write_notes(data, beat, &Vec::new(), &(3, 0, 0))?;
     Ok(())
 }
@@ -91,7 +91,7 @@ pub(super) fn write_beat(
     }
     beat.duration.write_duration(data, flags)?;
     if (flags & 0x02) == 0x02 {
-        use crate::model::chord::SongChordOps;
+        use crate::model::legacy::chord::SongChordOps;
         song.write_chord_v4(data, beat);
     }
     if (flags & 0x04) == 0x04 {
@@ -101,10 +101,10 @@ pub(super) fn write_beat(
         song.write_beat_effect_v4(data, beat, version)?;
     }
     if (flags & 0x10) == 0x10 {
-        use crate::model::mix_table::SongMixTableOps;
+        use crate::model::legacy::mix_table::SongMixTableOps;
         song.write_mix_table_change(data, &beat.effect.mix_table_change, version);
     }
-    use crate::model::note::SongNoteOps;
+    use crate::model::legacy::note::SongNoteOps;
     song.write_notes(data, beat, strings, version)?;
     if version.0 == 5 {
         let mut flags2 = 0i16;
@@ -235,7 +235,7 @@ pub(super) fn write_beat_effect_v4(
         );
     }
     if (flags2 & 0x04) == 0x04 {
-        use crate::model::effects::SongEffectOps;
+        use crate::model::legacy::effects::SongEffectOps;
         song.write_bend(data, &beat.effect.tremolo_bar)?;
     }
     if (flags1 & 0x40) == 0x40 {

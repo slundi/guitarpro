@@ -2,7 +2,7 @@ use super::*;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::{beat::*, enums::*, key_signature::*, song::Song},
+    model::legacy::{beat::*, enums::*, key_signature::*, song::Song},
 };
 
 pub(super) fn read_notes(
@@ -65,7 +65,7 @@ pub(super) fn read_note(
     }
     if (flags & 0x10) == 0x10 {
         let v = read_signed_byte(data, seek)?;
-        note.velocity = crate::model::effects::unpack_velocity(v.to_i16_gp("velocity")?);
+        note.velocity = crate::model::legacy::effects::unpack_velocity(v.to_i16_gp("velocity")?);
     }
     if (flags & 0x20) == 0x20 {
         let fret = read_signed_byte(data, seek)?;
@@ -114,7 +114,7 @@ pub(super) fn read_note_v5(
     }
     if (flags & 0x10) == 0x10 {
         let v = read_signed_byte(data, seek)?;
-        note.velocity = crate::model::effects::unpack_velocity(v.to_i16_gp("velocity")?);
+        note.velocity = crate::model::legacy::effects::unpack_velocity(v.to_i16_gp("velocity")?);
     }
     if (flags & 0x20) == 0x20 {
         let fret = read_signed_byte(data, seek)?;
@@ -145,7 +145,7 @@ pub(super) fn read_note_effects_v3(
     seek: &mut usize,
     note: &mut Note,
 ) -> GpResult<()> {
-    use crate::model::effects::SongEffectOps;
+    use crate::model::legacy::effects::SongEffectOps;
     let flags = read_byte(data, seek)?;
     note.effect.hammer = (flags & 0x02) == 0x02;
     note.effect.let_ring = (flags & 0x08) == 0x08;
@@ -167,7 +167,7 @@ pub(super) fn read_note_effects_v4(
     seek: &mut usize,
     note: &mut Note,
 ) -> GpResult<()> {
-    use crate::model::effects::SongEffectOps;
+    use crate::model::legacy::effects::SongEffectOps;
     let flags1 = read_signed_byte(data, seek)?;
     let flags2 = read_signed_byte(data, seek)?;
     note.effect.hammer = (flags1 & 0x02) == 0x02;

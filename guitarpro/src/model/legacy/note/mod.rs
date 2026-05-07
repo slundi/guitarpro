@@ -2,7 +2,7 @@ mod read;
 mod write;
 
 use crate::error::{GpError, GpResult};
-use crate::model::{beat::Beat, effects::*, enums::*, key_signature::Duration, song::Song};
+use crate::model::legacy::{beat::Beat, effects::*, enums::*, key_signature::Duration, song::Song};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Note {

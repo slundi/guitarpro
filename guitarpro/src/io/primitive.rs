@@ -203,8 +203,8 @@ pub const VERSIONS: [((u8, u8, u8), bool, &str); 10] = [
 pub(crate) fn read_version_string(
     data: &[u8],
     seek: &mut usize,
-) -> GpResult<crate::model::headers::Version> {
-    let mut v = crate::model::headers::Version {
+) -> GpResult<crate::model::legacy::headers::Version> {
+    let mut v = crate::model::legacy::headers::Version {
         data: read_byte_size_string(data, seek, 30)?,
         number: (5, 2, 0),
         clipboard: false,

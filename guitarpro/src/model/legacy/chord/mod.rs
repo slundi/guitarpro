@@ -1,7 +1,7 @@
 mod io;
 pub use io::SongChordOps;
 
-use crate::model::enums::*;
+use crate::model::legacy::enums::*;
 
 /// A chord annotation for beats
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -133,7 +133,7 @@ impl std::fmt::Display for PitchClass {
 
 #[cfg(test)]
 mod test {
-    use crate::model::chord::PitchClass;
+    use crate::model::legacy::chord::PitchClass;
 
     #[test]
     fn test_pitch_1() {

@@ -2,7 +2,7 @@ use super::*;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::{effects::*, enums::*, key_signature::*, note::*, song::Song},
+    model::legacy::{effects::*, enums::*, key_signature::*, note::*, song::Song},
 };
 
 pub(super) fn read_beat(
@@ -39,7 +39,7 @@ pub(super) fn read_beat(
     let duration = read_duration(data, seek, flags)?;
     let mut note_effect = NoteEffect::default();
     if (flags & 0x02) == 0x02 {
-        use crate::model::chord::SongChordOps;
+        use crate::model::legacy::chord::SongChordOps;
         voice.beats[b].effect.chord = Some(
             song.read_chord(
                 data,
@@ -64,11 +64,11 @@ pub(super) fn read_beat(
         voice.beats[b].effect.chord = chord;
     }
     if (flags & 0x10) == 0x10 {
-        use crate::model::mix_table::SongMixTableOps;
+        use crate::model::legacy::mix_table::SongMixTableOps;
         let mtc = song.read_mix_table_change(data, seek)?;
         voice.beats[b].effect.mix_table_change = Some(mtc);
     }
-    use crate::model::note::SongNoteOps;
+    use crate::model::legacy::note::SongNoteOps;
     song.read_notes(
         data,
         seek,
@@ -185,7 +185,7 @@ pub(super) fn read_beat_effects_v4(
         };
     }
     if (flags2 & 0x04) == 0x04 {
-        use crate::model::effects::SongEffectOps;
+        use crate::model::legacy::effects::SongEffectOps;
         be.tremolo_bar = song.read_bend_effect(data, seek)?;
     }
     if (flags1 & 0x40) == 0x40 {

@@ -3,7 +3,7 @@ use fraction::ToPrimitive;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::{beat::*, enums::*, key_signature::*, song::*},
+    model::legacy::{beat::*, enums::*, key_signature::*, song::*},
 };
 
 const MAX_VOICES: usize = 2;

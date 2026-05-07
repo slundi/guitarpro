@@ -1,7 +1,7 @@
 use super::*;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::io::primitive::*;
-use crate::model::{rse::*, song::*};
+use crate::model::legacy::{rse::*, song::*};
 
 pub trait SongMixTableOps {
     fn read_mix_table_change(&mut self, data: &[u8], seek: &mut usize) -> GpResult<MixTableChange>;

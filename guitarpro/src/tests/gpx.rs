@@ -1,5 +1,5 @@
 use super::common::read_gpx;
-use crate::model::song::Song;
+use crate::model::legacy::song::Song;
 
 // ==================== GPX round-trip tests ====================
 
@@ -294,7 +294,7 @@ fn test_gpx_ghost_note() {
 }
 #[test]
 fn test_gpx_dead_note() {
-    use crate::model::enums::NoteType;
+    use crate::model::legacy::enums::NoteType;
     let song = read_gpx("test/dead-note.gpx");
     assert!(!song.tracks.is_empty());
     let has_dead = song.tracks.iter().any(|t| {

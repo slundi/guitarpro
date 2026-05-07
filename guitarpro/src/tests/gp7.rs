@@ -1,5 +1,5 @@
 use super::common::read_gp7;
-use crate::model::song::Song;
+use crate::model::legacy::song::Song;
 
 // ==================== GP7 (Guitar Pro 7+) tests ====================
 
@@ -202,7 +202,7 @@ fn test_gp7_ghost_note() {
 }
 #[test]
 fn test_gp7_dead_note() {
-    use crate::model::enums::NoteType;
+    use crate::model::legacy::enums::NoteType;
     let song = read_gp7("test/dead-note.gp");
     assert!(!song.tracks.is_empty());
     let has_dead = song.tracks.iter().any(|t| {

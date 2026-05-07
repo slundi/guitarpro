@@ -1,4 +1,4 @@
-use crate::model::song::Song;
+use crate::model::legacy::song::Song;
 
 // ==================== Round-trip tests (GP3/GP4/GP5) ====================
 

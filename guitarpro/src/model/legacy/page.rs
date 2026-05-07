@@ -1,5 +1,5 @@
 use crate::error::{GpResult, ToPrimitiveGp};
-use crate::{io::primitive::*, model::song::*};
+use crate::{io::primitive::*, model::legacy::song::*};
 
 ///A padding construct
 #[derive(Debug, Clone)]

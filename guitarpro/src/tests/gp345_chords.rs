@@ -1,5 +1,5 @@
 use super::common::read_file;
-use crate::model::song::Song;
+use crate::model::legacy::song::Song;
 
 #[test]
 fn test_gp3_chord() {

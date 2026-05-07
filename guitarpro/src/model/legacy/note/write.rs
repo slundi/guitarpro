@@ -2,7 +2,7 @@ use super::*;
 use crate::error::{GpError, GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::{beat::*, effects::*, enums::*, key_signature::*, song::Song},
+    model::legacy::{beat::*, effects::*, enums::*, key_signature::*, song::Song},
 };
 
 pub(super) fn write_notes(
@@ -52,7 +52,10 @@ pub(super) fn write_note_v3(song: &Song, data: &mut Vec<u8>, note: &Note) -> GpR
         );
     }
     if (flags & 0x10) == 0x10 {
-        write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity)?);
+        write_signed_byte(
+            data,
+            crate::model::legacy::effects::pack_velocity(note.velocity)?,
+        );
     }
     if (flags & 0x20) == 0x20 {
         if note.kind != NoteType::Rest {
@@ -94,7 +97,10 @@ pub(super) fn write_note_v4(
         );
     }
     if (flags & 0x10) == 0x10 {
-        write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity)?);
+        write_signed_byte(
+            data,
+            crate::model::legacy::effects::pack_velocity(note.velocity)?,
+        );
     }
     if (flags & 0x20) == 0x20 {
         if note.kind != NoteType::Rest {
@@ -130,7 +136,10 @@ pub(super) fn write_note_v5(
         write_byte(data, from_note_type(&note.kind));
     }
     if (flags & 0x10) == 0x10 {
-        write_signed_byte(data, crate::model::effects::pack_velocity(note.velocity)?);
+        write_signed_byte(
+            data,
+            crate::model::legacy::effects::pack_velocity(note.velocity)?,
+        );
     }
     if (flags & 0x20) == 0x20 {
         if note.kind != NoteType::Tie {
@@ -190,7 +199,7 @@ pub(super) fn pack_note_flags(_song: &Song, note: &Note, version: &(u8, u8, u8))
 }
 
 pub(super) fn write_note_effects_v3(song: &Song, data: &mut Vec<u8>, note: &Note) -> GpResult<()> {
-    use crate::model::effects::SongEffectOps;
+    use crate::model::legacy::effects::SongEffectOps;
     let mut flags1 = 0u8;
     if note.effect.is_bend() {
         flags1 |= 0x01;
@@ -226,7 +235,7 @@ pub(super) fn write_note_effects(
     strings: &[(i8, i8)],
     version: &(u8, u8, u8),
 ) -> GpResult<()> {
-    use crate::model::effects::SongEffectOps;
+    use crate::model::legacy::effects::SongEffectOps;
     let mut flags1 = 0i8;
     if note.effect.is_bend() {
         flags1 |= 0x01;

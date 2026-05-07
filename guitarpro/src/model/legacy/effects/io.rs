@@ -4,7 +4,7 @@ use super::*;
 use crate::{
     error::{GpError, GpResult, ToPrimitiveGp},
     io::primitive::*,
-    model::{chord::*, enums::*, song::*},
+    model::legacy::{chord::*, enums::*, song::*},
 };
 
 pub trait SongEffectOps {
@@ -18,7 +18,7 @@ pub trait SongEffectOps {
         &self,
         data: &[u8],
         seek: &mut usize,
-        note: &crate::model::note::Note,
+        note: &crate::model::legacy::note::Note,
     ) -> GpResult<HarmonicEffect>;
     fn read_harmonic_v5(&mut self, data: &[u8], seek: &mut usize) -> GpResult<HarmonicEffect>;
     fn read_trill(&self, data: &[u8], seek: &mut usize) -> GpResult<TrillEffect>;
@@ -29,13 +29,13 @@ pub trait SongEffectOps {
     fn write_harmonic(
         &self,
         data: &mut Vec<u8>,
-        note: &crate::model::note::Note,
+        note: &crate::model::legacy::note::Note,
         strings: &[(i8, i8)],
     ) -> GpResult<()>;
     fn write_harmonic_v5(
         &self,
         data: &mut Vec<u8>,
-        note: &crate::model::note::Note,
+        note: &crate::model::legacy::note::Note,
         strings: &[(i8, i8)],
     ) -> GpResult<()>;
     fn write_slides_v5(&self, data: &mut Vec<u8>, slides: &[SlideType]);
@@ -148,7 +148,7 @@ impl SongEffectOps for Song {
         &self,
         data: &[u8],
         seek: &mut usize,
-        note: &crate::model::note::Note,
+        note: &crate::model::legacy::note::Note,
     ) -> GpResult<HarmonicEffect> {
         let mut he = HarmonicEffect::default();
         match read_signed_byte(data, seek)? {
@@ -282,7 +282,7 @@ impl SongEffectOps for Song {
     fn write_harmonic(
         &self,
         data: &mut Vec<u8>,
-        note: &crate::model::note::Note,
+        note: &crate::model::legacy::note::Note,
         strings: &[(i8, i8)],
     ) -> GpResult<()> {
         if let Some(h) = &note.effect.harmonic {
@@ -308,7 +308,7 @@ impl SongEffectOps for Song {
     fn write_harmonic_v5(
         &self,
         data: &mut Vec<u8>,
-        note: &crate::model::note::Note,
+        note: &crate::model::legacy::note::Note,
         strings: &[(i8, i8)],
     ) -> GpResult<()> {
         if let Some(h) = &note.effect.harmonic {

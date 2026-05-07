@@ -132,7 +132,7 @@ pub fn pack_bcfs(filename: &str, file_data: &[u8]) -> Vec<u8> {
 }
 
 /// Serialize a `Song` to GP6 (.gpx) bytes.
-pub fn write_gpx_bytes(song: &crate::model::song::Song) -> GpResult<Vec<u8>> {
+pub fn write_gpx_bytes(song: &crate::model::legacy::song::Song) -> GpResult<Vec<u8>> {
     use crate::io::gpif_export::SongGpifExportOps;
     let xml = song.write_gpif_xml();
     let bcfs = pack_bcfs("score.gpif", xml.as_bytes());
@@ -140,7 +140,7 @@ pub fn write_gpx_bytes(song: &crate::model::song::Song) -> GpResult<Vec<u8>> {
 }
 
 /// Serialize a `Song` to GP7+ (.gp) bytes (ZIP archive with `Content/score.gpif`).
-pub fn write_gp_bytes(song: &crate::model::song::Song) -> GpResult<Vec<u8>> {
+pub fn write_gp_bytes(song: &crate::model::legacy::song::Song) -> GpResult<Vec<u8>> {
     use crate::io::gpif_export::SongGpifExportOps;
     use std::io::Write as IoWrite;
     use zip::write::SimpleFileOptions;

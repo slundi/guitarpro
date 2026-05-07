@@ -2,7 +2,7 @@ mod read;
 mod write;
 
 use crate::error::GpResult;
-use crate::model::{
+use crate::model::legacy::{
     chord::Chord, effects::*, enums::*, key_signature::Duration, mix_table::MixTableChange,
     note::*, song::Song,
 };

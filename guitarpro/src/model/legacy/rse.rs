@@ -1,7 +1,7 @@
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::{enums::*, song::*, track::*},
+    model::legacy::{enums::*, song::*, track::*},
 };
 // use crate::gp::*;
 

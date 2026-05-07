@@ -2,7 +2,7 @@ mod io;
 pub use io::SongHeaderOps;
 
 use crate::error::{GpResult, ToPrimitiveGp};
-use crate::model::{enums::*, key_signature::*};
+use crate::model::legacy::{enums::*, key_signature::*};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Version {
@@ -86,7 +86,7 @@ impl MeasureHeader {
             .time_signature
             .numerator
             .to_i64_gp("time_signature.numerator")?
-            * crate::model::key_signature::DURATION_QUARTER_TIME
+            * crate::model::legacy::key_signature::DURATION_QUARTER_TIME
             * 4
             / self
                 .time_signature
