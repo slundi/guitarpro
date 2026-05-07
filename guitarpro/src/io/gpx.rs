@@ -139,6 +139,29 @@ pub fn write_gpx_bytes(song: &crate::model::song::Song) -> GpResult<Vec<u8>> {
     Ok(compress_bcfz(&bcfs))
 }
 
+/// Serialize a `Song` to GP7+ (.gp) bytes (ZIP archive with `Content/score.gpif`).
+pub fn write_gp_bytes(song: &crate::model::song::Song) -> GpResult<Vec<u8>> {
+    use crate::io::gpif_export::SongGpifExportOps;
+    use std::io::Write as IoWrite;
+    use zip::write::SimpleFileOptions;
+
+    let xml = song.write_gpif_xml();
+    let buf = Vec::new();
+    let cursor = std::io::Cursor::new(buf);
+    let mut zip = zip::ZipWriter::new(cursor);
+
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    zip.start_file("Content/score.gpif", options)
+        .map_err(|e| format!("Zip write error: {}", e))?;
+    zip.write_all(xml.as_bytes())
+        .map_err(|e| format!("Zip data write error: {}", e))?;
+
+    let cursor = zip
+        .finish()
+        .map_err(|e| format!("Zip finish error: {}", e))?;
+    Ok(cursor.into_inner())
+}
+
 /// Reads a .gp (GP7+) file which is a ZIP archive containing 'Content/score.gpif'.
 pub fn read_gp(data: &[u8]) -> GpResult<Gpif> {
     let cursor = Cursor::new(data);

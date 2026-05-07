@@ -19,7 +19,7 @@ GP6 et GP7 sont fonctionnels mais pas exhaustifs — certaines fonctionnalités 
 Écriture
 Format	État	Couverture
 GP3/4/5	✅ Partiel	~80% (métadonnées, pistes, mesures, notes)
-GP6/GP7	❌ Aucune	Non implémenté
+GP6/GP7	✅ Partiel	Non implémenté
 Un TODO existe dans song.rs pour l'écriture des canaux MIDI.
 
 Modèle de données

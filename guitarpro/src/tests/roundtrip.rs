@@ -184,6 +184,87 @@ fn test_gp5_all_files_roundtrip() {
     );
 }
 
+// ==================== GP7 round-trip tests ====================
+
+#[test]
+fn test_gp7_all_files_roundtrip() {
+    use std::fs;
+    let test_dir = "../test";
+    let mut pass = 0;
+    let mut failures: Vec<String> = Vec::new();
+
+    for entry in fs::read_dir(test_dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if !path.extension().is_some_and(|e| e == "gp") {
+            continue;
+        }
+        let fname = path.file_name().unwrap().to_str().unwrap().to_string();
+        let data = fs::read(&path).unwrap();
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            // First read + write
+            let mut song1 = Song::default();
+            song1.read_gp(&data).unwrap();
+            let written1 = song1.write_gp().unwrap();
+
+            // Second read + write (idempotency check)
+            let mut song2 = Song::default();
+            song2.read_gp(&written1).unwrap();
+            let written2 = song2.write_gp().unwrap();
+
+            if written1.len() != written2.len() {
+                panic!(
+                    "length mismatch: write1={} write2={}",
+                    written1.len(),
+                    written2.len()
+                );
+            }
+            if written1 != written2 {
+                let pos = written1
+                    .iter()
+                    .zip(written2.iter())
+                    .position(|(a, b)| a != b)
+                    .unwrap_or(0);
+                panic!(
+                    "bytes differ at position {pos}: {:?} vs {:?}",
+                    &written1[pos.saturating_sub(4)..written1.len().min(pos + 8)],
+                    &written2[pos.saturating_sub(4)..written2.len().min(pos + 8)],
+                );
+            }
+        }));
+
+        match result {
+            Ok(_) => pass += 1,
+            Err(e) => {
+                let msg = if let Some(s) = e.downcast_ref::<String>() {
+                    s.clone()
+                } else if let Some(s) = e.downcast_ref::<&str>() {
+                    s.to_string()
+                } else {
+                    "unknown".to_string()
+                };
+                failures.push(format!("{}: {}", fname, &msg[..msg.len().min(120)]));
+            }
+        }
+    }
+
+    eprintln!(
+        "GP7 round-trip: {} pass, {} fail out of {}",
+        pass,
+        failures.len(),
+        pass + failures.len()
+    );
+    for f in &failures {
+        eprintln!("FAIL: {f}");
+    }
+    assert!(
+        failures.is_empty(),
+        "{} GP7 files failed round-trip",
+        failures.len()
+    );
+}
+
 // ==================== Debug round-trip tests ====================
 
 #[test]

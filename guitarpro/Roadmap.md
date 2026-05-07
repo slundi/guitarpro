@@ -11,10 +11,14 @@ This document outlines the development stages and future goals of the project.
 
 ### Format Support
 - [x] GP3, GP4, GP5: Stable reading/writing.
-- [x] GP6 (.gpx) support.
+- [ ] GP6 (.gpx) support, rewrite tests
 - [ ] Stabilize GP7 reading.
 - [ ] Full chord and rhythm support for GP6/7.
 - [ ] Write support for modern formats (.gp, .gpx).
+- [ ] MusicXML read support (version 1.0 to 4.0) using crate quick-xml
+- [ ] MusicXML write support
+- [ ] MNX read support
+- [ ] MNX write support
 
 ### Documentation & Tooling
 - [ ] Comprehensive documentation of the internal data model.
