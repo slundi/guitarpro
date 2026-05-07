@@ -740,7 +740,7 @@ fn make_note(
         notehead_text: None,
         staff: None,
         beams: vec![],
-        notations: vec![],
+        notations: build_notations(note, strings),
         lyrics: vec![],
         play: None,
         listen: None,
@@ -758,6 +758,232 @@ fn make_note(
         pizzicato: None,
         id: None,
     }
+}
+
+/// Build `<notations>` from a legacy `NoteEffect`, including tablature fret/string.
+fn build_notations(
+    note: &crate::model::legacy::note::Note,
+    strings: &[(i8, i8)],
+) -> Vec<musicxml::note::Notations> {
+    use crate::model::legacy::enums::SlideType;
+    use musicxml::note::{
+        Articulations, Bend, Fret, HammerPull, Harmonic, Notations, Ornaments, PlacedEmpty, Slide,
+        StringNumber, Technical, WavyLine,
+    };
+
+    let eff = &note.effect;
+    let mut technical = Technical {
+        up_bow: None,
+        down_bow: None,
+        harmonic: None,
+        open_string: None,
+        thumb_position: None,
+        fingering: None,
+        pluck: None,
+        double_tongue: None,
+        triple_tongue: None,
+        stopped: None,
+        snap_pizzicato: None,
+        fret: None,
+        string: None,
+        hammer_on: None,
+        pull_off: None,
+        bend: None,
+        tap: None,
+        heel: None,
+        toe: None,
+        fingernails: None,
+        hole: None,
+        arrow: None,
+        handbell: None,
+        brass_bend: None,
+        flip: None,
+        smear: None,
+        open: None,
+        half_muted: None,
+        harmon_mute: None,
+        golpe: None,
+        other_technical: None,
+    };
+
+    // Fret + string number for tablature
+    if note.string > 0 && (note.string as usize) <= strings.len() {
+        technical.fret = Some(Fret { font_size: None, color: None, value: note.value as u8 });
+        technical.string = Some(StringNumber {
+            default_x: None,
+            default_y: None,
+            placement: None,
+            value: note.string as u8,
+        });
+    }
+
+    // Hammer-on
+    if eff.hammer {
+        technical.hammer_on = Some(HammerPull {
+            technique_type: "start".to_string(),
+            number: None,
+            placement: None,
+            value: None,
+        });
+    }
+
+    // Bend — GP bend value is in semitone quarters (100 units = 1 semitone).
+    // Use the peak value (max of points).
+    if let Some(bend) = &eff.bend {
+        let peak = bend.points.iter().map(|p| p.value).max().unwrap_or(0);
+        if peak > 0 {
+            technical.bend = Some(Bend {
+                shape: None,
+                default_x: None,
+                default_y: None,
+                bend_alter: peak as f64 / 100.0,
+                pre_bend: None,
+                release: None,
+                with_bar: None,
+            });
+        }
+    }
+
+    // Let ring — no direct MusicXML equivalent, encode as other-technical
+    if eff.let_ring {
+        technical.other_technical = Some(musicxml::note::OtherPlacement {
+            placement: None,
+            smufl: None,
+            value: Some("let-ring".to_string()),
+        });
+    }
+
+    // Palm mute → half-muted
+    if eff.palm_mute {
+        technical.half_muted = Some(musicxml::note::OtherPlacement {
+            placement: None,
+            smufl: None,
+            value: None,
+        });
+    }
+
+    // Natural harmonic
+    if eff.harmonic.is_some() {
+        technical.harmonic = Some(Harmonic {
+            print_object: None,
+            placement: None,
+            natural: Some(()),
+            artificial: None,
+            base_pitch: None,
+            touching_pitch: None,
+            sounding_pitch: None,
+        });
+    }
+
+    let has_technical = technical.fret.is_some()
+        || technical.string.is_some()
+        || technical.hammer_on.is_some()
+        || technical.pull_off.is_some()
+        || technical.bend.is_some()
+        || technical.other_technical.is_some()
+        || technical.harmonic.is_some()
+        || technical.half_muted.is_some();
+    let technical_opt = if has_technical { Some(technical) } else { None };
+
+    // Slides → <slide> elements
+    let slides: Vec<Slide> = eff
+        .slides
+        .iter()
+        .filter_map(|s| match s {
+            SlideType::ShiftSlideTo | SlideType::LegatoSlideTo => Some(Slide {
+                slide_type: "start".to_string(),
+                number: None,
+                line_type: Some(if *s == SlideType::LegatoSlideTo { "solid" } else { "dashed" }.to_string()),
+                value: None,
+            }),
+            _ => None,
+        })
+        .collect();
+
+    // Vibrato → wavy-line ornament
+    let ornaments = if eff.vibrato {
+        Some(Ornaments {
+            trill_mark: None,
+            turn: None,
+            delayed_turn: None,
+            inverted_turn: None,
+            delayed_inverted_turn: None,
+            vertical_turn: None,
+            inverted_vertical_turn: None,
+            shake: None,
+            wavy_line: Some(WavyLine {
+                wavy_type: "start".to_string(),
+                number: None,
+                placement: None,
+            }),
+            mordent: None,
+            inverted_mordent: None,
+            schleifer: None,
+            tremolo: None,
+            haydn: None,
+            other_ornament: None,
+            accidental_marks: vec![],
+        })
+    } else {
+        None
+    };
+
+    // Articulations
+    let placed = |active| if active { Some(PlacedEmpty { placement: None, default_x: None, default_y: None }) } else { None };
+    let staccato = placed(eff.staccato);
+    let accent = placed(eff.accentuated_note);
+    let strong_accent = if eff.heavy_accentuated_note {
+        Some(musicxml::note::StrongAccent { placement: None, accent_type: None })
+    } else {
+        None
+    };
+    let articulations = if staccato.is_some() || accent.is_some() || strong_accent.is_some() {
+        vec![Articulations {
+            accent,
+            strong_accent,
+            staccato,
+            tenuto: None,
+            detached_legato: None,
+            staccatissimo: None,
+            spiccato: None,
+            scoop: None,
+            plop: None,
+            doit: None,
+            falloff: None,
+            breath_mark: None,
+            caesura: None,
+            stress: None,
+            unstress: None,
+            soft_accent: None,
+            other_articulation: None,
+        }]
+    } else {
+        vec![]
+    };
+
+    if technical_opt.is_none() && slides.is_empty() && ornaments.is_none() && articulations.is_empty() {
+        return vec![];
+    }
+
+    vec![Notations {
+        print_object: None,
+        footnote: None,
+        level: None,
+        tied: vec![],
+        slurs: vec![],
+        tuplets: vec![],
+        glissandos: vec![],
+        slides,
+        ornaments,
+        technical: technical_opt,
+        articulations,
+        dynamics: vec![],
+        fermatas: vec![],
+        arpeggiate: None,
+        non_arpeggiate: None,
+        accidental_marks: vec![],
+        other_notations: vec![],
+    }]
 }
 
 fn build_time_modification(duration: &Duration) -> Option<musicxml::note::TimeModification> {
