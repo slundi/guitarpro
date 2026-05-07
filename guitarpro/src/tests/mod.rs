@@ -1,0 +1,10 @@
+mod common;
+mod gp345_beat_effects;
+mod gp345_chords;
+mod gp345_metadata;
+mod gp345_note_effects;
+mod gp345_slides;
+mod gp345_structure;
+mod gp7;
+mod gpx;
+mod roundtrip;
