@@ -1,16 +1,30 @@
 pub mod error;
+pub mod event;
+pub mod global;
+pub mod layout;
+pub mod lyrics;
+pub mod measure;
 pub mod note;
+pub mod note_value;
+pub mod part;
+pub mod score;
+pub mod sequence;
 
 use std::convert::TryFrom;
 
 use crate::model::mnx::error::{MnxError, MnxIdError};
 
-/// MNX requires that IDs:
+/// An MNX identifier string.
 ///
+/// MNX requires that IDs:
 /// * Are between 1 and 256 characters long (inclusive)
-/// * Consist only of ASCII characters (trgex `^[\x21-\x7E]{1,256}$`)
-/// * Do not contain spaces or nonprintable characters
-// #[serde(try_from = "String")]
+/// * Consist only of printable ASCII characters (regex `^[\x21-\x7E]{1,256}$`)
+/// * Do not contain spaces or non-printable characters
+///
+/// IDs are used to cross-reference elements such as tied notes, slur targets, and beamed
+/// events.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/id/>
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MnxId(String);
 
@@ -30,16 +44,13 @@ impl TryFrom<String> for MnxId {
         if value.len() > 256 {
             return Err(MnxIdError::TooLong);
         }
-        // Check for ASCII and no spaces
         if !value.is_ascii() || value.chars().any(|c| c.is_whitespace()) {
             return Err(MnxIdError::InvalidCharacters);
         }
-
         Ok(MnxId(value))
     }
 }
 
-// Implement Deref so you can use it like a string easily
 impl std::ops::Deref for MnxId {
     type Target = str;
     fn deref(&self) -> &Self::Target {
@@ -47,7 +58,9 @@ impl std::ops::Deref for MnxId {
     }
 }
 
-/// A MIDI pitch — an unsigned number between 0-127, where middle C is 60.
+/// A MIDI pitch number — an integer between 0 and 127, where middle C is 60.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/midi-number/>
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MidiNumber(u8);
 
@@ -68,76 +81,88 @@ impl MidiNumber {
     }
 }
 
-/// This contains information about how to interpret the data within an MNX document.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
-pub struct Support {
-    /// This answers the question "Does every note with a visible accidental have accidentalDisplay set?"
-    ///
-    /// It's meant as a heads-up for consuming software that doesn't have its own accidental-display algorithm. For
-    /// this type of software, when reading a document with useAccidentalDisplay=false, the software might opt to
-    /// display a warning to users, saying "We don't know which notes should have an accidental displayed." Or the
-    /// software might opt to reject the document outright due to not containing sufficient information.
-    ///
-    /// If this value is not provided, it is to be interpreted as false.
-    pub use_accidental_display: bool,
-    /// This answers the question "Are beams encoded in this document?"
-    ///
-    /// If the value is true, any MNX event that is not encoded within a beam should be treated as unbeamed.
-    ///
-    /// If the value is false (or not provided), consuming software is expected to use its own beaming algorithm to
-    /// determine beams.
-    pub use_beams: bool,
-}
-
-/// Holds technical MNX metadata about the document, including the MNX version.
-pub struct Metadata {
-    /// Information about how to interpret the data in this MNX file, in cases of ambiguity.
-    pub support: Option<Support>,
-    /// The MNX version number, as an integer.
-    ///
-    /// MNX uses simple integers for version numbers, as opposed to strings or multi-part version numbers ("3.1"). Each
-    /// release of MNX increments the version number.
-    ///
-    /// Because MNX aims to be backward compatible — i.e., an older MNX version should always be openable by future
-    /// software — version numbers are mostly useful for determining which new MNX features are available.
-    pub version: u16,
-}
-
 /// Represents a symbol's vertical orientation.
 ///
-/// When unspecified: consuming applications are free to use their own algorithms to determine orientation.
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-// #[serde(rename_all = "lowercase")]
+/// When unspecified, consuming applications are free to use their own algorithms to
+/// determine orientation.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/orientation/>
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Orientation {
     Up,
     Down,
 }
 
-/// The global object represents global notation data, which is generally shared by a set of parts within the score.
-pub struct Global {
-    // pub lyrics: Option<>,
-    // /// An array of measure global objects
-    // pub measures: Vec<>,
-    // /// An object with user-defined keys, where each value is a sound
-    // pub sounds: Option<>,
+/// A note's sounded pitch in Scientific Pitch Notation.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/pitch/>
+#[derive(Debug, Clone, PartialEq)]
+pub struct Pitch {
+    /// Alteration of the note's pitch as an integer in the range -3 to 3 (inclusive).
+    /// Negative values are flat, positive values are sharp.
+    ///
+    /// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/alter/>
+    pub alter: Option<i8>,
+    /// The octave in Scientific Pitch Notation. Middle C (C4) is in octave 4.
+    ///
+    /// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/octave/>
+    pub octave: u8,
+    /// The pitch class letter. Allowed values: A, B, C, D, E, F, G.
+    ///
+    /// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/step/>
+    pub step: char,
 }
 
-// // https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/lyrics-global/
-// // Dictionary
-// pub struct LyricsGlobal {
-//     /// An object mapping lyric line IDs (which are user-defined) to lyric metadata objects. This encodes global
-//     /// metadata on a per-lyric-line basis.
-//     pub line_metadata: Option<LyricLineMetadata>,
-//     /// An array of all lyric line IDs used in this MNX document, in the order in which they should be visually
-//     /// displayed (from top to bottom).
-//     pub line_order: Option<String>,
-// }
+/// Information about how to interpret ambiguous data in an MNX document.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/support/>
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Support {
+    /// Whether every note with a visible accidental has `accidental_display` set.
+    ///
+    /// When false (or absent), consuming software without its own accidental-display
+    /// algorithm may warn the user or reject the document outright.
+    pub use_accidental_display: bool,
+    /// Whether beams are explicitly encoded in this document.
+    ///
+    /// When true, any event not inside a beam should be treated as unbeamed. When false
+    /// (or absent), consuming software should apply its own beaming algorithm.
+    pub use_beams: bool,
+}
 
-pub struct Pitch {
-    /// Describes the alteration to a note's pitch, as an integer in the range -3 to 3, inclusive.
-    pub alter: Option<i8>,
-    /// A number representing an octave in Scientific Pitch Notation. The octave for middle C is 4.
-    pub octave: u8,
-    /// Allowed values: A, B, C, D, E, F, G
-    pub step: char,
+/// Metadata about the MNX implementation used to produce a document, including its
+/// version number.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/mnx/>
+#[derive(Debug, Clone)]
+pub struct MnxMetadata {
+    /// Information about how to interpret the data in this MNX file.
+    pub support: Option<Support>,
+    /// The MNX version number as a simple integer.
+    ///
+    /// MNX uses monotonically increasing integers (not multi-part version strings like
+    /// "3.1"). Because MNX aims to be backward-compatible, the version number is mainly
+    /// useful for determining which features are available.
+    ///
+    /// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/version-number/>
+    pub version: u16,
+}
+
+/// The root MNX document object — the top-level container for an entire MNX file.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/root/>
+#[derive(Debug, Clone)]
+pub struct MnxDocument {
+    /// Metadata about the MNX implementation used (version, support flags).
+    pub mnx: MnxMetadata,
+    /// Global notation data shared across all parts (time signatures, key signatures,
+    /// tempos, barlines, etc.).
+    pub global: global::Global,
+    /// The musical parts in the composition.
+    pub parts: Vec<part::Part>,
+    /// System layout configurations, referenced by ID from scores.
+    pub layouts: Option<Vec<layout::SystemLayout>>,
+    /// Score definitions, each representing a distinct view of the music (e.g., full score,
+    /// individual part).
+    pub scores: Option<Vec<score::Score>>,
 }

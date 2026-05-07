@@ -1,7 +1,11 @@
 use std::str::FromStr;
 
-use crate::model::mnx::{MnxId, Orientation, error::MnxError};
+use crate::model::mnx::{MnxId, Orientation, Pitch, error::MnxError};
 
+/// The symbol used to visually enclose an accidental.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/accidental-enclosure-symbol/>
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AccidentalEnclosureSymbol {
     /// The accidental is enclosed in square brackets.
     Brackets,
@@ -9,30 +13,72 @@ pub enum AccidentalEnclosureSymbol {
     Parentheses,
 }
 
-// pub struct AccidentalDisplay {
-//     pub enclosure: Option,
-//     /// Whether this accidental display value (either shown or hidden) was set intentionally, as opposed to
-//     /// automatically determined.
-//     ///
-//     /// This allows for the encoding of intent. Some consuming software may choose to distinguish between accidentals
-//     /// that are intentionally displayed and accidentals that are algorithmically displayed.
-//     ///
-//     /// If this value isn't provided, it's assumed to be false.
-//     pub force: bool,
-//     /// Whether the accidental is to be displayed. (REQUIRED)
-//     pub show: bool,
-// }
+/// Describes the symbol that visually encloses an accidental, such as brackets or parentheses.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/accidental-enclosure/>
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccidentalEnclosure {
+    /// The type of enclosure symbol drawn around the accidental.
+    pub symbol: AccidentalEnclosureSymbol,
+}
 
+/// Information about the displayed accidental for a note.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/accidental-display/>
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccidentalDisplay {
+    /// Describes the symbol that visually encloses the accidental, such as square brackets
+    /// or parentheses.
+    pub enclosure: Option<AccidentalEnclosure>,
+    /// Whether this accidental display value was set intentionally, as opposed to
+    /// automatically determined.
+    ///
+    /// This allows encoding of intent: some consuming software may choose to distinguish
+    /// between accidentals that are intentionally displayed and those that are
+    /// algorithmically placed.
+    ///
+    /// If not provided, assumed to be false.
+    pub force: Option<bool>,
+    /// Whether the accidental is to be displayed.
+    pub show: bool,
+}
+
+/// Options controlling whether a note is included in playback.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/perform-options/>
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PerformOptions {
+    /// When true, this note is muted and should be excluded from playback.
+    pub mute: Option<bool>,
+}
+
+/// An alternate pitch spelling for transposing instruments, enabling both concert-pitch
+/// and written (transposed) representations in the same document.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/written/>
+#[derive(Debug, Clone, PartialEq)]
+pub struct Written {
+    /// The written (transposed) pitch for this note.
+    pub pitch: Pitch,
+    /// Display information for the written pitch's accidental.
+    pub accidental_display: Option<AccidentalDisplay>,
+}
+
+/// Specifies the relationship of a tie's start note to its target (end) note.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/tie-target-type/>
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TieTargetType {
     /// The tie ends on a note in the event that directly follows the start note's event.
     ///
     /// This is by far the most common type of tie.
     NextNote,
-    /// The tie is part of an arpeggio notated as consecutive ties
+    /// The tie is part of an arpeggio notated as consecutive ties.
     Arpeggio,
-    /// The tie ends on a note whose event does not directly follow the start note's event, such as an alternate ending, repeat or jump (e.g., D.S. al Coda).
+    /// The tie ends on a note whose event does not directly follow the start note's event,
+    /// such as when crossing an alternate ending, repeat, or jump (e.g., D.S. al Coda).
     CrossJump,
-    /// The tie ends on a note in a different sequence.
+    /// The tie ends on a note in a different sequence (voice).
     CrossVoice,
 }
 
@@ -41,7 +87,7 @@ impl FromStr for TieTargetType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "nextNone" => Ok(TieTargetType::NextNote),
+            "nextNote" => Ok(TieTargetType::NextNote),
             "arpeggio" => Ok(TieTargetType::Arpeggio),
             "crossJump" => Ok(TieTargetType::CrossJump),
             "crossVoice" => Ok(TieTargetType::CrossVoice),
@@ -50,45 +96,62 @@ impl FromStr for TieTargetType {
     }
 }
 
-/// The tie object represents a single tie between two notes. A tie is only encoded on the *first* note — i.e., the
-/// note that starts the tie.
+/// Represents a single tie between two notes. A tie is only encoded on the *first* note —
+/// i.e., the note that starts the tie.
 ///
-/// In the common case of simple ties, use "target" to specify the tie's end note.
+/// In the common case, use `target` to specify the tie's end note.
 ///
-/// For *laissez vibrer* ties - which do not have a particular destination note - omit "target" and use "lv" instead.
+/// For *laissez vibrer* ties — which do not have a particular destination note — omit
+/// `target` and set `lv` to true instead.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/tie/>
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tie {
-    /// Specifies that this tie is a laissez vibrer tie — which does not have a particular destination note.
+    /// When true, this is a laissez vibrer tie with no particular destination note.
     ///
     /// If this attribute is omitted, the value is assumed to be false.
     pub lv: bool,
-    /// Specifies whether the tie curves upward or downward. If not provided, the consuming software should determine
-    /// the value automatically according to its own logic.
+    /// Whether the tie curves upward or downward. If not provided, consuming software
+    /// determines this automatically.
     pub side: Option<Orientation>,
-    /// The ID of a note that ends this tie.
+    /// The ID of the note that ends this tie.
     ///
-    /// The start note and end note must be in the same part (i.e., it's not allowed for a tie to start in one part and
-    /// end in a different part).
+    /// The start and end notes must be in the same part. The end note must have the same
+    /// sounded pitch as the start note (though enharmonic spellings are allowed).
     ///
-    /// The end note must have the same sounded pitch as the start note — but the two notes are allowed to use
-    /// different note spellings, as long as those spellings are enharmonically equivalent.
+    /// If `target` is omitted, `lv` must be true.
+    pub target: Option<MnxId>,
+    /// The relationship of the tie's start note to its target (end) note.
     ///
-    /// If "target" is omitted, "lv" is required with a value of true.
-    pub target: MnxId,
-    /// Specifies the relationship of the tie's start note to its target (end) note.
+    /// Most ties are `NextNote` (consecutive events). The other values — `Arpeggio`,
+    /// `CrossVoice`, and `CrossJump` — describe less common situations.
     ///
-    /// Generally, most ties are "nextNote", meaning the tie connects notes that are in consecutive events. The other
-    /// supported values — "arpeggio", "crossVoice" and "crossJump" — describe less frequent situations of music
-    /// notation.
+    /// Simpler applications may use this as a hint to include or exclude ties. For
+    /// example, a display-only application might ignore ties that aren't `NextNote`.
     ///
-    /// Many simpler notation applications make the assumption that ties are always in consecutive events. This
-    /// attribute exists as a hint for these applications, so that they can include or exclude ties accordingly. For
-    /// example, a simple notation-display application may decide to ignore all ties that don't have targetType
-    /// "nextNote".
-    ///
-    /// If this attribute isn't provided, behavior is undefined. In this case, consuming applications may decide how
-    /// (or whether) to parse the tie, according to their own algorithms. For example, a simple algorithm might be:
-    /// only honor this tie if the "target" note lives in the subsequent event.
-    ///
-    /// It is an error to use this attribute if "lv" is true.
+    /// It is an error to use this attribute when `lv` is true.
     pub target_type: Option<TieTargetType>,
+}
+
+/// A single note within a chord event.
+///
+/// See: <https://w3c-cg.github.io/mnx/docs/mnx-reference/objects/note/>
+#[derive(Debug, Clone, PartialEq)]
+pub struct Note {
+    /// The note's sounded pitch.
+    pub pitch: Pitch,
+    /// Display information for this note's accidental.
+    pub accidental_display: Option<AccidentalDisplay>,
+    /// Options controlling whether consuming software plays back this note.
+    pub perform: Option<PerformOptions>,
+    /// The staff index this note belongs to. Used to override cross-staff notation
+    /// (e.g., notes that belong to a different staff than the containing sequence).
+    pub staff: Option<u8>,
+    /// Ties originating from this note. An array is used because a note may tie to
+    /// multiple notes (e.g., in ossia staves).
+    pub ties: Option<Vec<Tie>>,
+    /// Alternate pitch spelling for transposing instruments.
+    pub written: Option<Written>,
+    /// Unique identifier for this note, referenced by ties and slurs.
+    pub id: Option<MnxId>,
 }
