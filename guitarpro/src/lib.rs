@@ -1,4 +1,5 @@
 pub mod audio;
+pub mod convert;
 pub mod error;
 pub mod io;
 pub mod model;
