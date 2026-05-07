@@ -1,103 +1,7 @@
-use crate::error::{GpError, GpResult, ToPrimitiveGp};
+use super::*;
+use crate::error::{GpResult, ToPrimitiveGp};
 use crate::io::primitive::*;
 use crate::model::{rse::*, song::*};
-// use crate::gp::*;
-
-/// A mix table item describes a mix parameter, e.g. volume or reverb
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct MixTableItem {
-    pub value: u8,
-    pub duration: u8,
-    pub all_tracks: bool,
-}
-//impl Default for MixTableItem { fn default() -> Self { MixTableItem { value: 0, duration: 0, all_tracks: false }}}
-
-#[allow(dead_code)]
-const WAH_EFFECT_OFF: i8 = -2;
-const WAH_EFFECT_NONE: i8 = -1;
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct WahEffect {
-    pub value: i8,
-    pub display: bool,
-}
-impl Default for WahEffect {
-    fn default() -> Self {
-        WahEffect {
-            value: WAH_EFFECT_NONE,
-            display: false,
-        }
-    }
-}
-impl WahEffect {
-    pub(crate) fn _check_value(value: i8) -> GpResult<()> {
-        if !(WAH_EFFECT_OFF..=100).contains(&value) {
-            return Err(GpError::InvalidValue {
-                context: "wah effect",
-                value: value as i64,
-            });
-        }
-        Ok(())
-    }
-    pub(crate) fn _is_on(&self) -> bool {
-        self.value >= 0 && self.value <= 100
-    }
-    pub(crate) fn _is_off(&self) -> bool {
-        self.value == WAH_EFFECT_OFF
-    }
-    pub(crate) fn _is_none(&self) -> bool {
-        self.value == WAH_EFFECT_NONE
-    }
-}
-
-/// A MixTableChange describes a change in mix parameters
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MixTableChange {
-    pub instrument: Option<MixTableItem>,
-    pub rse: RseInstrument,
-    pub volume: Option<MixTableItem>,
-    pub balance: Option<MixTableItem>,
-    pub chorus: Option<MixTableItem>,
-    pub reverb: Option<MixTableItem>,
-    pub phaser: Option<MixTableItem>,
-    pub tremolo: Option<MixTableItem>,
-    pub tempo_name: String,
-    pub tempo: Option<MixTableItem>,
-    pub hide_tempo: bool,
-    pub wah: Option<WahEffect>,
-    pub use_rse: bool,
-}
-impl Default for MixTableChange {
-    fn default() -> Self {
-        MixTableChange {
-            instrument: None,
-            rse: RseInstrument::default(),
-            volume: None,
-            balance: None,
-            chorus: None,
-            reverb: None,
-            phaser: None,
-            tremolo: None,
-            tempo_name: String::new(),
-            tempo: None,
-            hide_tempo: true,
-            wah: None,
-            use_rse: false,
-        }
-    }
-}
-impl MixTableChange {
-    pub(crate) fn is_just_wah(&self) -> bool {
-        self.instrument.is_none()
-            && self.volume.is_none()
-            && self.balance.is_none()
-            && self.chorus.is_none()
-            && self.reverb.is_none()
-            && self.phaser.is_none()
-            && self.tremolo.is_none()
-            && self.tempo.is_none()
-            && self.wah.is_none()
-    }
-}
 
 pub trait SongMixTableOps {
     fn read_mix_table_change(&mut self, data: &[u8], seek: &mut usize) -> GpResult<MixTableChange>;
@@ -151,21 +55,10 @@ pub trait SongMixTableOps {
 }
 
 impl SongMixTableOps for Song {
-    /// Read mix table change. List of values is read first. See `read_values()`.
-    ///
-    /// List of values is followed by the list of durations for parameters that have changed. See `read_durations()`.
-    ///
-    /// Mix table change in Guitar Pro 4 format extends Guitar Pro 3 format. It constists of `values <read_mix_table_change_values()>`,
-    /// `durations <read_mix_table_change_durations()>`, and, new to GP3, `flags <read_mix_table_change_flags()>`.
-    ///
-    /// Mix table change was modified to support RSE instruments. It is read as in Guitar Pro 3 and is followed by:
-    /// - Wah effect. See :meth:`read_wah_effect()`.
-    /// - RSE instrument effect. See :meth:`read_rse_instrument_effect()`.
     fn read_mix_table_change(&mut self, data: &[u8], seek: &mut usize) -> GpResult<MixTableChange> {
         let mut tc = MixTableChange::default();
         self.read_mix_table_change_values(data, seek, &mut tc)?;
         self.read_mix_table_change_durations(data, seek, &mut tc)?;
-        //println!("read_mix_table_change()");
         if self.version.number >= (4, 0, 0) {
             let flags = self.read_mix_table_change_flags(data, seek, &mut tc)?;
             if self.version.number >= (5, 0, 0) {
@@ -175,26 +68,13 @@ impl SongMixTableOps for Song {
         }
         Ok(tc)
     }
-    /// Read mix table change values. Mix table change values consist of 7 `signed-byte` and an `int`, which correspond to:
-    /// - instrument
-    /// - RSE instrument. See `read_rse_instrument()` (GP5).
-    /// - volume
-    /// - balance
-    /// - chorus
-    /// - reverb
-    /// - phaser
-    /// - tremolo
-    /// - Tempo name: `int-byte-size-string` (GP5).
-    /// - tempo
-    ///
-    /// If signed byte is *-1* then corresponding parameter hasn't changed.
+
     fn read_mix_table_change_values(
         &mut self,
         data: &[u8],
         seek: &mut usize,
         mtc: &mut MixTableChange,
     ) -> GpResult<()> {
-        //instrument
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.instrument = Some(MixTableItem {
@@ -202,14 +82,12 @@ impl SongMixTableOps for Song {
                 ..Default::default()
             });
         }
-        //RSE instrument GP5
         if self.version.number.0 == 5 {
             mtc.rse = self.read_rse_instrument(data, seek)?;
         }
         if self.version.number == (5, 0, 0) {
             *seek += 1;
         }
-        //volume
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.volume = Some(MixTableItem {
@@ -217,7 +95,6 @@ impl SongMixTableOps for Song {
                 ..Default::default()
             });
         }
-        //balance
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.balance = Some(MixTableItem {
@@ -225,7 +102,6 @@ impl SongMixTableOps for Song {
                 ..Default::default()
             });
         }
-        //chorus
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.chorus = Some(MixTableItem {
@@ -233,7 +109,6 @@ impl SongMixTableOps for Song {
                 ..Default::default()
             });
         }
-        //reverb
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.reverb = Some(MixTableItem {
@@ -241,7 +116,6 @@ impl SongMixTableOps for Song {
                 ..Default::default()
             });
         }
-        //phaser
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.phaser = Some(MixTableItem {
@@ -249,7 +123,6 @@ impl SongMixTableOps for Song {
                 ..Default::default()
             });
         }
-        //tremolo
         let b = read_signed_byte(data, seek)?;
         if b >= 0 {
             mtc.tremolo = Some(MixTableItem {
@@ -257,7 +130,6 @@ impl SongMixTableOps for Song {
                 ..Default::default()
             });
         }
-        //tempo
         if self.version.number >= (5, 0, 0) {
             mtc.tempo_name = read_int_byte_size_string(data, seek)?;
         }
@@ -270,9 +142,7 @@ impl SongMixTableOps for Song {
         }
         Ok(())
     }
-    /// Read mix table change durations. Durations are read for each non-null `MixTableItem`. Durations are encoded in `signed-byte`.
-    ///
-    /// If tempo did change, then one :ref:`bool` is read. If it's true, then tempo change won't be displayed on the score.
+
     fn read_mix_table_change_durations(
         &self,
         data: &[u8],
@@ -307,17 +177,6 @@ impl SongMixTableOps for Song {
         Ok(())
     }
 
-    /// Read mix table change flags (Guitar Pro 4). The meaning of flags:
-    /// - *0x01*: change volume for all tracks
-    /// - *0x02*: change balance for all tracks
-    /// - *0x04*: change chorus for all tracks
-    /// - *0x08*: change reverb for all tracks
-    /// - *0x10*: change phaser for all tracks
-    /// - *0x20*: change tremolo for all tracks
-    ///
-    /// In GP5, there is one additional flag:
-    /// - *0x40*: use RSE
-    /// - *0x80*: show wah-wah
     fn read_mix_table_change_flags(
         &self,
         data: &[u8],
@@ -325,7 +184,6 @@ impl SongMixTableOps for Song {
         mtc: &mut MixTableChange,
     ) -> GpResult<i8> {
         let flags = read_signed_byte(data, seek)?;
-        //println!("read_mix_table_change_flags(), flags:  {}", flags);
         if let Some(mut e) = mtc.volume.take() {
             e.all_tracks = (flags & 0x01) == 0x01;
             mtc.volume = Some(e);
@@ -356,12 +214,10 @@ impl SongMixTableOps for Song {
         Ok(flags)
     }
 
-    /// Read wah-wah.
-    /// - Wah value: :ref:`signed-byte`. See `WahEffect` for value mapping.
     fn read_wah_effect(&self, data: &[u8], seek: &mut usize, flags: i8) -> GpResult<WahEffect> {
         Ok(WahEffect {
             value: read_signed_byte(data, seek)?,
-            display: (flags & -0x80) == -0x80, /*(flags & 0x80) == 0x80*/
+            display: (flags & -0x80) == -0x80,
         })
     }
 
@@ -383,20 +239,20 @@ impl SongMixTableOps for Song {
                     write_signed_byte(data, w.value);
                 } else {
                     write_signed_byte(data, WAH_EFFECT_NONE);
-                } //write wah effect
+                }
                 if *version > (5, 0, 0) {
                     self.write_rse_instrument_effect(data, &mtc.rse);
                 }
             }
         }
     }
+
     fn write_mix_table_change_values(
         &self,
         data: &mut Vec<u8>,
         mix_table_change: &MixTableChange,
         version: &(u8, u8, u8),
     ) {
-        //instrument
         if let Some(i) = &mix_table_change.instrument {
             write_signed_byte(data, i.value as i8);
         } else {
@@ -408,43 +264,36 @@ impl SongMixTableOps for Song {
         if version == &(5, 0, 0) {
             write_placeholder_default(data, 1);
         }
-        //volume
         if let Some(i) = &mix_table_change.volume {
             write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
-        //balance
         if let Some(i) = &mix_table_change.balance {
             write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
-        //chorus
         if let Some(i) = &mix_table_change.chorus {
             write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
-        //reverb
         if let Some(i) = &mix_table_change.reverb {
             write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
-        //phaser
         if let Some(i) = &mix_table_change.phaser {
             write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
-        //tremolo
         if let Some(i) = &mix_table_change.tremolo {
             write_signed_byte(data, i.value as i8);
         } else {
             write_signed_byte(data, -1);
         }
-        //tempo: int in spec (can be > 127 for BPM)
         if version.0 >= 5 {
             write_int_byte_size_string(data, &mix_table_change.tempo_name);
         }
@@ -454,13 +303,13 @@ impl SongMixTableOps for Song {
             write_i32(data, -1);
         }
     }
+
     fn write_mix_table_change_durations(
         &self,
         data: &mut Vec<u8>,
         mix_table_change: &MixTableChange,
         version: &(u8, u8, u8),
     ) {
-        //only write duration for fields that are actually set (reader skips None fields)
         if let Some(i) = &mix_table_change.volume {
             write_signed_byte(data, i.duration as i8);
         }
@@ -486,6 +335,7 @@ impl SongMixTableOps for Song {
             }
         }
     }
+
     fn write_mix_table_change_flags_v4(
         &self,
         data: &mut Vec<u8>,
@@ -524,6 +374,7 @@ impl SongMixTableOps for Song {
         }
         write_signed_byte(data, flags);
     }
+
     fn write_mix_table_change_flags_v5(
         &self,
         data: &mut Vec<u8>,

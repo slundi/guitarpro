@@ -1,138 +1,9 @@
+use super::*;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
     model::{enums::*, song::*},
 };
-
-/// A chord annotation for beats
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Chord {
-    pub length: u8,
-    pub sharp: Option<bool>,
-    pub root: Option<PitchClass>,
-    pub kind: Option<ChordType>,
-    pub extension: Option<ChordExtension>,
-    pub bass: Option<PitchClass>,
-    pub tonality: Option<ChordAlteration>,
-    pub add: Option<bool>,
-    pub name: String,
-    pub fifth: Option<ChordAlteration>,
-    pub ninth: Option<ChordAlteration>,
-    pub eleventh: Option<ChordAlteration>,
-    pub first_fret: Option<u8>,
-    pub strings: Vec<i8>,
-    pub barres: Vec<Barre>,
-    pub omissions: Vec<bool>,
-    pub fingerings: Vec<Fingering>,
-    pub show: Option<bool>,
-    pub new_format: Option<bool>,
-}
-
-/// A single barre
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Barre {
-    pub fret: i8,
-    /// First string from the bottom of the barre
-    pub start: i8,
-    /// ast string on the top of the barre
-    pub end: i8,
-}
-
-pub const SHARP_NOTES: [&str; 12] = [
-    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
-];
-pub const FLAT_NOTES: [&str; 12] = [
-    "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B",
-];
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PitchClass {
-    pub note: String,
-    pub just: i8,
-    /// flat (-1), none (0) or sharp (1).
-    pub accidental: i8,
-    pub value: i8,
-    pub sharp: bool,
-}
-impl PitchClass {
-    pub(crate) fn from(just: i8, accidental: Option<i8>, sharp: Option<bool>) -> PitchClass {
-        let mut p = PitchClass {
-            just,
-            accidental: 0,
-            value: -1,
-            sharp: true,
-            note: String::with_capacity(2),
-        };
-        let pitch: i8;
-        let accidental2: i8;
-        if let Some(a) = accidental {
-            pitch = p.just;
-            accidental2 = a;
-        } else {
-            let value = p.just % 12;
-            //println!("PitchClass(), value: {}", value);
-            p.note = if value >= 0 {
-                String::from(SHARP_NOTES[value as usize])
-            } else {
-                String::from(SHARP_NOTES[(12 + value) as usize])
-            }; //try: note = SHARP_NOTES[p.value]; except KeyError: note = FLAT_NOTES[p.value];
-            //if FLAT_NOTES[p.value]  == &note {note=String::from(FLAT_NOTES[p.value]);  p.sharp = false;}
-            if p.note.ends_with('b') {
-                accidental2 = -1;
-                p.sharp = false;
-            } else if p.note.ends_with('#') {
-                accidental2 = 1;
-            } else {
-                accidental2 = 0;
-            }
-            pitch = value - accidental2;
-        }
-        //println!("VALUE: {} \t NOTE: {}", p.value, p.note);
-        p.just = pitch % 12;
-        p.accidental = accidental2;
-        p.value = p.just + accidental2;
-        if sharp.is_none() {
-            p.sharp = p.accidental >= 0;
-        }
-        p
-    }
-    #[allow(dead_code)]
-    pub(crate) fn from_note(note: String) -> PitchClass {
-        let mut p = PitchClass {
-            note,
-            just: 0,
-            accidental: 0,
-            value: -1,
-            sharp: true,
-        };
-        if p.note.ends_with('b') {
-            p.accidental = -1;
-            p.sharp = false;
-        } else if p.note.ends_with('#') {
-            p.accidental = 1;
-        }
-        for i in 0i8..12i8 {
-            if SHARP_NOTES[i as usize] == p.note || FLAT_NOTES[i as usize] == p.note {
-                p.value = i;
-                break;
-            }
-        }
-        let pitch = p.value - p.accidental;
-        p.just = pitch % 12;
-        p.value = p.just + p.accidental;
-        p
-    }
-}
-
-impl std::fmt::Display for PitchClass {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.sharp {
-            write!(f, "{}", SHARP_NOTES[self.value as usize])
-        } else {
-            write!(f, "{}", FLAT_NOTES[self.value as usize])
-        }
-    }
-}
 
 pub trait SongChordOps {
     fn read_chord(&self, data: &[u8], seek: &mut usize, string_count: u8) -> GpResult<Chord>;
@@ -161,8 +32,6 @@ pub trait SongChordOps {
 }
 
 impl SongChordOps for Song {
-    /// Read chord diagram. First byte is chord header. If it's set to 0, then following chord is written in
-    /// default (GP3) format. If chord header is set to 1, then chord diagram in encoded in more advanced (GP4) format.
     fn read_chord(&self, data: &[u8], seek: &mut usize, string_count: u8) -> GpResult<Chord> {
         let mut c = Chord {
             length: string_count,
@@ -184,11 +53,7 @@ impl SongChordOps for Song {
         }
         Ok(c)
     }
-    /// Read chord diagram encoded in GP3 format. Chord diagram is read as follows:
-    /// - Name: `int-byte-size-string`. Name of the chord, e.g. *Em*.
-    /// - First fret: `int`. The fret from which the chord is displayed in chord editor.
-    /// - List of frets: 6 `ints`. Frets are listed in order: fret on the string 1, fret on the string 2, ..., fret on the
-    ///   string 6. If string is untouched then the values of fret is *-1*.
+
     fn read_old_format_chord(
         &self,
         data: &[u8],
@@ -204,30 +69,7 @@ impl SongChordOps for Song {
         }
         Ok(())
     }
-    /// Read new-style (GP4) chord diagram. New-style chord diagram is read as follows:
-    /// - Sharp: `bool`. If true, display all semitones as sharps, otherwise display as flats.
-    /// - Blank space, 3 `Bytes <byte>`.
-    /// - Root: `int`. Values are:
-    ///   * -1 for customized chords
-    ///   *  0: C
-    ///   *  1: C#
-    ///   * ...
-    /// - Type: `int`. Determines the chord type as followed. See `ChordType` for mapping.
-    /// - Chord extension: `int`. See `ChordExtension` for mapping.
-    /// - Bass note: `int`. Lowest note of chord as in *C/Am*.
-    /// - Tonality: `int`. See `ChordAlteration` for mapping.
-    /// - Add: `bool`. Determines if an "add" (added note) is present in the chord.
-    /// - Name: `byte-size-string`. Max length is 22.
-    /// - Fifth alteration: `int`. Maps to `ChordAlteration`.
-    /// - Ninth alteration: `int`. Maps to `ChordAlteration`.
-    /// - Eleventh alteration: `int`. Maps to `ChordAlteration`.
-    /// - List of frets: 6 `Ints <int>`. Fret values are saved as in default format.
-    /// - Count of barres: `int`. Maximum count is 2.
-    /// - Barre frets: 2 `Ints <int>`.
-    /// - Barre start strings: 2 `Ints <int>`.
-    /// - Barre end string: 2 `Ints <int>`.
-    /// - Omissions: 7 `Bools <bool>`. If the value is true then note is played in chord.
-    /// - Blank space, 1 `byte`.
+
     fn read_new_format_chord_v3(
         &self,
         data: &[u8],
@@ -272,7 +114,6 @@ impl SongChordOps for Song {
                 .strings
                 .push(read_int(data, seek)?.to_i8_gp("chord string fret")?);
         }
-        //barre
         let barre_count = read_int(data, seek)?.to_usize_gp("chord barre count")?;
         let mut barre_frets: Vec<i32> = Vec::with_capacity(2);
         let mut barre_starts: Vec<i32> = Vec::with_capacity(2);
@@ -293,7 +134,6 @@ impl SongChordOps for Song {
                 end: barre_ends[i] as i8,
             });
         }
-
         for _ in 0u8..7u8 {
             chord.omissions.push(read_bool(data, seek)?);
         }
@@ -301,31 +141,6 @@ impl SongChordOps for Song {
         Ok(())
     }
 
-    /// Read new-style (GP4) chord diagram. New-style chord diagram is read as follows:
-    /// - Sharp: `bool`. If true, display all semitones as sharps, otherwise display as flats.
-    /// - Blank space, 3 `Bytes <byte>`.
-    /// - Root: `byte`. Values are:
-    ///   * -1 for customized chords
-    ///   *  0: C
-    ///   *  1: C#
-    ///   * ...
-    /// - Type: `byte`. Determines the chord type as followed. See `ChordType` for mapping.
-    /// - Chord extension: `byte`. See `ChordExtension` for mapping.
-    /// - Bass note: `int`. Lowest note of chord as in *C/Am*.
-    /// - Tonality: `int`. See `ChordAlteration` for mapping.
-    /// - Add: `bool`. Determines if an "add" (added note) is present in the chord.
-    /// - Name: `byte-size-string`. Max length is 22.
-    /// - Fifth tonality: `byte`. Maps to `ChordExtension`.
-    /// - Ninth tonality: `byte`. Maps to `ChordExtension`.
-    /// - Eleventh tonality: `byte`. Maps to `ChordExtension`.
-    /// - List of frets: 6 `Ints <int>`. Fret values are saved as in default format.
-    /// - Count of barres: `byte`. Maximum count is 5.
-    /// - Barre frets: 5 `Bytes <byte>`.
-    /// - Barre start strings: 5 `Bytes <byte>`.
-    /// - Barre end string: 5 `Bytes <byte>`.
-    /// - Omissions: 7 `Bools <bool>`. If the value is true then note is played in chord.
-    /// - Blank space, 1 `byte`.
-    /// - Fingering: 7 `SignedBytes <signed-byte>`. For value mapping, see `Fingering`.
     fn read_new_format_chord_v4(
         &self,
         data: &[u8],
@@ -353,7 +168,6 @@ impl SongChordOps for Song {
         for _ in 0u8..7u8 {
             chord.strings.push(read_int(data, seek)? as i8);
         }
-        //barre
         let barre_count = read_byte(data, seek)?.to_usize_gp("chord barre count")?;
         let mut barre_frets: Vec<u8> = Vec::with_capacity(5);
         let mut barre_starts: Vec<u8> = Vec::with_capacity(5);
@@ -401,41 +215,34 @@ impl SongChordOps for Song {
     fn write_new_format_chord(&self, data: &mut Vec<u8>, chord: &Chord) {
         write_bool(data, chord.sharp == Some(true));
         write_placeholder_default(data, 3);
-        //root
         if let Some(r) = &chord.root {
             write_i32(data, r.value as i32);
         } else {
             write_i32(data, 0);
         }
-        //chord type
         if let Some(t) = &chord.kind {
             write_i32(data, from_chord_type(t) as i32);
         } else {
             write_i32(data, 0);
         }
-        //chord extension
         if let Some(e) = &chord.extension {
             write_i32(data, from_chord_extension(e) as i32);
         } else {
             write_i32(data, 0);
         }
-        //bass
         if let Some(b) = &chord.bass {
             write_i32(data, b.value as i32);
         } else {
             write_i32(data, 0);
         }
-        //tonality
         if let Some(t) = &chord.tonality {
             write_i32(data, from_chord_alteration(t) as i32);
         } else {
             write_i32(data, 0);
         }
-        //
         write_bool(data, chord.add == Some(true));
         write_byte_size_string(data, &chord.name);
         write_placeholder_default(data, 22 - chord.name.len());
-        //fifth, ninth, eleventh
         if let Some(f) = &chord.fifth {
             write_i32(data, from_chord_alteration(f) as i32);
         } else {
@@ -451,13 +258,11 @@ impl SongChordOps for Song {
         } else {
             write_i32(data, 0);
         }
-        //first fret
         if let Some(ff) = chord.first_fret {
             write_i32(data, ff as i32);
         } else {
             write_i32(data, 0);
         }
-        //strings
         for i in 0..6 {
             if i < chord.strings.len() {
                 write_i32(data, chord.strings[i] as i32);
@@ -465,7 +270,6 @@ impl SongChordOps for Song {
                 write_i32(data, -1);
             }
         }
-        //barre
         let mut barres: Vec<Barre> = Vec::with_capacity(2);
         for i in 0..2usize {
             if i < chord.barres.len() {
@@ -491,7 +295,6 @@ impl SongChordOps for Song {
         for b in barres.iter().take(2) {
             write_i32(data, b.end as i32);
         }
-        //omissions
         for i in 0..7usize {
             if i < chord.omissions.len() {
                 write_bool(data, chord.omissions[i]);
@@ -501,13 +304,14 @@ impl SongChordOps for Song {
         }
         write_placeholder_default(data, 1);
     }
+
     fn write_old_format_chord(&self, data: &mut Vec<u8>, chord: &Chord) {
         write_int_byte_size_string(data, &chord.name);
         if let Some(ff) = chord.first_fret {
             write_i32(data, ff as i32);
         } else {
             write_i32(data, 0);
-        } //TODO: check
+        }
         for i in 0..6 {
             if i < chord.strings.len() {
                 write_i32(data, chord.strings[i] as i32);
@@ -519,45 +323,38 @@ impl SongChordOps for Song {
 
     fn write_chord_v4(&self, data: &mut Vec<u8>, beat: &crate::model::beat::Beat) {
         if let Some(c) = &beat.effect.chord {
-            write_signed_byte(data, 1); //signify GP4 chord format
+            write_signed_byte(data, 1);
             write_bool(data, c.sharp == Some(true));
             write_placeholder_default(data, 3);
-            //root (byte in GP4)
             if let Some(r) = &c.root {
                 write_byte(data, r.value as u8);
             } else {
                 write_byte(data, 0);
             }
-            //chord type (byte in GP4)
             if let Some(t) = &c.kind {
                 write_byte(data, from_chord_type(t));
             } else {
                 write_byte(data, 0);
             }
-            //chord extension (byte in GP4)
             if let Some(e) = &c.extension {
                 write_byte(data, from_chord_extension(e));
             } else {
                 write_byte(data, 0);
             }
-            //bass (int)
             if let Some(b) = &c.bass {
                 write_i32(data, b.value as i32);
             } else {
                 write_i32(data, 0);
             }
-            //tonality (int)
             if let Some(t) = &c.tonality {
                 write_i32(data, from_chord_alteration(t) as i32);
             } else {
                 write_i32(data, 0);
             }
-            //
             write_bool(data, c.add == Some(true));
             let name_bytes = c.name.len().min(22);
             write_byte_size_string(data, &c.name);
             write_placeholder_default(data, 22 - name_bytes);
-            //fifth, ninth, eleventh (bytes in GP4)
             if let Some(f) = &c.fifth {
                 write_byte(data, from_chord_alteration(f));
             } else {
@@ -573,13 +370,11 @@ impl SongChordOps for Song {
             } else {
                 write_byte(data, 0);
             }
-            //first fret (int)
             if let Some(ff) = c.first_fret {
                 write_i32(data, ff as i32);
             } else {
                 write_i32(data, 0);
             }
-            //strings: 7 ints in GP4
             for i in 0..7 {
                 if i < c.strings.len() {
                     write_i32(data, c.strings[i] as i32);
@@ -587,7 +382,6 @@ impl SongChordOps for Song {
                     write_i32(data, -1);
                 }
             }
-            //barre: count is byte, arrays are 5 bytes each in GP4
             let barre_count = c.barres.len().min(5);
             write_byte(data, barre_count as u8);
             let mut barres = c.barres.clone();
@@ -607,7 +401,6 @@ impl SongChordOps for Song {
             for b in barres.iter().take(5) {
                 write_byte(data, b.end as u8);
             }
-            //omissions
             for i in 0..7usize {
                 if i < c.omissions.len() {
                     write_bool(data, c.omissions[i]);
@@ -625,40 +418,5 @@ impl SongChordOps for Song {
             }
             write_bool(data, c.show == Some(true));
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::model::chord::PitchClass;
-
-    #[test]
-    fn test_pitch_1() {
-        let p = PitchClass::from_note("D#".to_string());
-        assert!(p.sharp, "D# is sharp? {}", true);
-        assert_eq!(1, p.accidental);
-    }
-    #[test]
-    fn test_pitch_2() {
-        let p = PitchClass::from(4, Some(-1), None);
-        assert_eq!(3, p.value);
-        assert!(!p.sharp);
-        assert_eq!("Eb", p.to_string(), "Note should be Eb");
-    }
-    #[test]
-    fn test_pitch_3() {
-        let p = PitchClass::from(4, Some(-1), Some(true));
-        assert_eq!(3, p.value);
-        assert_eq!("D#", p.to_string(), "Note should be D#");
-    }
-    #[test]
-    fn test_pitch_4() {
-        //let p = PitchClass::from(3, None, None);
-        //TODO: assert_eq!("Eb", p.to_string(), "Note should be Eb"); //TODO: FIXME: error on the Python source
-    }
-    #[test]
-    fn test_pitch_5() {
-        let p = PitchClass::from(3, None, Some(true));
-        assert_eq!("D#", p.to_string(), "Note should be D#");
     }
 }
