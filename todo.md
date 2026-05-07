@@ -1,7 +1,7 @@
 Rapport d'analyse — guitarproparser
 Structure du workspace
 Crate	Binaire	Rôle	État
-lib (scorelib)	—	Bibliothèque de parsing	Production
+lib (guitarpro)	—	Bibliothèque de parsing	Production
 cli (score_tool)	score_tool	Interface CLI	Fonctionnel
 web_server	score_server	Serveur web	Vide (stub)
 ~7 500 lignes de code dans la bibliothèque, 161 tests, 248 fichiers de test.

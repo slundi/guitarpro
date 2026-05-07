@@ -1,52 +1,47 @@
-# scorelib
+# guitarpro
 
-A safe, modular Rust library to parse and write Guitar Pro files.
+A safe, modular, and high-performance Rust library for parsing and writing Guitar Pro files.
 
-## Usage
+[![Crates.io](https://img.shields.io/crates/v/guitarpro.svg)](https://crates.io/crates/guitarpro)
+[![Documentation](https://docs.rs/guitarpro/badge.svg)](https://docs.rs/guitarpro)
+
+## Features
+
+- **Multi-Format Support**: 
+    - **GP3, GP4, GP5**: High-fidelity reading and writing.
+    - **GP7 (.gp)**: Experimental reading support via GPIF XML.
+    - **MuseScore (.mscz)**: Basic XML/ZIP parsing.
+- **Safety First**: Written in 100% safe Rust to handle untrusted binary files securely.
+- **Modular Architecture**: Separated into `model`, `io` (binary primitives), and `audio` (MIDI/GM).
+- **Extensible**: Uses a trait-based system to keep the core `Song` model clean while providing rich format-specific functionality.
+
+## Installation
 
 Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-scorelib = { path = "../lib" }
+guitarpro = "0.1.0"
 ```
 
-Basic usage:
+## Quick start
 
 ```rust
-use scorelib::model::song::Song;
-use scorelib::model::track::SongTrackOps;
+use guitarpro::model::song::Song;
+use guitarpro::model::track::SongTrackOps;
 
-fn main() {
-    let data = std::fs::read("my_awesome_song.gp5").expect("Unable to read file");
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let data = std::fs::read("my_awesome_song.gp5")?;
     
     let mut song = Song::default();
-    // Use the trait-based reader (e.g., SongTrackOps is needed for internal track reading)
+    // Traits provide the reading capabilities
     song.read_gp5(&data);
     
-    println!("Song Title: {}", song.name);
+    println!("Song: {}", song.name);
     for track in &song.tracks {
-        println!("Track: {}", track.name);
+        println!("Track: {} ({} measures)", track.name, track.measures.len());
     }
+    
+    Ok(())
 }
 ```
-
-## Features
-
-- **GP3, GP4, GP5**: High-fidelity reading and writing support.
-- **GP6/GP7 (.gp, .gpx)**: Initial experimental reading support.
-- **MuseScore (.mscz)**: Basic XML/ZIP parsing.
-- **Modular Design**: Separated into `model`, `io` (low-level primitives), and `audio` (MIDI).
-- **Extensible**: Uses Rust traits to add format-specific functionality to the core `Song` model.
-
-## Roadmap
-
-- [x] Refactor into `model`, `io`, and `audio` modules.
-- [x] Convert `impl Song` blocks into specialized traits.
-- [x] Improve GP5 parsing (better handling of complex directions).
-- [ ] Stabilize GP6/7 support.
-- [ ] Support for chords and rhythm details in GP6/7.
-- [ ] Write support for newer formats.
-- [ ] Comprehensive documentation of the data model.
-- [ ] Better error management (remove use of expect, unwrap) using crathe thiserror
-- [ ] Change model for [MNX](https://w3c-cg.github.io/mnx/docs/) (or separate in a legacy mod)

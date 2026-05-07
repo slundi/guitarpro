@@ -1,6 +1,6 @@
 # score_tool (CLI)
 
-`score_tool` is the command-line interface for `scorelib`. It allows you to quickly inspect Guitar Pro files, view their metadata, and visualize them as ASCII tablature.
+`score_tool` is the command-line interface for `guitarpro`. It allows you to quickly inspect Guitar Pro files, view their metadata, and visualize them as ASCII tablature.
 
 ## Installation
 

@@ -6,7 +6,7 @@ A comprehensive suite of tools for parsing, manipulating, and visualizing Guitar
 
 This workspace is divided into several crates:
 
-- **[lib](lib/README.md)** (`scorelib`): The core library to read and write **Guitar Pro** files (GP3, GP4, GP5, GPX, GP7) and **MuseScore** files (MSCZ). It provides a unified data model for musical scores.
+- **[lib](guitarpro/README.md)** (`guitarpro`): The core library to read and write **Guitar Pro** files (GP3, GP4, GP5, GPX, GP7) and **MuseScore** files (MSCZ). It provides a unified data model for musical scores.
 - **[cli](cli/README.md)** (`score_tool`): A command-line interface to inspect files, view metadata, and generate ASCII tablatures.
 - **web_server**: (Experimental) A web server to search and browse music scores through an API.
 

@@ -1,6 +1,6 @@
 # Web Server (Experimental)
 
-This is an experimental web server for searching and browsing music scores parsed by `scorelib`.
+This is an experimental web server for searching and browsing music scores parsed by `guitarpro`.
 
 ## Current Status
 
