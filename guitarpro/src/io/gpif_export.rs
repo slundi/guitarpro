@@ -128,17 +128,17 @@ fn build_note_xml(note: &Note, note_id: i32) -> String {
         s.push_str("<Property name=\"PalmMuted\"><Enable /></Property>");
     }
 
-    if let Some(bend) = &note.effect.bend {
-        if bend.points.len() >= 3 {
-            let origin = bend.points[0].value as f64 * GP_BEND_SEMITONE as f64;
-            let dest = bend.points[2].value as f64 * GP_BEND_SEMITONE as f64;
-            s.push_str(&format!(
-                "<Property name=\"BendOriginValue\"><Float>{origin}</Float></Property>"
-            ));
-            s.push_str(&format!(
-                "<Property name=\"BendDestinationValue\"><Float>{dest}</Float></Property>"
-            ));
-        }
+    if let Some(bend) = &note.effect.bend
+        && bend.points.len() >= 3
+    {
+        let origin = bend.points[0].value as f64 * GP_BEND_SEMITONE as f64;
+        let dest = bend.points[2].value as f64 * GP_BEND_SEMITONE as f64;
+        s.push_str(&format!(
+            "<Property name=\"BendOriginValue\"><Float>{origin}</Float></Property>"
+        ));
+        s.push_str(&format!(
+            "<Property name=\"BendDestinationValue\"><Float>{dest}</Float></Property>"
+        ));
     }
 
     if !note.effect.slides.is_empty() {
@@ -291,11 +291,11 @@ fn build_beat_xml(
     }
 
     // Tremolo bar
-    if let Some(trem) = &beat.effect.tremolo_bar {
-        if trem.points.len() >= 3 {
-            let dest = trem.points[2].value as f64 * GP_BEND_SEMITONE as f64;
-            bxml.push_str(&format!("<Tremolo>{dest}</Tremolo>"));
-        }
+    if let Some(trem) = &beat.effect.tremolo_bar
+        && trem.points.len() >= 3
+    {
+        let dest = trem.points[2].value as f64 * GP_BEND_SEMITONE as f64;
+        bxml.push_str(&format!("<Tremolo>{dest}</Tremolo>"));
     }
 
     // Beat properties (Brush, Rasgueado, PickStroke)

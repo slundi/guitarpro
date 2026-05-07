@@ -196,7 +196,7 @@ fn test_gp7_all_files_roundtrip() {
     for entry in fs::read_dir(test_dir).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
-        if !path.extension().is_some_and(|e| e == "gp") {
+        if path.extension().is_none_or(|e| e != "gp") {
             continue;
         }
         let fname = path.file_name().unwrap().to_str().unwrap().to_string();
