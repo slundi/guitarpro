@@ -551,8 +551,8 @@ fn build_measure(
         }));
     }
 
-    // --- Voices → notes (filled in next step) ---
-    music_data.extend(build_voices(measure));
+    // --- Voices → notes ---
+    music_data.extend(build_voices(measure, track));
 
     musicxml::measure::Measure {
         number: header.number.to_string(),
@@ -565,6 +565,209 @@ fn build_measure(
     }
 }
 
-fn build_voices(_measure: &crate::model::legacy::measure::Measure) -> Vec<musicxml::measure::MusicData> {
-    vec![] // filled in next step
+/// Convert all voices of a measure into a flat list of `MusicData` items.
+///
+/// GP supports up to 2 voices per measure. In MusicXML multiple voices are encoded
+/// linearly: voice 1 notes come first, then a `<backup>` rewinds the time cursor
+/// to the start of the measure, followed by voice 2 notes.
+fn build_voices(
+    measure: &crate::model::legacy::measure::Measure,
+    track: &crate::model::legacy::track::Track,
+) -> Vec<musicxml::measure::MusicData> {
+    use crate::model::legacy::enums::BeatStatus;
+    use musicxml::measure::{Backup, MusicData};
+
+    let mut result: Vec<MusicData> = vec![];
+
+    for (voice_idx, voice) in measure.voices.iter().enumerate() {
+        // Skip empty voices
+        if voice.beats.iter().all(|b| b.status == BeatStatus::Empty) {
+            continue;
+        }
+
+        // Insert <backup> before voice 2+ to rewind the time cursor
+        if voice_idx > 0 {
+            // Sum durations of the first voice
+            let backup_duration: u32 = measure.voices[0]
+                .beats
+                .iter()
+                .map(|b| duration_to_divisions(&b.duration))
+                .sum();
+            if backup_duration > 0 {
+                result.push(MusicData::Backup(Backup { duration: backup_duration }));
+            }
+        }
+
+        for beat in &voice.beats {
+            if beat.status == BeatStatus::Empty {
+                continue;
+            }
+
+            let is_rest = beat.status == BeatStatus::Rest || beat.notes.is_empty();
+            let voice_num = format!("{}", voice_idx + 1);
+            let divisions = duration_to_divisions(&beat.duration);
+            let note_type = duration_to_note_type(&beat.duration);
+
+            if is_rest {
+                result.push(MusicData::Note(make_rest_note(
+                    divisions,
+                    note_type,
+                    &beat.duration,
+                    &voice_num,
+                )));
+            } else {
+                for (note_idx, note) in beat.notes.iter().enumerate() {
+                    let is_chord = note_idx > 0;
+                    result.push(MusicData::Note(make_note(
+                        note,
+                        &track.strings,
+                        divisions,
+                        note_type,
+                        &beat.duration,
+                        &voice_num,
+                        is_chord,
+                    )));
+                }
+            }
+        }
+    }
+
+    result
+}
+
+fn make_rest_note(
+    divisions: u32,
+    note_type: NoteTypeValue,
+    duration: &Duration,
+    voice: &str,
+) -> musicxml::note::Note {
+    use musicxml::note::{NoteType, Rest};
+    musicxml::note::Note {
+        grace: None,
+        cue: None,
+        pitch: None,
+        rest: Some(Rest { measure: None, display_step: None, display_octave: None }),
+        unpitched: None,
+        chord: None,
+        duration: Some(divisions),
+        ties: vec![],
+        footnote: None,
+        level: None,
+        instrument: None,
+        voice: Some(voice.to_string()),
+        note_type: Some(NoteType { size: None, value: note_type }),
+        dots: if duration.dotted { vec![musicxml::note::Dot { default_x: None, default_y: None, placement: None }] } else { vec![] },
+        accidental: None,
+        time_modification: build_time_modification(duration),
+        stem: None,
+        notehead: None,
+        notehead_text: None,
+        staff: None,
+        beams: vec![],
+        notations: vec![],
+        lyrics: vec![],
+        play: None,
+        listen: None,
+        print_object: None,
+        print_dot: None,
+        print_spacing: None,
+        print_lyric: None,
+        dynamics: None,
+        end_dynamics: None,
+        attack: None,
+        release_time: None,
+        default_x: None,
+        default_y: None,
+        time_only: None,
+        pizzicato: None,
+        id: None,
+    }
+}
+
+fn make_note(
+    note: &crate::model::legacy::note::Note,
+    strings: &[(i8, i8)],
+    divisions: u32,
+    note_type: NoteTypeValue,
+    duration: &Duration,
+    voice: &str,
+    is_chord: bool,
+) -> musicxml::note::Note {
+    use crate::model::legacy::enums::NoteType as GpNoteType;
+    use musicxml::note::{NoteType, Pitch, Rest, Tie};
+
+    let is_rest = note.kind == GpNoteType::Rest;
+    let is_tie_stop = note.kind == GpNoteType::Tie;
+
+    // Compute pitch from fret + open string tuning
+    let (pitch, rest) = if is_rest {
+        (None, Some(Rest { measure: None, display_step: None, display_octave: None }))
+    } else {
+        let midi = if note.string > 0 && (note.string as usize) <= strings.len() {
+            (note.value as i8).saturating_add(strings[(note.string as usize) - 1].1)
+        } else {
+            note.value as i8
+        };
+        let (step, alter, octave) = midi_to_pitch(midi);
+        (Some(Pitch { step, alter, octave }), None)
+    };
+
+    let ties = if is_tie_stop {
+        vec![Tie { tie_type: "stop".to_string(), time_only: None }]
+    } else {
+        vec![]
+    };
+
+    musicxml::note::Note {
+        grace: None,
+        cue: None,
+        pitch,
+        rest,
+        unpitched: None,
+        chord: if is_chord { Some(()) } else { None },
+        duration: Some(divisions),
+        ties,
+        footnote: None,
+        level: None,
+        instrument: None,
+        voice: Some(voice.to_string()),
+        note_type: Some(NoteType { size: None, value: note_type }),
+        dots: if duration.dotted { vec![musicxml::note::Dot { default_x: None, default_y: None, placement: None }] } else { vec![] },
+        accidental: None,
+        time_modification: build_time_modification(duration),
+        stem: None,
+        notehead: None,
+        notehead_text: None,
+        staff: None,
+        beams: vec![],
+        notations: vec![],
+        lyrics: vec![],
+        play: None,
+        listen: None,
+        print_object: None,
+        print_dot: None,
+        print_spacing: None,
+        print_lyric: None,
+        dynamics: None,
+        end_dynamics: None,
+        attack: None,
+        release_time: None,
+        default_x: None,
+        default_y: None,
+        time_only: None,
+        pizzicato: None,
+        id: None,
+    }
+}
+
+fn build_time_modification(duration: &Duration) -> Option<musicxml::note::TimeModification> {
+    if duration.is_default_tuplet() {
+        return None;
+    }
+    Some(musicxml::note::TimeModification {
+        actual_notes: duration.tuplet_enters,
+        normal_notes: duration.tuplet_times,
+        normal_type: None,
+        normal_dots: vec![],
+    })
 }
