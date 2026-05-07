@@ -237,8 +237,78 @@ fn build_identification(song: &Song) -> musicxml::identification::Identification
     }
 }
 
-fn build_part_list(_song: &Song) -> musicxml::part_list::PartList {
-    musicxml::part_list::PartList { items: vec![] }
+fn build_part_list(song: &Song) -> musicxml::part_list::PartList {
+    use musicxml::part_list::{MidiInstrument, PartListItem, PartName, ScorePart};
+
+    let items = song
+        .tracks
+        .iter()
+        .enumerate()
+        .map(|(i, track)| {
+            let part_id = format!("P{}", i + 1);
+            let instrument_id = format!("P{}-I1", i + 1);
+
+            let channel = song
+                .channels
+                .get(track.channel_index)
+                .cloned()
+                .unwrap_or_default();
+
+            // Guitar Pro program is 0-based; MusicXML midi-program is 1-based
+            let midi_program = if track.percussion_track {
+                None
+            } else {
+                Some((channel.instrument as u8).saturating_add(1))
+            };
+
+            let midi_instrument = MidiInstrument {
+                id: instrument_id.clone(),
+                midi_channel: Some(channel.channel + 1), // MusicXML channels are 1-based
+                midi_name: None,
+                midi_bank: if channel.bank > 0 { Some(channel.bank as u16) } else { None },
+                midi_program,
+                midi_unpitched: if track.percussion_track { Some(60) } else { None },
+                volume: Some(f64::from(channel.volume) / 127.0 * 100.0),
+                pan: Some((f64::from(channel.balance) - 64.0) / 63.0 * 90.0),
+                elevation: None,
+            };
+
+            PartListItem::ScorePart(ScorePart {
+                id: part_id,
+                identification: None,
+                part_name: Some(PartName {
+                    print_object: None,
+                    justify: None,
+                    value: Some(track.name.clone()),
+                }),
+                part_name_display: None,
+                part_abbreviation: if !track.short_name.is_empty() {
+                    Some(PartName {
+                        print_object: None,
+                        justify: None,
+                        value: Some(track.short_name.clone()),
+                    })
+                } else {
+                    None
+                },
+                part_abbreviation_display: None,
+                groups: vec![],
+                score_instruments: vec![musicxml::part_list::ScoreInstrument {
+                    id: instrument_id,
+                    instrument_name: track.name.clone(),
+                    instrument_abbreviation: None,
+                    instrument_sound: None,
+                    solo: None,
+                    ensemble: None,
+                }],
+                players: vec![],
+                midi_devices: vec![],
+                midi_instruments: vec![midi_instrument],
+            })
+        })
+        .collect();
+
+    musicxml::part_list::PartList { items }
 }
 
 fn build_parts(_song: &Song) -> Vec<musicxml::Part> {
