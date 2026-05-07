@@ -4,13 +4,10 @@
 
 use crate::model::{
     legacy::{
-        key_signature::{Duration, DURATION_QUARTER_TIME},
+        key_signature::{DURATION_QUARTER_TIME, Duration},
         song::Song,
     },
-    musicxml::{
-        self,
-        note::NoteTypeValue,
-    },
+    musicxml::{self, note::NoteTypeValue},
 };
 
 /// Divisions per quarter note used throughout the output document.
@@ -33,19 +30,19 @@ pub fn midi_to_pitch(midi: i8) -> (String, Option<f64>, i8) {
     let octave = (midi_u / 12 - 1) as i8;
 
     let (step, alter) = match pitch_class {
-        0  => ("C", None),
-        1  => ("C", Some(1.0)),
-        2  => ("D", None),
-        3  => ("D", Some(1.0)),
-        4  => ("E", None),
-        5  => ("F", None),
-        6  => ("F", Some(1.0)),
-        7  => ("G", None),
-        8  => ("G", Some(1.0)),
-        9  => ("A", None),
+        0 => ("C", None),
+        1 => ("C", Some(1.0)),
+        2 => ("D", None),
+        3 => ("D", Some(1.0)),
+        4 => ("E", None),
+        5 => ("F", None),
+        6 => ("F", Some(1.0)),
+        7 => ("G", None),
+        8 => ("G", Some(1.0)),
+        9 => ("A", None),
         10 => ("A", Some(1.0)),
         11 => ("B", None),
-        _  => unreachable!(),
+        _ => unreachable!(),
     };
 
     (step.to_string(), alter, octave)
@@ -64,11 +61,7 @@ pub fn duration_to_divisions(d: &Duration) -> u32 {
     let base = (DIVISIONS * 4) / d.value as u32;
 
     // Dotted: multiply by 3/2
-    let dotted = if d.dotted {
-        base + base / 2
-    } else {
-        base
-    };
+    let dotted = if d.dotted { base + base / 2 } else { base };
 
     // Tuplet: scale by tuplet_times / tuplet_enters
     if d.tuplet_enters != 1 || d.tuplet_times != 1 {
@@ -81,15 +74,15 @@ pub fn duration_to_divisions(d: &Duration) -> u32 {
 /// Convert a legacy [`Duration`] value to the MusicXML [`NoteTypeValue`] symbol.
 pub fn duration_to_note_type(d: &Duration) -> NoteTypeValue {
     match d.value {
-        1   => NoteTypeValue::Whole,
-        2   => NoteTypeValue::Half,
-        4   => NoteTypeValue::Quarter,
-        8   => NoteTypeValue::Eighth,
-        16  => NoteTypeValue::N16th,
-        32  => NoteTypeValue::N32nd,
-        64  => NoteTypeValue::N64th,
+        1 => NoteTypeValue::Whole,
+        2 => NoteTypeValue::Half,
+        4 => NoteTypeValue::Quarter,
+        8 => NoteTypeValue::Eighth,
+        16 => NoteTypeValue::N16th,
+        32 => NoteTypeValue::N32nd,
+        64 => NoteTypeValue::N64th,
         128 => NoteTypeValue::N128th,
-        _   => NoteTypeValue::Quarter, // fallback
+        _ => NoteTypeValue::Quarter, // fallback
     }
 }
 
@@ -224,7 +217,9 @@ fn build_identification(song: &Song) -> musicxml::identification::Identification
     let miscellaneous = if misc_fields.is_empty() {
         None
     } else {
-        Some(musicxml::identification::Miscellaneous { fields: misc_fields })
+        Some(musicxml::identification::Miscellaneous {
+            fields: misc_fields,
+        })
     };
 
     Identification {
@@ -265,9 +260,17 @@ fn build_part_list(song: &Song) -> musicxml::part_list::PartList {
                 id: instrument_id.clone(),
                 midi_channel: Some(channel.channel + 1), // MusicXML channels are 1-based
                 midi_name: None,
-                midi_bank: if channel.bank > 0 { Some(channel.bank as u16) } else { None },
+                midi_bank: if channel.bank > 0 {
+                    Some(channel.bank as u16)
+                } else {
+                    None
+                },
                 midi_program,
-                midi_unpitched: if track.percussion_track { Some(60) } else { None },
+                midi_unpitched: if track.percussion_track {
+                    Some(60)
+                } else {
+                    None
+                },
                 volume: Some(f64::from(channel.volume) / 127.0 * 100.0),
                 pan: Some((f64::from(channel.balance) - 64.0) / 63.0 * 90.0),
                 elevation: None,
@@ -330,7 +333,10 @@ fn build_parts(song: &Song) -> Vec<musicxml::Part> {
                     build_measure(song, track, track_idx, measure, &header, measure_idx)
                 })
                 .collect();
-            musicxml::Part { id: part_id, measures }
+            musicxml::Part {
+                id: part_id,
+                measures,
+            }
         })
         .collect()
 }
@@ -369,9 +375,9 @@ fn build_measure(
     if measure_idx == 0 {
         let notation_clef = match measure.clef {
             crate::model::legacy::enums::MeasureClef::Treble => make_clef("G", Some(2), None),
-            crate::model::legacy::enums::MeasureClef::Bass   => make_clef("F", Some(4), None),
-            crate::model::legacy::enums::MeasureClef::Tenor  => make_clef("C", Some(4), None),
-            crate::model::legacy::enums::MeasureClef::Alto   => make_clef("C", Some(3), None),
+            crate::model::legacy::enums::MeasureClef::Bass => make_clef("F", Some(4), None),
+            crate::model::legacy::enums::MeasureClef::Tenor => make_clef("C", Some(4), None),
+            crate::model::legacy::enums::MeasureClef::Alto => make_clef("C", Some(3), None),
         };
 
         // GP strings: high→low (string 1 = highest). MusicXML line 1 = lowest.
@@ -383,7 +389,12 @@ fn build_measure(
             .enumerate()
             .map(|(i, (_str_num, midi_val))| {
                 let (step, alter, octave) = midi_to_pitch(*midi_val);
-                StaffTuning { line: (i + 1) as u8, tuning_step: step, tuning_alter: alter, tuning_octave: octave }
+                StaffTuning {
+                    line: (i + 1) as u8,
+                    tuning_step: step,
+                    tuning_alter: alter,
+                    tuning_octave: octave,
+                }
             })
             .collect();
 
@@ -394,7 +405,14 @@ fn build_measure(
                 print_object: None,
                 cancel: None,
                 fifths: Some(header.key_signature.key),
-                mode: Some(if header.key_signature.is_minor { "minor" } else { "major" }.to_string()),
+                mode: Some(
+                    if header.key_signature.is_minor {
+                        "minor"
+                    } else {
+                        "major"
+                    }
+                    .to_string(),
+                ),
                 key_steps: vec![],
                 key_alters: vec![],
                 key_accidentals: vec![],
@@ -435,7 +453,11 @@ fn build_measure(
 
     // --- Tempo direction (first measure of first track only) ---
     if measure_idx == 0 && track_idx == 0 {
-        let tempo_bpm = if header.tempo > 0 { header.tempo as f64 } else { song.tempo as f64 };
+        let tempo_bpm = if header.tempo > 0 {
+            header.tempo as f64
+        } else {
+            song.tempo as f64
+        };
         music_data.push(MusicData::Direction(Direction {
             placement: Some("above".to_string()),
             directive: None,
@@ -499,29 +521,32 @@ fn build_measure(
 
     // --- Repeat open barline ---
     if header.repeat_open {
-        music_data.insert(0, MusicData::Barline(Barline {
-            location: Some("left".to_string()),
-            segno: None,
-            coda: None,
-            divisions: None,
-            id: None,
-            bar_style: Some(musicxml::barline::BarStyleColor {
-                color: None,
-                value: musicxml::barline::BarStyle::HeavyLight,
+        music_data.insert(
+            0,
+            MusicData::Barline(Barline {
+                location: Some("left".to_string()),
+                segno: None,
+                coda: None,
+                divisions: None,
+                id: None,
+                bar_style: Some(musicxml::barline::BarStyleColor {
+                    color: None,
+                    value: musicxml::barline::BarStyle::HeavyLight,
+                }),
+                footnote: None,
+                level: None,
+                wavy_line: None,
+                segno_mark: None,
+                coda_mark: None,
+                ending: None,
+                repeat: Some(musicxml::barline::Repeat {
+                    direction: "forward".to_string(),
+                    times: None,
+                    winged: None,
+                }),
+                fermatas: vec![],
             }),
-            footnote: None,
-            level: None,
-            wavy_line: None,
-            segno_mark: None,
-            coda_mark: None,
-            ending: None,
-            repeat: Some(musicxml::barline::Repeat {
-                direction: "forward".to_string(),
-                times: None,
-                winged: None,
-            }),
-            fermatas: vec![],
-        }));
+        );
     }
 
     // --- Repeat close barline ---
@@ -594,7 +619,9 @@ fn build_voices(
                 .map(|b| duration_to_divisions(&b.duration))
                 .sum();
             if backup_duration > 0 {
-                result.push(MusicData::Backup(Backup { duration: backup_duration }));
+                result.push(MusicData::Backup(Backup {
+                    duration: backup_duration,
+                }));
             }
         }
 
@@ -646,7 +673,11 @@ fn make_rest_note(
         grace: None,
         cue: None,
         pitch: None,
-        rest: Some(Rest { measure: None, display_step: None, display_octave: None }),
+        rest: Some(Rest {
+            measure: None,
+            display_step: None,
+            display_octave: None,
+        }),
         unpitched: None,
         chord: None,
         duration: Some(divisions),
@@ -655,8 +686,19 @@ fn make_rest_note(
         level: None,
         instrument: None,
         voice: Some(voice.to_string()),
-        note_type: Some(NoteType { size: None, value: note_type }),
-        dots: if duration.dotted { vec![musicxml::note::Dot { default_x: None, default_y: None, placement: None }] } else { vec![] },
+        note_type: Some(NoteType {
+            size: None,
+            value: note_type,
+        }),
+        dots: if duration.dotted {
+            vec![musicxml::note::Dot {
+                default_x: None,
+                default_y: None,
+                placement: None,
+            }]
+        } else {
+            vec![]
+        },
         accidental: None,
         time_modification: build_time_modification(duration),
         stem: None,
@@ -701,7 +743,14 @@ fn make_note(
 
     // Compute pitch from fret + open string tuning
     let (pitch, rest) = if is_rest {
-        (None, Some(Rest { measure: None, display_step: None, display_octave: None }))
+        (
+            None,
+            Some(Rest {
+                measure: None,
+                display_step: None,
+                display_octave: None,
+            }),
+        )
     } else {
         let midi = if note.string > 0 && (note.string as usize) <= strings.len() {
             (note.value as i8).saturating_add(strings[(note.string as usize) - 1].1)
@@ -709,11 +758,21 @@ fn make_note(
             note.value as i8
         };
         let (step, alter, octave) = midi_to_pitch(midi);
-        (Some(Pitch { step, alter, octave }), None)
+        (
+            Some(Pitch {
+                step,
+                alter,
+                octave,
+            }),
+            None,
+        )
     };
 
     let ties = if is_tie_stop {
-        vec![Tie { tie_type: "stop".to_string(), time_only: None }]
+        vec![Tie {
+            tie_type: "stop".to_string(),
+            time_only: None,
+        }]
     } else {
         vec![]
     };
@@ -731,8 +790,19 @@ fn make_note(
         level: None,
         instrument: None,
         voice: Some(voice.to_string()),
-        note_type: Some(NoteType { size: None, value: note_type }),
-        dots: if duration.dotted { vec![musicxml::note::Dot { default_x: None, default_y: None, placement: None }] } else { vec![] },
+        note_type: Some(NoteType {
+            size: None,
+            value: note_type,
+        }),
+        dots: if duration.dotted {
+            vec![musicxml::note::Dot {
+                default_x: None,
+                default_y: None,
+                placement: None,
+            }]
+        } else {
+            vec![]
+        },
         accidental: None,
         time_modification: build_time_modification(duration),
         stem: None,
@@ -808,7 +878,11 @@ fn build_notations(
 
     // Fret + string number for tablature
     if note.string > 0 && (note.string as usize) <= strings.len() {
-        technical.fret = Some(Fret { font_size: None, color: None, value: note.value as u8 });
+        technical.fret = Some(Fret {
+            font_size: None,
+            color: None,
+            value: note.value as u8,
+        });
         technical.string = Some(StringNumber {
             default_x: None,
             default_y: None,
@@ -893,7 +967,14 @@ fn build_notations(
             SlideType::ShiftSlideTo | SlideType::LegatoSlideTo => Some(Slide {
                 slide_type: "start".to_string(),
                 number: None,
-                line_type: Some(if *s == SlideType::LegatoSlideTo { "solid" } else { "dashed" }.to_string()),
+                line_type: Some(
+                    if *s == SlideType::LegatoSlideTo {
+                        "solid"
+                    } else {
+                        "dashed"
+                    }
+                    .to_string(),
+                ),
                 value: None,
             }),
             _ => None,
@@ -929,11 +1010,24 @@ fn build_notations(
     };
 
     // Articulations
-    let placed = |active| if active { Some(PlacedEmpty { placement: None, default_x: None, default_y: None }) } else { None };
+    let placed = |active| {
+        if active {
+            Some(PlacedEmpty {
+                placement: None,
+                default_x: None,
+                default_y: None,
+            })
+        } else {
+            None
+        }
+    };
     let staccato = placed(eff.staccato);
     let accent = placed(eff.accentuated_note);
     let strong_accent = if eff.heavy_accentuated_note {
-        Some(musicxml::note::StrongAccent { placement: None, accent_type: None })
+        Some(musicxml::note::StrongAccent {
+            placement: None,
+            accent_type: None,
+        })
     } else {
         None
     };
@@ -961,7 +1055,11 @@ fn build_notations(
         vec![]
     };
 
-    if technical_opt.is_none() && slides.is_empty() && ornaments.is_none() && articulations.is_empty() {
+    if technical_opt.is_none()
+        && slides.is_empty()
+        && ornaments.is_none()
+        && articulations.is_empty()
+    {
         return vec![];
     }
 
