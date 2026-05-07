@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Traditional key signature: number of sharps (positive) or flats (negative).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TraditionalKey {
     /// Semitone alteration of the cancel key (-7 to 7).
     pub cancel: Option<Cancel>,
@@ -13,7 +13,7 @@ pub struct TraditionalKey {
 }
 
 /// Indicates a key cancellation (the previous key signature is explicitly cancelled).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Cancel {
     /// `"left"`, `"right"`, or `"before-barline"`.
     #[serde(rename = "@location")]
@@ -23,7 +23,7 @@ pub struct Cancel {
 }
 
 /// One accidental in a non-traditional key signature.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KeyAccidental {
     #[serde(rename = "key-step")]
     pub key_step: String,
@@ -36,7 +36,7 @@ pub struct KeyAccidental {
 /// Key signature.
 ///
 /// Can be traditional (fifths-based) or explicit (list of key-step/key-alter pairs).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Key {
     /// Staff number this key applies to (multi-staff parts only).
     #[serde(rename = "@number")]
@@ -59,7 +59,7 @@ pub struct Key {
 }
 
 /// Specifies which octave a key-signature alteration applies to.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KeyOctave {
     /// Index into the list of key-step/key-alter pairs (1-based).
     #[serde(rename = "@number")]
@@ -71,7 +71,7 @@ pub struct KeyOctave {
 }
 
 /// Time signature numerator/denominator beat pair (for interchangeable time).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BeatUnit {
     pub beats: String,
     #[serde(rename = "beat-type")]
@@ -79,7 +79,7 @@ pub struct BeatUnit {
 }
 
 /// Time signature.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Time {
     /// Staff number this time signature applies to.
     #[serde(rename = "@number")]
@@ -105,7 +105,7 @@ pub struct Time {
 }
 
 /// Alternate time-signature display for interchangeable meters.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Interchangeable {
     #[serde(rename = "@symbol")]
     pub symbol: Option<String>,
@@ -115,7 +115,7 @@ pub struct Interchangeable {
 }
 
 /// Staff type override (e.g. for a TAB staff or a percussion staff).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StaffDetails {
     #[serde(rename = "@number")]
     pub number: Option<u8>,
@@ -142,7 +142,7 @@ pub struct StaffDetails {
 }
 
 /// Visual property of a single staff line.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LineDetail {
     #[serde(rename = "@line")]
     pub line: u8,
@@ -157,7 +157,7 @@ pub struct LineDetail {
 }
 
 /// Open-string tuning for one line of a TAB staff.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StaffTuning {
     /// Staff line number (1 = lowest).
     #[serde(rename = "@line")]
@@ -171,7 +171,7 @@ pub struct StaffTuning {
 }
 
 /// Clef definition.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Clef {
     /// Staff number (multi-staff parts only).
     #[serde(rename = "@number")]
@@ -194,7 +194,7 @@ pub struct Clef {
 }
 
 /// Chromatic transposition interval for a transposing instrument.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Transpose {
     #[serde(rename = "@number")]
     pub number: Option<u8>,
@@ -210,7 +210,7 @@ pub struct Transpose {
 }
 
 /// Directive text (e.g. "Allegro") at the start of a movement.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Directive {
     #[serde(rename = "@xml:lang")]
     pub lang: Option<String>,
@@ -222,7 +222,7 @@ pub struct Directive {
 ///
 /// The first `<attributes>` in a movement typically sets divisions, key, time, and clef.
 /// Maps to the `<attributes>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Attributes {
     /// Scaling factor: number of divisions per quarter note.
     ///
@@ -255,7 +255,7 @@ pub struct Attributes {
 }
 
 /// Bracket or brace drawn to the left of a multi-staff part.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PartSymbol {
     #[serde(rename = "@top-staff")]
     pub top_staff: Option<u8>,
@@ -266,7 +266,7 @@ pub struct PartSymbol {
 }
 
 /// Transposition information scoped to a specific part in a multi-part measure.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ForPart {
     #[serde(rename = "@id")]
     pub id: Option<String>,
@@ -279,7 +279,7 @@ pub struct ForPart {
 }
 
 /// Measure-style overrides: multiple rests, measure repeats, beat repeats, slash notation.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MeasureStyle {
     #[serde(rename = "@number")]
     pub number: Option<u8>,
@@ -292,7 +292,7 @@ pub struct MeasureStyle {
 }
 
 /// The specific style override inside `<measure-style>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum MeasureStyleContent {
     MultipleRest(MultipleRest),
@@ -302,7 +302,7 @@ pub enum MeasureStyleContent {
 }
 
 /// A multi-measure rest.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MultipleRest {
     #[serde(rename = "@use-symbols")]
     pub use_symbols: Option<String>,
@@ -311,7 +311,7 @@ pub struct MultipleRest {
 }
 
 /// A measure-repeat symbol.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MeasureRepeat {
     /// `"start"` or `"stop"`.
     #[serde(rename = "@type")]
@@ -323,7 +323,7 @@ pub struct MeasureRepeat {
 }
 
 /// A beat-repeat symbol.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BeatRepeat {
     #[serde(rename = "@type")]
     pub repeat_type: String,
@@ -340,7 +340,7 @@ pub struct BeatRepeat {
 }
 
 /// Slash notation (rhythmic notation).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Slash {
     #[serde(rename = "@type")]
     pub slash_type: String,

@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::note::{DynamicMark, FormattedText, Level, OtherPlacement, WavyLine};
 
 /// A word/rehearsal/tempo text block.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Words {
     #[serde(rename = "@justify")]
     pub justify: Option<String>,
@@ -32,7 +32,7 @@ pub struct Words {
 }
 
 /// A rehearsal mark (letter, number, or text in a box/circle).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Rehearsal {
     #[serde(rename = "@justify")]
     pub justify: Option<String>,
@@ -49,7 +49,7 @@ pub struct Rehearsal {
 }
 
 /// Dynamic marking (`<p>`, `<ff>`, `<sfz>`, etc.) inside a `<direction>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Dynamics {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -68,7 +68,7 @@ pub struct Dynamics {
 }
 
 /// A hairpin crescendo or decrescendo.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Wedge {
     /// `"crescendo"`, `"diminuendo"`, `"stop"`, `"continue"`.
     #[serde(rename = "@type")]
@@ -92,7 +92,7 @@ pub struct Wedge {
 }
 
 /// A dashed or solid line bracket.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Bracket {
     /// `"start"`, `"stop"`, `"continue"`.
     #[serde(rename = "@type")]
@@ -117,7 +117,7 @@ pub struct Bracket {
 }
 
 /// A pedal mark (piano sustain pedal).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Pedal {
     /// `"start"`, `"stop"`, `"sostenuto"`, `"change"`, `"continue"`, `"discontinue"`, `"resume"`.
     #[serde(rename = "@type")]
@@ -142,7 +142,7 @@ pub struct Pedal {
 }
 
 /// An octave shift (8va, 15ma, etc.).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OctaveShift {
     /// `"up"`, `"down"`, `"stop"`, `"continue"`.
     #[serde(rename = "@type")]
@@ -167,7 +167,7 @@ pub struct OctaveShift {
 }
 
 /// A dashed or dotted line above or below the staff.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Dashes {
     /// `"start"`, `"stop"`, `"continue"`.
     #[serde(rename = "@type")]
@@ -189,7 +189,7 @@ pub struct Dashes {
 }
 
 /// Metronome marking.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Metronome {
     #[serde(rename = "@parentheses")]
     pub parentheses: Option<String>,
@@ -221,7 +221,7 @@ pub struct Metronome {
 }
 
 /// BPM value in a metronome marking.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PerMinute {
     #[serde(rename = "@font-size")]
     pub font_size: Option<String>,
@@ -230,7 +230,7 @@ pub struct PerMinute {
 }
 
 /// A tied beat-unit in a complex metronome marking.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BeatUnitTied {
     #[serde(rename = "beat-unit")]
     pub beat_unit: String,
@@ -239,7 +239,7 @@ pub struct BeatUnitTied {
 }
 
 /// A note value in a metric modulation metronome.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MetronomeNote {
     #[serde(rename = "metronome-type")]
     pub metronome_type: String,
@@ -254,7 +254,7 @@ pub struct MetronomeNote {
 }
 
 /// Tuplet specification inside a metronome note.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MetronomeTuplet {
     #[serde(rename = "@type")]
     pub tuplet_type: String,
@@ -273,7 +273,7 @@ pub struct MetronomeTuplet {
 }
 
 /// Sound/playback level adjustment.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Sound {
     #[serde(rename = "@tempo")]
     pub tempo: Option<f64>,
@@ -324,7 +324,7 @@ pub struct Sound {
 }
 
 /// Swing style (straight, jazz, etc.).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Swing {
     /// `"yes"` for straight (no swing) or `"no"` for swung.
     pub straight: Option<()>,
@@ -337,7 +337,7 @@ pub struct Swing {
 }
 
 /// A time offset in divisions for a direction or note.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Offset {
     #[serde(rename = "@sound")]
     pub sound: Option<String>,
@@ -346,7 +346,7 @@ pub struct Offset {
 }
 
 /// A segno or coda symbol.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Segno {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -361,7 +361,7 @@ pub struct Segno {
 }
 
 /// A string-instrument scordatura (retuning) direction.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Scordatura {
     #[serde(rename = "@id")]
     pub id: Option<String>,
@@ -370,7 +370,7 @@ pub struct Scordatura {
 }
 
 /// One string's retuning in a scordatura.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Accord {
     #[serde(rename = "@string")]
     pub string: u8,
@@ -383,7 +383,7 @@ pub struct Accord {
 }
 
 /// Image direction (for embedded images in the score).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Image {
     #[serde(rename = "@source")]
     pub source: String,
@@ -402,7 +402,7 @@ pub struct Image {
 }
 
 /// Principal voice / cue voice direction.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PrincipalVoice {
     #[serde(rename = "@type")]
     pub voice_type: String,
@@ -415,7 +415,7 @@ pub struct PrincipalVoice {
 }
 
 /// Percussion sticking direction.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Sticking {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -426,7 +426,7 @@ pub struct Sticking {
 }
 
 /// Harp pedal diagram direction.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HarpPedals {
     #[serde(rename = "@id")]
     pub id: Option<String>,
@@ -435,7 +435,7 @@ pub struct HarpPedals {
 }
 
 /// One harp pedal setting.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PedalTuning {
     #[serde(rename = "pedal-step")]
     pub pedal_step: String,
@@ -444,7 +444,7 @@ pub struct PedalTuning {
 }
 
 /// A damp marking (string dampening).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Damp {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -455,7 +455,7 @@ pub struct Damp {
 }
 
 /// One content item inside a `<direction-type>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum DirectionType {
     Rehearsal(Rehearsal),
@@ -488,14 +488,14 @@ pub enum DirectionType {
 /// Container for multiple direction types (the `<direction-type>` wrapper element).
 ///
 /// A single `<direction>` may contain multiple `<direction-type>` elements.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DirectionTypeWrapper {
     #[serde(rename = "$value")]
     pub content: DirectionType,
 }
 
 /// Percussion notation direction.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PercussionContent {
     Glass(OtherPlacement),
@@ -512,7 +512,7 @@ pub enum PercussionContent {
 }
 
 /// Accordion registration (high, middle, low reed combinations).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AccordionRegistration {
     #[serde(rename = "@id")]
     pub id: Option<String>,
@@ -527,7 +527,7 @@ pub struct AccordionRegistration {
 /// A musical direction (text, dynamic, metronome, pedal, etc.) above or below the staff.
 ///
 /// Maps to the `<direction>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Direction {
     /// `"up"` (above staff) or `"down"` (below staff).
     #[serde(rename = "@placement")]
@@ -558,7 +558,7 @@ pub struct Direction {
 }
 
 /// Listening/synchronization block inside a direction.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Listening {
     #[serde(rename = "$value", default)]
     pub content: Vec<super::note::ListenContent>,

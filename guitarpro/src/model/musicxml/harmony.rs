@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::note::{FormattedText, Level};
 
 /// Root pitch class of a chord symbol.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Root {
     #[serde(rename = "root-step")]
     pub root_step: RootStep,
@@ -12,7 +12,7 @@ pub struct Root {
 }
 
 /// The letter name of a root note.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RootStep {
     #[serde(rename = "@text")]
     pub text: Option<String>,
@@ -25,7 +25,7 @@ pub struct RootStep {
 }
 
 /// Numeral-based chord notation (Roman numeral analysis).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Numeral {
     #[serde(rename = "numeral-root")]
     pub numeral_root: NumeralRoot,
@@ -35,7 +35,7 @@ pub struct Numeral {
 }
 
 /// The Roman numeral root value.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NumeralRoot {
     #[serde(rename = "@text")]
     pub text: Option<String>,
@@ -44,7 +44,7 @@ pub struct NumeralRoot {
 }
 
 /// Key context for a Roman numeral chord.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NumeralKey {
     #[serde(rename = "numeral-fifths")]
     pub numeral_fifths: i8,
@@ -55,7 +55,7 @@ pub struct NumeralKey {
 /// The quality/type of a chord symbol.
 ///
 /// E.g. `"major"`, `"minor"`, `"dominant"`, `"major-seventh"`, `"half-diminished"`, etc.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Kind {
     /// `"yes"` to use a symbol (e.g. △ for major-seventh), `"no"` for text.
     #[serde(rename = "@use-symbols")]
@@ -77,7 +77,7 @@ pub struct Kind {
 }
 
 /// The bass note of a slash chord (e.g. C/E).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Bass {
     #[serde(rename = "@arrangement")]
     pub arrangement: Option<String>,
@@ -90,7 +90,7 @@ pub struct Bass {
 }
 
 /// The letter name of a bass note.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BassStep {
     #[serde(rename = "@text")]
     pub text: Option<String>,
@@ -103,7 +103,7 @@ pub struct BassStep {
 }
 
 /// A styled text element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StyleText {
     #[serde(rename = "@font-size")]
     pub font_size: Option<String>,
@@ -112,7 +112,7 @@ pub struct StyleText {
 }
 
 /// An added, altered, or omitted degree in a chord (e.g. `add9`, `b5`, `omit3`).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Degree {
     #[serde(rename = "@print-object")]
     pub print_object: Option<String>,
@@ -125,7 +125,7 @@ pub struct Degree {
 }
 
 /// The scale degree number (1–13).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DegreeValue {
     #[serde(rename = "@text")]
     pub text: Option<String>,
@@ -138,7 +138,7 @@ pub struct DegreeValue {
 }
 
 /// The alteration of the degree (semitones).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DegreeAlter {
     #[serde(rename = "@plus-minus")]
     pub plus_minus: Option<String>,
@@ -147,7 +147,7 @@ pub struct DegreeAlter {
 }
 
 /// Whether the degree is added, altered, or omitted.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DegreeType {
     #[serde(rename = "@text")]
     pub text: Option<String>,
@@ -157,7 +157,7 @@ pub struct DegreeType {
 }
 
 /// A fret-board diagram (guitar chord frame).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Frame {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -187,7 +187,7 @@ pub struct Frame {
 }
 
 /// The starting fret of a chord diagram.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FirstFret {
     #[serde(rename = "@text")]
     pub text: Option<String>,
@@ -199,7 +199,7 @@ pub struct FirstFret {
 }
 
 /// One note in a fret-board diagram.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FrameNote {
     /// String number (1 = highest-pitched).
     pub string: u8,
@@ -209,7 +209,7 @@ pub struct FrameNote {
 }
 
 /// A barre chord indicator in a frame diagram.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Barre {
     /// `"start"` or `"stop"`.
     #[serde(rename = "@type")]
@@ -221,7 +221,7 @@ pub struct Barre {
 /// A chord symbol (harmony annotation).
 ///
 /// Maps to the `<harmony>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Harmony {
     /// `"explicit"`, `"implied"`, or `"alternate"`.
     #[serde(rename = "@type")]
@@ -255,7 +255,7 @@ pub struct Harmony {
 }
 
 /// Inversion number for a chord (0 = root position, 1 = first inversion, etc.).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Inversion {
     #[serde(rename = "@text")]
     pub text: Option<String>,

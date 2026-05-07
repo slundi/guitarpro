@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::note::{FormattedText, Level, WavyLine};
 
 /// Visual style of a barline.
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BarStyle {
     Regular,
@@ -20,7 +20,7 @@ pub enum BarStyle {
 }
 
 /// The bar style element (carries a color attribute in addition to the style value).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BarStyleColor {
     #[serde(rename = "@color")]
     pub color: Option<String>,
@@ -29,7 +29,7 @@ pub struct BarStyleColor {
 }
 
 /// A repeat mark (start or end of a repeated section).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Repeat {
     /// `"forward"` (start repeat) or `"backward"` (end repeat).
     #[serde(rename = "@direction")]
@@ -43,7 +43,7 @@ pub struct Repeat {
 }
 
 /// A first/second/nth ending bracket.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Ending {
     /// `"start"`, `"stop"`, or `"discontinue"`.
     #[serde(rename = "@type")]
@@ -68,7 +68,7 @@ pub struct Ending {
 }
 
 /// A fermata on a barline (whole-measure fermata).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Fermata {
     #[serde(rename = "@type")]
     pub fermata_type: Option<String>,
@@ -81,7 +81,7 @@ pub struct Fermata {
 }
 
 /// A segno or coda sign on a barline.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BarlineSegno {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -99,7 +99,7 @@ pub struct BarlineSegno {
 /// - `"right"` (default) — at the end of the measure
 /// - `"left"` — at the start of the measure
 /// - `"middle"` — mid-measure (e.g. metric modulation)
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Barline {
     #[serde(rename = "@location")]
     pub location: Option<String>,

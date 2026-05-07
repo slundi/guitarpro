@@ -9,12 +9,12 @@ pub mod measure;
 pub mod note;
 pub mod part_list;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Work (opus/title) metadata.
 ///
 /// Maps to the `<work>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Work {
     #[serde(rename = "work-number")]
     pub work_number: Option<String>,
@@ -24,7 +24,7 @@ pub struct Work {
 }
 
 /// A reference to an external MusicXML opus file.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Opus {
     #[serde(rename = "@xlink:href")]
     pub href: Option<String>,
@@ -38,7 +38,7 @@ pub struct Opus {
 ///
 /// Maps to the `<part>` element inside `<score-partwise>`.
 /// The `id` references a `<score-part>` in the `<part-list>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Part {
     #[serde(rename = "@id")]
     pub id: String,
@@ -49,7 +49,7 @@ pub struct Part {
 /// One part's worth of music within a single `<measure>` in `score-timewise` format.
 ///
 /// Maps to the `<part>` element inside `<measure>` inside `<score-timewise>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TimewisePart {
     /// References a `<score-part id="…">` in the `<part-list>`.
     #[serde(rename = "@id")]
@@ -61,7 +61,7 @@ pub struct TimewisePart {
 /// One measure across all parts in `score-timewise` format.
 ///
 /// Maps to the `<measure>` element inside `<score-timewise>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TimewiseMeasure {
     #[serde(rename = "@number")]
     pub number: String,
@@ -97,7 +97,7 @@ pub struct TimewiseMeasure {
 /// The MusicXML specification ships an official XSLT stylesheet to convert between
 /// `score-partwise` and `score-timewise`; the musical content of every element is
 /// otherwise identical.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename = "score-timewise")]
 pub struct ScoreTimewise {
     /// MusicXML version string, e.g. `"4.0"`, `"3.1"`, `"3.0"`.
@@ -141,7 +141,7 @@ pub struct ScoreTimewise {
 ///
 /// MusicXML versions 3.0, 3.1, and 4.0 all share this structure; the `version`
 /// attribute carries the version string.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename = "score-partwise")]
 pub struct ScorePartwise {
     /// MusicXML version string, e.g. `"4.0"`, `"3.1"`, `"3.0"`.

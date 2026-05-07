@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A virtual instrument assigned to a part.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ScoreInstrument {
     #[serde(rename = "@id")]
     pub id: String,
@@ -18,7 +18,7 @@ pub struct ScoreInstrument {
 }
 
 /// MIDI device assignment for a score instrument.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MidiDevice {
     #[serde(rename = "@id")]
     pub id: Option<String>,
@@ -29,7 +29,7 @@ pub struct MidiDevice {
 }
 
 /// MIDI playback parameters for a score instrument.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MidiInstrument {
     #[serde(rename = "@id")]
     pub id: String,
@@ -51,7 +51,7 @@ pub struct MidiInstrument {
 /// A single part (instrument) in the score.
 ///
 /// Maps to `<score-part>` inside `<part-list>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ScorePart {
     #[serde(rename = "@id")]
     pub id: String,
@@ -77,7 +77,7 @@ pub struct ScorePart {
 }
 
 /// The display name of a part.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PartName {
     #[serde(rename = "@print-object")]
     pub print_object: Option<String>,
@@ -88,7 +88,7 @@ pub struct PartName {
 }
 
 /// Controls how a name is displayed (overrides the plain text name).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NameDisplay {
     #[serde(rename = "@print-object")]
     pub print_object: Option<String>,
@@ -97,7 +97,7 @@ pub struct NameDisplay {
 }
 
 /// Content inside a name display: plain text or accidental text.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NameDisplayContent {
     DisplayText(FormattedText),
@@ -105,7 +105,7 @@ pub enum NameDisplayContent {
 }
 
 /// A text run with optional formatting.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FormattedText {
     #[serde(rename = "@font-family")]
     pub font_family: Option<String>,
@@ -120,7 +120,7 @@ pub struct FormattedText {
 }
 
 /// An accidental glyph used inside a formatted name.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AccidentalText {
     #[serde(rename = "@smufl")]
     pub smufl: Option<String>,
@@ -129,7 +129,7 @@ pub struct AccidentalText {
 }
 
 /// A named human performer associated with a part.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Player {
     #[serde(rename = "@id")]
     pub id: String,
@@ -140,7 +140,7 @@ pub struct Player {
 /// Bracket/brace grouping around two or more parts.
 ///
 /// Maps to `<part-group>` inside `<part-list>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PartGroup {
     /// `"start"` or `"stop"`.
     #[serde(rename = "@type")]
@@ -165,7 +165,7 @@ pub struct PartGroup {
 }
 
 /// Symbol drawn to the left of a part group.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GroupSymbol {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -176,7 +176,7 @@ pub struct GroupSymbol {
 }
 
 /// Whether barlines are shared across a part group.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GroupBarline {
     #[serde(rename = "@color")]
     pub color: Option<String>,
@@ -186,7 +186,7 @@ pub struct GroupBarline {
 }
 
 /// One item inside `<part-list>`: either a `<score-part>` or a `<part-group>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum PartListItem {
     ScorePart(ScorePart),
@@ -196,7 +196,7 @@ pub enum PartListItem {
 /// The ordered list of all parts and their groupings.
 ///
 /// Maps to the `<part-list>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PartList {
     #[serde(rename = "$value")]
     pub items: Vec<PartListItem>,

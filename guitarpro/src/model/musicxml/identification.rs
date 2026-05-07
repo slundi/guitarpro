@@ -1,9 +1,9 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A person or organization who contributed to the score.
 ///
 /// The `type` attribute specifies the role, e.g. `"composer"`, `"lyricist"`, `"arranger"`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Creator {
     #[serde(rename = "@type")]
     pub creator_type: Option<String>,
@@ -12,7 +12,7 @@ pub struct Creator {
 }
 
 /// A rights statement for the score.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Rights {
     #[serde(rename = "@type")]
     pub rights_type: Option<String>,
@@ -21,7 +21,7 @@ pub struct Rights {
 }
 
 /// Records software and date information about how the file was encoded.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Encoding {
     #[serde(rename = "encoding-date")]
     pub encoding_date: Option<String>,
@@ -36,7 +36,7 @@ pub struct Encoding {
 }
 
 /// A text element that carries an optional `type` attribute.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TypedText {
     #[serde(rename = "@type")]
     pub text_type: Option<String>,
@@ -47,7 +47,7 @@ pub struct TypedText {
 /// Indicates whether the encoding supports a specific MusicXML element or attribute.
 ///
 /// Used in `<encoding>` to declare what features the encoder actively uses.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Supports {
     /// `"yes"` or `"no"`.
     #[serde(rename = "@type")]
@@ -61,7 +61,7 @@ pub struct Supports {
 }
 
 /// A key/value pair inside `<miscellaneous>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MiscellaneousField {
     #[serde(rename = "@name")]
     pub name: String,
@@ -70,7 +70,7 @@ pub struct MiscellaneousField {
 }
 
 /// Free-form metadata fields that do not fit other identification categories.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Miscellaneous {
     #[serde(rename = "miscellaneous-field", default)]
     pub fields: Vec<MiscellaneousField>,
@@ -79,7 +79,7 @@ pub struct Miscellaneous {
 /// Identification information for the score: authorship, rights, encoding history.
 ///
 /// Maps to the `<identification>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Identification {
     #[serde(rename = "creator", default)]
     pub creators: Vec<Creator>,

@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// The sounded pitch of a note.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Pitch {
     /// Pitch class: `A`–`G`.
     pub step: String,
@@ -12,7 +12,7 @@ pub struct Pitch {
 }
 
 /// Indicates this note is a rest.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Rest {
     /// When `"yes"`, this rest fills the whole measure regardless of duration.
     #[serde(rename = "@measure")]
@@ -25,7 +25,7 @@ pub struct Rest {
 }
 
 /// Unpitched note head (for percussion).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Unpitched {
     #[serde(rename = "display-step")]
     pub display_step: Option<String>,
@@ -34,7 +34,7 @@ pub struct Unpitched {
 }
 
 /// The written note type value (rhythmic denominator).
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NoteTypeValue {
     #[serde(rename = "1024th")]
@@ -61,7 +61,7 @@ pub enum NoteTypeValue {
 }
 
 /// The written note type with optional size override.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NoteType {
     /// `"full"`, `"cue"`, `"grace-cue"`, `"large"`.
     #[serde(rename = "@size")]
@@ -71,7 +71,7 @@ pub struct NoteType {
 }
 
 /// An augmentation dot.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Dot {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -82,7 +82,7 @@ pub struct Dot {
 }
 
 /// Displayed accidental symbol.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Accidental {
     #[serde(rename = "@cautionary")]
     pub cautionary: Option<String>,
@@ -102,7 +102,7 @@ pub struct Accidental {
 }
 
 /// Time modification for a tuplet note (e.g. 3 notes in the time of 2).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TimeModification {
     /// Actual number of notes in the tuplet group.
     #[serde(rename = "actual-notes")]
@@ -117,7 +117,7 @@ pub struct TimeModification {
 }
 
 /// Direction of a stem.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Stem {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -133,7 +133,7 @@ pub struct Stem {
 }
 
 /// Note head shape.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Notehead {
     #[serde(rename = "@filled")]
     pub filled: Option<String>,
@@ -150,7 +150,7 @@ pub struct Notehead {
 }
 
 /// Beam notation for a single beam level.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Beam {
     /// Beam level (1 = outer beam, up to 8).
     #[serde(rename = "@number")]
@@ -165,7 +165,7 @@ pub struct Beam {
 }
 
 /// A tie notation mark on the note (separate from the logical `<tied>` in notations).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Tie {
     /// `"start"` or `"stop"`.
     #[serde(rename = "@type")]
@@ -179,7 +179,7 @@ pub struct Tie {
 // ---------------------------------------------------------------------------
 
 /// A tie notation marking (inside `<notations>`).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Tied {
     #[serde(rename = "@type")]
     pub tied_type: String,
@@ -194,7 +194,7 @@ pub struct Tied {
 }
 
 /// A slur notation marking.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Slur {
     #[serde(rename = "@type")]
     pub slur_type: String,
@@ -209,7 +209,7 @@ pub struct Slur {
 }
 
 /// Tuplet bracket notation.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Tuplet {
     #[serde(rename = "@type")]
     pub tuplet_type: String,
@@ -230,7 +230,7 @@ pub struct Tuplet {
 }
 
 /// The actual or normal portion of a displayed tuplet ratio.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TupletPortion {
     #[serde(rename = "tuplet-number")]
     pub tuplet_number: Option<TupletNumber>,
@@ -241,7 +241,7 @@ pub struct TupletPortion {
 }
 
 /// The number shown on a tuplet bracket.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TupletNumber {
     #[serde(rename = "@font-size")]
     pub font_size: Option<String>,
@@ -250,7 +250,7 @@ pub struct TupletNumber {
 }
 
 /// A glissando (continuous-line gliss).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Glissando {
     #[serde(rename = "@type")]
     pub glissando_type: String,
@@ -263,7 +263,7 @@ pub struct Glissando {
 }
 
 /// A slide (solid line from one note to another).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Slide {
     #[serde(rename = "@type")]
     pub slide_type: String,
@@ -276,7 +276,7 @@ pub struct Slide {
 }
 
 /// A fermata above or below a note.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Fermata {
     #[serde(rename = "@type")]
     pub fermata_type: Option<String>,
@@ -289,7 +289,7 @@ pub struct Fermata {
 }
 
 /// An arpeggiate notation (rolled chord indicator).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Arpeggiate {
     #[serde(rename = "@number")]
     pub number: Option<u8>,
@@ -306,7 +306,7 @@ pub struct Arpeggiate {
 }
 
 /// Indicates a chord is not arpeggiated.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NonArpeggiate {
     #[serde(rename = "@type")]
     pub non_arpeggiate_type: String,
@@ -317,7 +317,7 @@ pub struct NonArpeggiate {
 }
 
 /// An accidental in an ornament (e.g. trill accidental).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AccidentalMark {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -328,7 +328,7 @@ pub struct AccidentalMark {
 }
 
 /// An empty placement element (many ornaments / articulations have no attributes beyond placement).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PlacedEmpty {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -339,7 +339,7 @@ pub struct PlacedEmpty {
 }
 
 /// Trill, turn, mordent, and other ornament marks.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Ornaments {
     #[serde(rename = "trill-mark")]
     pub trill_mark: Option<PlacedEmpty>,
@@ -370,7 +370,7 @@ pub struct Ornaments {
 }
 
 /// A wavy line (trill extension or vibrato).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WavyLine {
     #[serde(rename = "@type")]
     pub wavy_type: String,
@@ -381,7 +381,7 @@ pub struct WavyLine {
 }
 
 /// A mordent ornament with optional long/approach/departure.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Mordent {
     #[serde(rename = "@long")]
     pub long: Option<String>,
@@ -394,7 +394,7 @@ pub struct Mordent {
 }
 
 /// A tremolo mark (slashed beams on the stem or between two notes).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Tremolo {
     /// `"single"`, `"start"`, `"stop"`, `"unmeasured"`.
     #[serde(rename = "@type")]
@@ -409,7 +409,7 @@ pub struct Tremolo {
 }
 
 /// A placement element with a text value (for "other" notation types).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OtherPlacement {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -420,7 +420,7 @@ pub struct OtherPlacement {
 }
 
 /// Guitar/string technical notations.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Technical {
     #[serde(rename = "up-bow")]
     pub up_bow: Option<PlacedEmpty>,
@@ -474,7 +474,7 @@ pub struct Technical {
 }
 
 /// Harmonic notation (natural or artificial).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Harmonic {
     #[serde(rename = "@print-object")]
     pub print_object: Option<String>,
@@ -491,7 +491,7 @@ pub struct Harmonic {
 }
 
 /// Left-hand fingering digit.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Fingering {
     #[serde(rename = "@substitution")]
     pub substitution: Option<String>,
@@ -504,7 +504,7 @@ pub struct Fingering {
 }
 
 /// Fret number (tablature).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Fret {
     #[serde(rename = "@font-size")]
     pub font_size: Option<String>,
@@ -515,7 +515,7 @@ pub struct Fret {
 }
 
 /// String number (tablature, 1 = highest-pitched string).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StringNumber {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -528,7 +528,7 @@ pub struct StringNumber {
 }
 
 /// Hammer-on or pull-off marking.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HammerPull {
     #[serde(rename = "@type")]
     pub technique_type: String,
@@ -541,7 +541,7 @@ pub struct HammerPull {
 }
 
 /// A guitar bend.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Bend {
     #[serde(rename = "@shape")]
     pub shape: Option<String>,
@@ -562,14 +562,14 @@ pub struct Bend {
 }
 
 /// Release point of a bend.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BendRelease {
     #[serde(rename = "@offset")]
     pub offset: Option<f64>,
 }
 
 /// Organ heel/toe markings.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HeelToe {
     #[serde(rename = "@substitution")]
     pub substitution: Option<String>,
@@ -578,7 +578,7 @@ pub struct HeelToe {
 }
 
 /// Wind instrument hole notation.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Hole {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -591,7 +591,7 @@ pub struct Hole {
 }
 
 /// Whether a wind hole is open, closed, or half-closed.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HoleClosed {
     #[serde(rename = "@location")]
     pub location: Option<String>,
@@ -600,7 +600,7 @@ pub struct HoleClosed {
 }
 
 /// Arrow direction for string notation.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Arrow {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -615,7 +615,7 @@ pub struct Arrow {
 }
 
 /// Harmon mute (stem in or out).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HarmonMute {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -624,7 +624,7 @@ pub struct HarmonMute {
 }
 
 /// State of a harmon mute.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HarmonClosed {
     #[serde(rename = "@location")]
     pub location: Option<String>,
@@ -633,7 +633,7 @@ pub struct HarmonClosed {
 }
 
 /// Accent, staccato, tenuto, and other articulation marks.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Articulations {
     pub accent: Option<PlacedEmpty>,
     #[serde(rename = "strong-accent")]
@@ -660,7 +660,7 @@ pub struct Articulations {
 }
 
 /// A marcato / forte-piano accent.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StrongAccent {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -670,7 +670,7 @@ pub struct StrongAccent {
 }
 
 /// A breath mark.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BreathMark {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -680,7 +680,7 @@ pub struct BreathMark {
 }
 
 /// A caesura (pause mark).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Caesura {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -690,7 +690,7 @@ pub struct Caesura {
 }
 
 /// Dynamic marking inside notations (applies to a single note).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DynamicNotation {
     #[serde(rename = "@placement")]
     pub placement: Option<String>,
@@ -699,7 +699,7 @@ pub struct DynamicNotation {
 }
 
 /// A single dynamic symbol.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DynamicMark {
     P(()),
@@ -735,7 +735,7 @@ pub enum DynamicMark {
 /// All notations that can appear on a note.
 ///
 /// Maps to the `<notations>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Notations {
     #[serde(rename = "@print-object")]
     pub print_object: Option<String>,
@@ -770,7 +770,7 @@ pub struct Notations {
 }
 
 /// A formatted text element (for footnotes inside notations).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FormattedText {
     #[serde(rename = "@xml:lang")]
     pub lang: Option<String>,
@@ -781,7 +781,7 @@ pub struct FormattedText {
 }
 
 /// Editorial level indicator.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Level {
     #[serde(rename = "@reference")]
     pub reference: Option<String>,
@@ -796,7 +796,7 @@ pub struct Level {
 }
 
 /// One syllable of lyrics.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Lyric {
     #[serde(rename = "@number")]
     pub number: Option<String>,
@@ -826,7 +826,7 @@ pub struct Lyric {
 }
 
 /// The text of a lyric syllable.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LyricText {
     #[serde(rename = "@font-family")]
     pub font_family: Option<String>,
@@ -843,7 +843,7 @@ pub struct LyricText {
 }
 
 /// An elision character between syllables.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Elision {
     #[serde(rename = "@font-family")]
     pub font_family: Option<String>,
@@ -854,7 +854,7 @@ pub struct Elision {
 }
 
 /// Lyric extension line.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Extend {
     #[serde(rename = "@type")]
     pub extend_type: Option<String>,
@@ -867,7 +867,7 @@ pub struct Extend {
 }
 
 /// Grace note type and steal-time parameters.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Grace {
     /// Fraction of the following note's time stolen (for acciaccatura-style rendering).
     #[serde(rename = "@steal-time-previous")]
@@ -883,7 +883,7 @@ pub struct Grace {
 }
 
 /// A cue note marker.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Cue {}
 
 /// A note, rest, or chord member.
@@ -897,7 +897,7 @@ pub struct Cue {}
 ///
 /// `chord` is a marker element: when present the note belongs to the same chord as the
 /// previous note (same onset time, same duration).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Note {
     // --- grace / cue ---
     pub grace: Option<Grace>,
@@ -980,21 +980,21 @@ pub struct Note {
 }
 
 /// References the instrument this note should play on.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NoteInstrument {
     #[serde(rename = "@id")]
     pub id: String,
 }
 
 /// Alternate notehead text (for figured-bass or shaped-note notations).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NoteheadText {
     #[serde(rename = "$value", default)]
     pub content: Vec<NoteheadTextContent>,
 }
 
 /// Content inside a notehead text block.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NoteheadTextContent {
     DisplayText(FormattedText),
@@ -1002,7 +1002,7 @@ pub enum NoteheadTextContent {
 }
 
 /// MIDI/audio playback overrides for a note.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Play {
     #[serde(rename = "@id")]
     pub id: Option<String>,
@@ -1016,14 +1016,14 @@ pub struct Play {
 }
 
 /// Listening cue for synchronized audio.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Listen {
     #[serde(rename = "$value", default)]
     pub content: Vec<ListenContent>,
 }
 
 /// Content inside a `<listen>` block.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ListenContent {
     Assess(Assess),
@@ -1032,7 +1032,7 @@ pub enum ListenContent {
 }
 
 /// Assessment point for a listening exercise.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Assess {
     #[serde(rename = "@type")]
     pub assess_type: String,
@@ -1043,7 +1043,7 @@ pub struct Assess {
 }
 
 /// Wait/synchronization point in a listening exercise.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Wait {
     #[serde(rename = "@player")]
     pub player: Option<String>,

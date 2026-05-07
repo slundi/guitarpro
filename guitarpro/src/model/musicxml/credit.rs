@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A text block placed on a page of the score (title, subtitle, composer, etc.).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreditWords {
     #[serde(rename = "@justify")]
     pub justify: Option<String>,
@@ -20,7 +20,7 @@ pub struct CreditWords {
 }
 
 /// An image placed on a page of the score.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreditImage {
     #[serde(rename = "@source")]
     pub source: String,
@@ -37,7 +37,7 @@ pub struct CreditImage {
 }
 
 /// A SMuFL symbol used as a credit element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreditSymbol {
     #[serde(rename = "@default-x")]
     pub default_x: Option<f64>,
@@ -48,7 +48,7 @@ pub struct CreditSymbol {
 }
 
 /// One content item inside a `<credit>` block.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum CreditContent {
     CreditType(String),
@@ -60,7 +60,7 @@ pub enum CreditContent {
 }
 
 /// A hyperlink inside a credit block.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreditLink {
     #[serde(rename = "@xlink:href")]
     pub href: Option<String>,
@@ -71,7 +71,7 @@ pub struct CreditLink {
 }
 
 /// A named bookmark inside a credit block.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreditBookmark {
     #[serde(rename = "@id")]
     pub id: String,
@@ -82,7 +82,7 @@ pub struct CreditBookmark {
 /// A page-level text, image, or symbol element (title, composer name, copyright, etc.).
 ///
 /// Maps to the `<credit>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Credit {
     /// Which page this credit appears on (1-based). Defaults to 1 if absent.
     #[serde(rename = "@page")]

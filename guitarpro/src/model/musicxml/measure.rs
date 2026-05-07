@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     attributes::Attributes,
@@ -11,7 +11,7 @@ use super::{
 /// Move the time cursor backwards in the current measure (to notate additional voices).
 ///
 /// Maps to the `<backup>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Backup {
     /// Duration to move backward, in divisions.
     pub duration: u32,
@@ -20,7 +20,7 @@ pub struct Backup {
 /// Move the time cursor forward in the current measure (to skip over time).
 ///
 /// Maps to the `<forward>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Forward {
     /// Duration to move forward, in divisions.
     pub duration: u32,
@@ -29,7 +29,7 @@ pub struct Forward {
 }
 
 /// Page/system layout break hint.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Print {
     /// `"yes"` to force a new system/page here.
     #[serde(rename = "@new-system")]
@@ -59,14 +59,14 @@ pub struct Print {
 }
 
 /// Layout distance for a measure.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MeasureLayout {
     #[serde(rename = "measure-distance")]
     pub measure_distance: Option<f64>,
 }
 
 /// Where and how measure numbers are displayed.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MeasureNumbering {
     #[serde(rename = "@system")]
     pub system: Option<String>,
@@ -86,7 +86,7 @@ pub struct MeasureNumbering {
 }
 
 /// A figured bass indication.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FiguredBass {
     #[serde(rename = "@print-object")]
     pub print_object: Option<String>,
@@ -106,7 +106,7 @@ pub struct FiguredBass {
 }
 
 /// One figure in a figured-bass notation.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Figure {
     #[serde(rename = "prefix")]
     pub prefix: Option<StyleText>,
@@ -119,7 +119,7 @@ pub struct Figure {
 }
 
 /// A styled text element used in figured-bass figures.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StyleText {
     #[serde(rename = "@smufl")]
     pub smufl: Option<String>,
@@ -128,7 +128,7 @@ pub struct StyleText {
 }
 
 /// A grouping or category marker (e.g. for audio analysis software).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Grouping {
     #[serde(rename = "@type")]
     pub grouping_type: String,
@@ -143,7 +143,7 @@ pub struct Grouping {
 }
 
 /// One feature annotation inside a `<grouping>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Feature {
     #[serde(rename = "@type")]
     pub feature_type: Option<String>,
@@ -152,7 +152,7 @@ pub struct Feature {
 }
 
 /// A hyperlink inside a measure (rare; used in interactive scores).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Link {
     #[serde(rename = "@xlink:href")]
     pub href: Option<String>,
@@ -171,7 +171,7 @@ pub struct Link {
 }
 
 /// A named anchor point inside a measure (for hyperlinks).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Bookmark {
     #[serde(rename = "@id")]
     pub id: String,
@@ -188,7 +188,7 @@ pub struct Bookmark {
 /// The ordering of elements in a measure is significant: `<backup>` and `<forward>`
 /// elements advance or retract the time cursor, allowing multiple voices to be encoded
 /// sequentially within the same `<measure>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum MusicData {
     Note(Note),
@@ -210,7 +210,7 @@ pub enum MusicData {
 /// One measure of music for a single part.
 ///
 /// Maps to the `<measure>` element inside `<part>`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Measure {
     /// Measure number (typically `"1"`, `"2"`, …; may be non-numeric for pickup measures).
     #[serde(rename = "@number")]

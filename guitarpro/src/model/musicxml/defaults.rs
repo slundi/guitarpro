@@ -1,17 +1,17 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Scaling factors between written distances and tenths.
 ///
 /// `millimeters` is the real-world size of `tenths` staff-space units.
 /// All other distances in `<defaults>` are expressed in tenths.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Scaling {
     pub millimeters: f64,
     pub tenths: f64,
 }
 
 /// Size of a page in tenths.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PageSize {
     #[serde(rename = "page-height")]
     pub page_height: f64,
@@ -20,7 +20,7 @@ pub struct PageSize {
 }
 
 /// Margins for a page side. `type` is `"both"`, `"even"`, or `"odd"`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PageMargins {
     #[serde(rename = "@type")]
     pub margin_type: Option<String>,
@@ -35,7 +35,7 @@ pub struct PageMargins {
 }
 
 /// Page layout: size and margins.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PageLayout {
     #[serde(flatten)]
     pub size: Option<PageSize>,
@@ -44,7 +44,7 @@ pub struct PageLayout {
 }
 
 /// Margins for a system (one row of measures across the page).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SystemMargins {
     #[serde(rename = "left-margin")]
     pub left_margin: f64,
@@ -53,7 +53,7 @@ pub struct SystemMargins {
 }
 
 /// Vertical distance defaults for systems.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SystemLayout {
     #[serde(rename = "system-margins")]
     pub system_margins: Option<SystemMargins>,
@@ -66,7 +66,7 @@ pub struct SystemLayout {
 }
 
 /// Whether system dividers are shown.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SystemDividers {
     #[serde(rename = "left-divider")]
     pub left_divider: Option<EmptyPrintStyleAlign>,
@@ -75,14 +75,14 @@ pub struct SystemDividers {
 }
 
 /// An empty element carrying only print-style and alignment attributes.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct EmptyPrintStyleAlign {
     #[serde(rename = "@print-object")]
     pub print_object: Option<String>,
 }
 
 /// Default distance between staves within a part.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StaffLayout {
     #[serde(rename = "@number")]
     pub number: Option<u8>,
@@ -91,7 +91,7 @@ pub struct StaffLayout {
 }
 
 /// A named font (family, style, size).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Font {
     #[serde(rename = "@font-family")]
     pub font_family: Option<String>,
@@ -104,7 +104,7 @@ pub struct Font {
 }
 
 /// A named lyric font. The `name` attribute matches `<lyric name="">`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LyricFont {
     #[serde(rename = "@number")]
     pub number: Option<String>,
@@ -115,7 +115,7 @@ pub struct LyricFont {
 }
 
 /// A named lyric language setting.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LyricLanguage {
     #[serde(rename = "@number")]
     pub number: Option<String>,
@@ -126,7 +126,7 @@ pub struct LyricLanguage {
 }
 
 /// Visual appearance defaults: line widths, note sizes, distances.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Appearance {
     #[serde(rename = "line-width", default)]
     pub line_widths: Vec<LineWidth>,
@@ -141,7 +141,7 @@ pub struct Appearance {
 }
 
 /// Width of a specific line type (e.g. `"beam"`, `"staff"`, `"stem"`).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LineWidth {
     #[serde(rename = "@type")]
     pub line_type: String,
@@ -150,7 +150,7 @@ pub struct LineWidth {
 }
 
 /// Size of a note head type expressed as a percentage of the normal note head size.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NoteSize {
     #[serde(rename = "@type")]
     pub note_type: String,
@@ -159,7 +159,7 @@ pub struct NoteSize {
 }
 
 /// A named distance value (e.g. `"hyphen"`, `"beam"`).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Distance {
     #[serde(rename = "@type")]
     pub distance_type: String,
@@ -168,7 +168,7 @@ pub struct Distance {
 }
 
 /// A SMuFL glyph override.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Glyph {
     #[serde(rename = "@type")]
     pub glyph_type: String,
@@ -177,7 +177,7 @@ pub struct Glyph {
 }
 
 /// An application-specific appearance setting.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OtherAppearance {
     #[serde(rename = "@type")]
     pub appearance_type: String,
@@ -188,7 +188,7 @@ pub struct OtherAppearance {
 /// Score-wide rendering defaults: scaling, page layout, fonts, and appearance.
 ///
 /// Maps to the `<defaults>` element.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Defaults {
     pub scaling: Option<Scaling>,
     #[serde(rename = "concert-score")]
