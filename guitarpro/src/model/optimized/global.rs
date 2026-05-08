@@ -36,12 +36,59 @@ pub struct Score {
     pub instruments: Vec<Instrument>, // indexed by InstrumentId
     pub staves: Vec<StaffDef>,        // indexed by StaffId
     pub tracks: Vec<Track>,           // indexed by TrackId
-    pub timeline: Vec<MeasureDef>,    // ordered, shared across all tracks
-    pub lyric_lines: Vec<LyricLine>,  // indexed by LyricLineId
+    /// Bracket/brace groupings across tracks (strings section, piano grand staff, etc.).
+    pub groups: Vec<PartGroup>,
+    pub timeline: Vec<MeasureDef>, // ordered, shared across all tracks
+    pub lyric_lines: Vec<LyricLine>, // indexed by LyricLineId
     pub lyric_projections: Vec<LyricProjection>,
     /// Engraver's rendering intent (page size, fonts, line widths).
     /// `None` means the renderer uses its own defaults.
     pub defaults: Option<ScoreDefaults>,
+}
+
+// --- Part grouping ------------------------------------------------------------
+
+/// A bracket or brace drawn to the left of a set of tracks, grouping them visually
+/// and optionally connecting their barlines.
+///
+/// Groups may nest (e.g. an outer bracket for "Strings" containing an inner brace
+/// for "Violin I + II"). Nesting is expressed by overlapping `tracks` ranges.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PartGroup {
+    /// Long group name shown at the start of the first system (e.g. `"Strings"`).
+    pub label: Option<String>,
+    /// Short name shown on subsequent systems (e.g. `"Str."`).
+    pub abbreviation: Option<String>,
+    /// Symbol drawn to the left of the group.
+    pub symbol: GroupSymbol,
+    /// Whether barlines are drawn through all staves of the group.
+    pub barline: GroupBarline,
+    /// Ordered list of tracks included in this group.
+    pub tracks: Vec<TrackId>,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+pub enum GroupSymbol {
+    /// Square bracket — used for orchestral sections (woodwinds, brass, strings).
+    Bracket,
+    /// Curly brace — used for keyboard instruments (piano, organ, harp).
+    Brace,
+    /// Square bracket variant (rare; some choral scores).
+    Square,
+    /// Simple vertical line with no decoration.
+    Line,
+    /// No symbol — groups only for barline connectivity.
+    None,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+pub enum GroupBarline {
+    /// Barlines are drawn through all staves of the group (standard).
+    Yes,
+    /// Each staff has its own barlines (independent parts).
+    No,
+    /// Barlines drawn *between* staves only, not through them (Mensurstrich).
+    Mensurstrich,
 }
 
 impl Score {
@@ -91,9 +138,29 @@ pub struct Transpose {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Instrument {
+    /// Full instrument name shown at the start of the first system (e.g. `"Violin I"`).
     pub name: String,
-    pub midi_program: u8,
+    /// Abbreviated name shown on subsequent systems (e.g. `"Vl. I"`).
+    pub abbreviation: Option<String>,
+    /// GM or VST sound identifier (e.g. `"strings.violin"`, `"Guitar (clean)"`).
+    /// Informational — used to select a default sound patch, not for playback logic.
+    pub instrument_sound: Option<String>,
+
+    // --- MIDI playback definition ---
+    /// MIDI channel (0–15). Channel 9 is conventionally reserved for percussion.
     pub midi_channel: u8,
+    /// MIDI program number (0–127, GM patch).
+    pub midi_program: u8,
+    /// MIDI bank number (combines CC0 coarse + CC32 fine: `bank = cc0 * 128 + cc32`).
+    /// `None` = bank 0 (GM default).
+    pub midi_bank: Option<u16>,
+    /// Initial volume sent as MIDI CC7 at the start of playback (0.0–1.0).
+    /// `None` = MIDI default (1.0 / CC7=127). Overridden beat-by-beat by [`EffectEvent`].
+    pub volume: Option<f32>,
+    /// Initial stereo pan sent as MIDI CC10 at the start of playback (-1.0 L … 1.0 R).
+    /// `None` = center (0.0 / CC10=64). Overridden beat-by-beat by [`EffectEvent`].
+    pub pan: Option<f32>,
+
     pub kind: InstrumentKind,
     /// Written-to-sounded transposition. `None` = concert-pitch (non-transposing).
     pub transpose: Option<Transpose>,

@@ -48,7 +48,19 @@ impl PlaybackScore {
 
 pub struct PlaybackTrack {
     pub source: PlaybackSource,
-    pub channel: u8, // assigned MIDI channel
+    /// MIDI channel for this track, copied from `Instrument.midi_channel`.
+    pub channel: u8,
+    /// Initial MIDI controllers at the start of playback, derived from the
+    /// `Instrument` definition:
+    ///
+    /// | Field                  | MIDI message              |
+    /// |------------------------|---------------------------|
+    /// | `Instrument.midi_bank` | CC0 (coarse) + CC32 (fine)|
+    /// | `Instrument.volume`    | CC7 (channel volume)      |
+    /// | `Instrument.pan`       | CC10 (pan)                |
+    ///
+    /// Beat-level [`EffectEvent`]s override volume and pan during playback.
+    pub initial_controllers: Vec<(u8, u8)>, // (CC number, value 0-127)
     pub segments: Vec<PlaybackSegment>,
 }
 
