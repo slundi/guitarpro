@@ -141,12 +141,12 @@ impl Arrangement {
 
             // Output this measure only when its volta number matches the current pass
             // (or when it carries no volta tag).
-            if volta_tag.map_or(true, |v| v == effective_pass) {
+            if volta_tag.is_none_or(|v| v == effective_pass) {
                 order.push(measure.index);
             }
 
             let mut next_pos: Option<usize> = None;
-            let should_process = volta_tag.map_or(true, |v| v == effective_pass);
+            let should_process = volta_tag.is_none_or(|v| v == effective_pass);
 
             for ev in &measure.navigation {
                 // RepeatClose inside a skipped volta bracket must not affect the pass
@@ -167,14 +167,14 @@ impl Arrangement {
                         }
                         if stop_at_coda {
                             stop_at_coda = false;
-                            if let Some(dest) = coda_pos {
-                                if dest > pos {
-                                    // Jump forward to the Coda section.
-                                    next_pos = Some(dest);
-                                }
-                                // If dest <= pos we are already in/past the Coda section;
-                                // continue forward naturally.
+                            if let Some(dest) = coda_pos
+                                && dest > pos
+                            {
+                                // Jump forward to the Coda section.
+                                next_pos = Some(dest);
                             }
+                            // If dest <= pos we are already in/past the Coda section;
+                            // continue forward naturally.
                         }
                     }
 
@@ -228,15 +228,13 @@ impl Arrangement {
                     }
 
                     JumpKind::DalSegno => {
-                        if !in_return_pass {
-                            if let Some(sp) = segno_pos {
-                                in_return_pass = true;
-                                stop_at_fine = false;
-                                stop_at_coda = false;
-                                repeat_stack.clear();
-                                volta_context = None;
-                                next_pos = Some(sp);
-                            }
+                        if !in_return_pass && let Some(sp) = segno_pos {
+                            in_return_pass = true;
+                            stop_at_fine = false;
+                            stop_at_coda = false;
+                            repeat_stack.clear();
+                            volta_context = None;
+                            next_pos = Some(sp);
                         }
                     }
 
@@ -252,15 +250,13 @@ impl Arrangement {
                     }
 
                     JumpKind::DalSegnoAlCoda => {
-                        if !in_return_pass {
-                            if let Some(sp) = segno_pos {
-                                in_return_pass = true;
-                                stop_at_fine = false;
-                                stop_at_coda = true;
-                                repeat_stack.clear();
-                                volta_context = None;
-                                next_pos = Some(sp);
-                            }
+                        if !in_return_pass && let Some(sp) = segno_pos {
+                            in_return_pass = true;
+                            stop_at_fine = false;
+                            stop_at_coda = true;
+                            repeat_stack.clear();
+                            volta_context = None;
+                            next_pos = Some(sp);
                         }
                     }
 
@@ -276,15 +272,13 @@ impl Arrangement {
                     }
 
                     JumpKind::DalSegnoAlFine => {
-                        if !in_return_pass {
-                            if let Some(sp) = segno_pos {
-                                in_return_pass = true;
-                                stop_at_fine = true;
-                                stop_at_coda = false;
-                                repeat_stack.clear();
-                                volta_context = None;
-                                next_pos = Some(sp);
-                            }
+                        if !in_return_pass && let Some(sp) = segno_pos {
+                            in_return_pass = true;
+                            stop_at_fine = true;
+                            stop_at_coda = false;
+                            repeat_stack.clear();
+                            volta_context = None;
+                            next_pos = Some(sp);
                         }
                     }
                 }

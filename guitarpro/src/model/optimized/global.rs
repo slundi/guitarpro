@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::model::optimized::{
+    display::ScoreDefaults,
     metadata::Metadata,
     note::Pitch,
     timeline::MeasureDef,
@@ -38,6 +39,9 @@ pub struct Score {
     pub timeline: Vec<MeasureDef>,    // ordered, shared across all tracks
     pub lyric_lines: Vec<LyricLine>,  // indexed by LyricLineId
     pub lyric_projections: Vec<LyricProjection>,
+    /// Engraver's rendering intent (page size, fonts, line widths).
+    /// `None` means the renderer uses its own defaults.
+    pub defaults: Option<ScoreDefaults>,
 }
 
 impl Score {
@@ -101,6 +105,16 @@ pub struct LyricSyllable {
     pub text: String,
     pub hyphen: bool,     // true if more syllables follow in the same word
     pub line_break: bool, // visual line break in lyric display
+    /// Elision character printed between this syllable and the next
+    /// (e.g. the standard elision tie `"‿"`). `None` = no elision.
+    pub elision: Option<String>,
+    /// Melisma extender line: draw an underline after this syllable until the
+    /// next syllable or the end of the phrase (for held-note syllables).
+    pub extend: bool,
+    /// The syllable is sung as laughter ("ha", "ha-ha", etc.).
+    pub laughing: bool,
+    /// The syllable is hummed rather than sung with text.
+    pub humming: bool,
 }
 
 /// Declares where to visually render a lyric line.

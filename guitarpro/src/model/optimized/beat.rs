@@ -25,6 +25,10 @@ pub struct Beat {
     pub lyric: Option<LyricAnchor>,
     pub beam_group: Option<u8>,
     pub tuplet: Option<Tuplet>,
+    /// Explicit beam begin/continue/end markings per beam level.
+    /// Level 1 = eighth-note beam, level 2 = sixteenth, etc.
+    /// When empty the renderer infers beaming from duration and context.
+    pub beams: Vec<Beam>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
@@ -69,4 +73,28 @@ pub enum SlurKind {
 pub struct LyricAnchor {
     pub lyric_line_id: LyricLineId,
     pub syllable_index: u16, // index into LyricLine.syllables
+}
+
+// ---------------------------------------------------------------------------
+// Beams
+// ---------------------------------------------------------------------------
+
+/// Explicit beam segment for one beam level on this beat.
+///
+/// Level 1 spans eighth notes, level 2 sixteenth notes, etc.
+/// `ForwardHook` and `BackwardHook` represent partial beams (e.g. on dotted rhythms).
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub struct Beam {
+    /// Beam level, 1-based (1 = outermost / thickest beam).
+    pub level: u8,
+    pub kind: BeamKind,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+pub enum BeamKind {
+    Begin,
+    Continue,
+    End,
+    ForwardHook,
+    BackwardHook,
 }
