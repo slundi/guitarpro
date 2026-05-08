@@ -18,6 +18,62 @@ pub struct MeasureDef {
     pub navigation: Vec<NavigationEvent>,
     pub tick_resolution: u16, // ticks per quarter note (e.g. 960)
     pub duration_ticks: u32,  // derived: time_sig * resolution
+    /// Left-edge barline style override. `None` = renderer default (usually nothing).
+    pub barline_left: Option<Barline>,
+    /// Right-edge barline style override. `None` = renderer default (single thin line).
+    pub barline_right: Option<Barline>,
+}
+
+// ---------------------------------------------------------------------------
+// Barline style and volta endings
+// ---------------------------------------------------------------------------
+
+/// A barline with optional visual style and volta-ending bracket.
+///
+/// Barlines are global — the same style appears on all staves for that measure.
+/// Repeat barline *logic* (jump targets) is handled by [`NavigationEvent`];
+/// this type covers purely visual overrides and volta bracket display.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Barline {
+    pub style: BarlineStyle,
+    /// Volta bracket attached to this barline (first/second/nth ending).
+    pub ending: Option<Ending>,
+}
+
+/// Visual style of a barline.
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+pub enum BarlineStyle {
+    Regular, // single thin line (default)
+    Dotted,
+    Dashed,
+    Heavy,      // single thick line
+    LightLight, // double thin (section boundary)
+    LightHeavy, // thin + thick (final barline)
+    HeavyLight, // thick + thin (start of final section)
+    HeavyHeavy, // double thick
+    Tick,       // short tick mark (jazz notation)
+    Short,      // short single line (between staves only)
+    None,       // invisible barline (no line drawn)
+}
+
+/// A first/second/nth ending volta bracket.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Ending {
+    /// Ending numbers covered by this bracket (e.g. `[1]`, `[1, 2]`, `[3]`).
+    pub numbers: Vec<u8>,
+    /// Display text override (e.g. `"1."`, `"2.-3."`). `None` = derive from `numbers`.
+    pub text: Option<String>,
+    pub kind: EndingKind,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+pub enum EndingKind {
+    /// Bracket starts here (open hook on the left).
+    Start,
+    /// Bracket ends here with a closing hook on the right.
+    Stop,
+    /// Bracket ends here without a closing hook (continues past the barline).
+    Discontinue,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -315,6 +371,8 @@ mod tests {
             navigation: events,
             tick_resolution: 960,
             duration_ticks: 3840,
+            barline_left: None,
+            barline_right: None,
         }
     }
 

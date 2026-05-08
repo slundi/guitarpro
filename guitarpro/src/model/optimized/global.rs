@@ -70,6 +70,23 @@ impl Score {
     // }
 }
 
+// --- Transposition ------------------------------------------------------------
+
+/// Written-to-sounding transposition for a transposing instrument
+/// (e.g. B♭ clarinet: chromatic = -2, diatonic = -1).
+///
+/// All values describe the interval from written pitch → sounded pitch.
+/// Negative values mean the instrument sounds lower than written.
+#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Transpose {
+    /// Diatonic step count (e.g. -1 for a second, -4 for a fifth).
+    pub diatonic: Option<i16>,
+    /// Exact chromatic semitones (negative = sounds lower, positive = higher).
+    pub chromatic: i16,
+    /// Additional octave adjustment applied on top of `chromatic`.
+    pub octave_change: Option<i8>,
+}
+
 // --- Instrument ---------------------------------------------------------------
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -78,6 +95,8 @@ pub struct Instrument {
     pub midi_program: u8,
     pub midi_channel: u8,
     pub kind: InstrumentKind,
+    /// Written-to-sounded transposition. `None` = concert-pitch (non-transposing).
+    pub transpose: Option<Transpose>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

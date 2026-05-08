@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::optimized::{
     effect::BeatEvent,
     global::LyricLineId,
+    metadata::ChordSymbol,
     note::{Note, NoteValue},
 };
 
@@ -12,6 +13,21 @@ use crate::model::optimized::{
 pub struct Voice {
     pub voice_id: u8,
     pub beats: Vec<Beat>,
+}
+
+/// A grace note preceding a beat.
+///
+/// Grace notes are rendered before the beat's `tick_offset` and typically
+/// steal time from the following note (appoggiatura) or the preceding one
+/// (acciaccatura with `slash = true`).
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GraceNote {
+    pub note: Note,
+    /// Acciaccatura (slashed grace note) when `true`; appoggiatura when `false`.
+    pub slash: bool,
+    /// Fraction of the beat duration to steal for this grace note (0.0–1.0).
+    /// `None` = renderer decides based on context and style.
+    pub steal_time: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -29,6 +45,12 @@ pub struct Beat {
     /// Level 1 = eighth-note beam, level 2 = sixteenth, etc.
     /// When empty the renderer infers beaming from duration and context.
     pub beams: Vec<Beam>,
+    /// Grace notes that sound immediately before this beat.
+    pub grace_notes: Vec<GraceNote>,
+    /// When `true`, this beat is a cue (shown smaller, not counted in the part's dynamics).
+    pub cue: bool,
+    /// Chord symbol that begins on this beat. Rendered above the staff.
+    pub chord: Option<ChordSymbol>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
