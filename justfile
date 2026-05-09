@@ -1,12 +1,5 @@
-set show-recipe-help := true
-
 # --- Variables ---
 binary_name := "rust_template" # Change this to your project name
-
-# --- Default ---
-[help]
-default:
-    @just --list
 
 # --- Development ---
 
@@ -66,6 +59,6 @@ clean:
 ci: fmt lint test
     @echo "✅ All checks passed!"
 
-[./guitarpro]
+[working-directory: 'guitarpro']
 @publish-lib:
     cargo publish
