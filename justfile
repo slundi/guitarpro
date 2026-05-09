@@ -65,3 +65,7 @@ clean:
 # Run the full pipeline as it would run in CI
 ci: fmt lint test
     @echo "✅ All checks passed!"
+
+[./guitarpro]
+@publish-lib:
+    cargo publish
