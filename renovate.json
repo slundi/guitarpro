@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "UTC",
+  "schedule": ["before 6am on Monday"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "matchManagers": ["cargo"],
+      "automerge": false,
+      "commitMessagePrefix": "chore(deps):"
+    },
+    {
+      "matchManagers": ["nix"],
+      "automerge": false,
+      "commitMessagePrefix": "chore(nix):"
+    },
+    {
+      "matchManagers": ["pre-commit"],
+      "automerge": true,
+      "commitMessagePrefix": "chore(hooks):"
+    }
+  ]
+}

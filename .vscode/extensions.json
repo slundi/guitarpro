@@ -1,0 +1,12 @@
+{
+    "recommendations": [
+        "rust-lang.rust-analyzer", // The essential Rust LSP
+        "tamasfe.even-better-toml", // Essential for Cargo.toml and Nix files
+        "jnoortheen.nix-ide", // Nix language support
+        "mkhl.direnv", // Auto-loads your Nix shell inside VS Code
+        "vadimcn.vscode-lldb", // Debugging support
+        "redhat.vscode-yaml",
+        "rust-lang.rust-analyzer",
+        "swellaby.vscode-rust-test-adapter"
+    ]
+}

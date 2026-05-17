@@ -1,38 +1,46 @@
-steps:
-  # setup: Prepare Nix environment and cache (optional but recommended)
-  setup:
-    image: nixos/nix:latest
-    commands:
-      - mkdir -p ~/.config/nix && echo "experimental-features = nix-command flakes" > ~/.config/nix/nix.conf
+# Woodpecker CI — runs on push and pull_request events.
+# All commands delegate to the justfile so the same recipes work locally.
+#
+# LOCAL DEVELOPMENT (NixOS, no docker needed):
+#   nix develop        # enter the dev shell (all tools available)
+#   just ci-all        # run the full pipeline
+#
+# COMMUNITY (container-based, same jobs):
+#   This file — Woodpecker runs each step in the nixos/nix image,
+#   which provides the identical tool set via `nix develop`.
 
-  # lint: Check formatting and run clippy
+steps:
   lint:
     image: nixos/nix:latest
+    environment:
+      NIX_CONFIG: "experimental-features = nix-command flakes"
     commands:
+      - nix develop --command just fmt
       - nix develop --command just lint
-    depends_on: [setup]
 
-  # test: Run the test suite using nextest
   test:
     image: nixos/nix:latest
+    environment:
+      NIX_CONFIG: "experimental-features = nix-command flakes"
     commands:
       - nix develop --command just test
-    depends_on: [setup]
 
-  # security: Scan for secrets and run cargo-audit/deny
   security:
     image: nixos/nix:latest
+    environment:
+      NIX_CONFIG: "experimental-features = nix-command flakes"
     commands:
       - nix develop --command just scan-secrets
       - nix develop --command just health-check
-    depends_on: [setup]
 
-  # unused_deps: Check for unused dependencies
-  unused_deps:
+  coverage:
     image: nixos/nix:latest
+    environment:
+      NIX_CONFIG: "experimental-features = nix-command flakes"
     commands:
-      - nix develop --command cargo-machete
-    depends_on: [setup]
+      - git fetch --depth=1 origin ${CI_REPO_DEFAULT_BRANCH:-master}
+      - nix develop --command just coverage-check ${CI_REPO_DEFAULT_BRANCH:-master}
+    depends_on: [test]
 
 when:
   event: [push, pull_request]

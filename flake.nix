@@ -27,9 +27,11 @@
         mkhl.direnv
         vadimcn.vscode-lldb
         redhat.vscode-yaml
+        # ryanluker.vscode-coverage-gutters
         # Note: If swellaby is not in your nixpkgs channel,
         # you may need to use a community overlay or skip it here.
-        swellaby.vscode-rust-test-adapter
+        # swellaby.vscode-rust-test-adapter
+        # vscode-extensions.nefrob.vscode-just-syntax
       ];
       # Create a custom VSCodium with these extensions
       custom-codium = pkgs.vscode-with-extensions.override {
@@ -39,25 +41,45 @@
 
       # Define the rust toolchain from your toml
       rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+
+      # Read project metadata from Cargo.toml for reuse below
+      cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
     in {
+      # `nix build` and `nix run` — builds the release binary
+      packages.default = pkgs.rustPlatform.buildRustPackage {
+        pname = cargoToml.package.name;
+        version = cargoToml.package.version;
+        src = ./.;
+        # Cargo.lock must be committed (true for executables — see .gitignore)
+        cargoLock.lockFile = ./Cargo.lock;
+      };
+
       devShells.default = pkgs.mkShell {
         buildInputs = with pkgs; [
           rustToolchain
           cargo-dist
           cargo-nextest
+          cargo-cross
           cargo-machete
           cargo-audit
           cargo-deny
+          cargo-llvm-cov # Coverage instrumentation via LLVM
+          grcov # Coverage report formatter (lcov, html, cobertura)
+          jaq # JSON processor (used by coverage-check)
           prek # pre-commit
           gitleaks # The compiled secret scanner or trufflehog or ripgrep
           just # Command runner
+          bacon # Background checker (cargo check/clippy/test on save)
+          git-cliff # Changelog generator from conventional commits
+          mold # Fast linker (referenced in .cargo/config.toml)
+          nil # Nix language server (referenced in .vscode/settings.json)
           custom-codium
         ];
 
         # This runs when the shell starts
         shellHook = ''
-          echo "🦀 Rust Dev Shell Loaded"
-          echo "💡 Tip: Run 'codium .' to start coding with all extensions pre-installed."
+          echo "Rust Dev Shell Loaded"
+          echo "Tip: Run 'codium .' to start coding with all extensions pre-installed."
           # Automatically install hooks if .git exists
           if [ -d .git ] && command -v prek >/dev/null; then
             prek install

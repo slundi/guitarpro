@@ -1,0 +1,12 @@
+[alias]
+b  = "build"
+br = "build --release"
+c  = "check"
+t  = "test"
+r  = "run"
+rr = "run --release"
+
+# Faster linker on Linux — mold is provided by the Nix devShell (flake.nix).
+# Remove or comment out if you are not using mold.
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]

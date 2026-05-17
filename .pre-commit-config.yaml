@@ -8,19 +8,19 @@ repos:
       - id: trailing-whitespace
       - id: check-added-large-files
   - repo: https://github.com/doublify/pre-commit-rust
-    rev: master
+    rev: v1.0
     hooks:
       - id: fmt
         args: ["--verbose", "--"]
       # - id: cargo-check
   - repo: https://github.com/crate-ci/typos
-    rev: v1.23.6
+    rev: v1.46.1
     hooks:
       - id: typos
 
   # detect secrets
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.24.2
+    rev: v8.30.1
     hooks:
       - id: gitleaks
   # - repo: https://github.com/trufflesecurity/trufflehog

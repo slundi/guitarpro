@@ -1,0 +1,17 @@
+[toolchain]
+# 'stable' is good, but pinning a specific version (e.g., "1.85.0")
+# ensures total reproducibility across different machines.
+channel = "stable"
+components = [
+  "rustfmt",
+  "clippy",
+  "rust-src",          # needed by rust-analyzer and many tools (replaces deprecated rust-analysis)
+  "llvm-tools",        # renamed from llvm-tools-preview
+]
+# Add targets here only if your project actually needs them.
+# Uncomment wasm32 for WebAssembly targets, or add others as needed.
+targets = [
+  "x86_64-unknown-linux-gnu",
+  # "wasm32-unknown-unknown",
+]
+profile = "default"

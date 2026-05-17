@@ -10,8 +10,16 @@ target/
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
+# Cargo.lock: commit it for executables, ignore it for libraries.
+# This template defaults to an executable (src/main.rs is present).
+# If you convert this to a pure library, add `Cargo.lock` back to this file.
+# More information: https://doc.rust-lang.org/cargo/guide/cargo-toml-vs-cargo-lock.html
+
 # ---> VisualStudioCode
-.vscode/
+# Track shared settings; ignore everything else (per-user launch configs etc.)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # Local History for Visual Studio Code
 .history/
@@ -19,16 +27,11 @@ target/
 # Built Visual Studio Code Extensions
 *.vsix
 
-# Remove Cargo.lock from gitignore if creating an executable, leave it for libraries
-# More information here https://doc.rust-lang.org/cargo/guide/cargo-toml-vs-cargo-lock.html
-Cargo.lock
-/target
+# Coverage
+lcov.info
 
 # Nix
 .direnv/
 result
 result-*
 .envrc
-
-# Misc
-**/audit_report.txt
