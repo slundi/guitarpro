@@ -7,6 +7,7 @@
 //! - [`timeline`] — global measure timeline (tempo, key/time sig, barlines, navigation)
 //! - [`note`]     — note, beat, and voice construction
 
+pub mod legacy;
 mod metadata;
 mod note;
 mod timeline;

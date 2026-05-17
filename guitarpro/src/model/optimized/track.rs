@@ -48,6 +48,9 @@ pub struct MeasureData {
     pub track_id: TrackId,
     pub repeat: Option<MeasureRepeat>, // if Some, voices is empty
     pub voices: HashMap<u8, Voice>,    // voice_id → Voice
+    /// GP5 line-break byte (0=None, 1=Break, 2=Protect). Written after each measure in GP5.
+    #[serde(default, skip_serializing_if = "crate::model::optimized::is_zero_u8")]
+    pub gp_line_break: u8,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

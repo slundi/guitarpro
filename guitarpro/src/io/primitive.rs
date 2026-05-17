@@ -155,7 +155,7 @@ pub(crate) fn read_byte_size_string(
 
 /// Read a string
 /// * `size`:   real string length
-/// * `length`: optionnal provided length (in case of blank chars after the string)
+/// * `length`: optional provided length (in case of blank chars after the string)
 fn read_string(
     data: &[u8],
     seek: &mut usize,
@@ -270,7 +270,7 @@ pub(crate) fn write_color(data: &mut Vec<u8>, value: i32) {
     write_byte(data, b);
     write_placeholder_default(data, 1);
 }
-fn encode_windows1252(value: &str) -> std::borrow::Cow<'_, [u8]> {
+pub(crate) fn encode_windows1252(value: &str) -> std::borrow::Cow<'_, [u8]> {
     let (encoded, _, _) = WINDOWS_1252.encode(value);
     encoded
 }

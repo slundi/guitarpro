@@ -154,6 +154,20 @@ pub fn build_measure_data(
                 grace_notes: acc.grace_notes,
                 cue: false,
                 chord: acc.chord,
+                gp_empty: false,
+                gp_rest: false,
+                gp_vibrato: false,
+                gp_fade_in: false,
+                gp_stroke: None,
+                gp_pick_stroke: None,
+                gp_beat_flags2: None,
+                gp_break_secondary: None,
+                gp_slap_effect: None,
+                gp_rasgueado: false,
+                gp_text: String::new(),
+                gp_mix_table: None,
+                gp_tremolo_bar: None,
+                gp_chord: None,
             })
             .collect();
         voices.insert(voice_id, Voice { voice_id, beats });
@@ -175,6 +189,7 @@ pub fn build_measure_data(
         track_id,
         repeat: None,
         voices,
+        gp_line_break: 0,
     }
 }
 
@@ -287,6 +302,16 @@ pub fn convert_note(
         accidental,
         arpeggiate,
         display_pitch,
+        gp_harmonic: None,
+        gp_grace: None,
+        gp_bend: None,
+        gp_trill: None,
+        gp_ghost: false,
+        gp_duration_percent: 1.0,
+        gp_swap_accidentals: false,
+        gp_velocity: None,
+        gp_note_type_raw: None,
+        gp_is_rest: false,
     }
 }
 
@@ -353,7 +378,7 @@ fn convert_note_type(t: mx_note::NoteTypeValue) -> NoteValue {
     use mx_note::NoteTypeValue as T;
     match t {
         T::N64th => NoteValue::SixtyFourth,
-        T::N32nd => NoteValue::ThirtySecond,
+        T::N32and => NoteValue::ThirtySecond,
         T::N16th => NoteValue::Sixteenth,
         T::Eighth => NoteValue::Eighth,
         T::Quarter => NoteValue::Quarter,
@@ -382,14 +407,11 @@ fn note_tab(n: &mx_note::Note) -> (Option<u8>, Option<u8>) {
 
 fn note_tie(n: &mx_note::Note) -> Option<TieType> {
     // Use the <tie> elements (not <tied> in notations)
-    for tie in &n.ties {
-        return match tie.tie_type.as_str() {
-            "start" => Some(TieType::Start),
-            "stop" => Some(TieType::End),
-            _ => None,
-        };
-    }
-    None
+    n.ties.first().and_then(|tie| match tie.tie_type.as_str() {
+        "start" => Some(TieType::Start),
+        "stop" => Some(TieType::End),
+        _ => None,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -558,10 +580,10 @@ fn note_ornaments(n: &mx_note::Note) -> Vec<Ornament> {
         let marks = t.marks.unwrap_or(1);
         out.push(Ornament::Tremolo(marks));
     }
-    if let Some(wl) = &orns.wavy_line {
-        if wl.wavy_type == "start" || wl.wavy_type == "continue" {
-            out.push(Ornament::WavyLine);
-        }
+    if let Some(wl) = &orns.wavy_line
+        && (wl.wavy_type == "start" || wl.wavy_type == "continue")
+    {
+        out.push(Ornament::WavyLine);
     }
 
     out
@@ -638,7 +660,7 @@ fn note_fingers(n: &mx_note::Note) -> (Option<Finger>, Option<Finger>) {
     let left = tech
         .and_then(|t| t.fingering.as_ref())
         .and_then(|f| parse_finger(&f.value));
-    let right = tech.and_then(|t| t.pluck.as_ref()).and_then(|_| None); // pluck doesn't carry a digit in this model
+    let right: Option<Finger> = tech.and_then(|t| t.pluck.as_ref()).and(None); // pluck doesn't carry a digit in this model
     (left, right)
 }
 
@@ -699,16 +721,16 @@ fn note_arpeggiate(n: &mx_note::Note) -> Option<ArpeggiateKind> {
 
 fn note_display_pitch(n: &mx_note::Note) -> Option<Pitch> {
     // Rest with display pitch
-    if let Some(rest) = &n.rest {
-        if let (Some(step), Some(oct)) = (&rest.display_step, rest.display_octave) {
-            return Some(pitch_from_step_alter_octave(step, None, oct));
-        }
+    if let Some(rest) = &n.rest
+        && let (Some(step), Some(oct)) = (&rest.display_step, rest.display_octave)
+    {
+        return Some(pitch_from_step_alter_octave(step, None, oct));
     }
     // Unpitched
-    if let Some(unp) = &n.unpitched {
-        if let (Some(step), Some(oct)) = (&unp.display_step, unp.display_octave) {
-            return Some(pitch_from_step_alter_octave(step, None, oct));
-        }
+    if let Some(unp) = &n.unpitched
+        && let (Some(step), Some(oct)) = (&unp.display_step, unp.display_octave)
+    {
+        return Some(pitch_from_step_alter_octave(step, None, oct));
     }
     None
 }

@@ -24,14 +24,14 @@ This document outlines the development stages and future goals of the project.
 
 ### Conversion
 
-- [ ] `legacy::Song` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
+- [x] `legacy::Song` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
 - [x] `musicxml::ScorePartwise` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
 - [ ] `musicxml::ScoreTimewise` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
 - [ ] `optimized::LoadedScore` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
 - [ ] `musicxml::ScorePartwise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
 - [ ] `musicxml::ScoreTimewise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
 - [ ] roundtrip tests: legacy -> musicxml -> legacy (source and end file must be the same in size and bytes)
-- [ ] roundtrip tests: legacy -> optimized -> legacy
+- [ ] roundtrip tests: legacy -> optimized -> legacy (GP3, GP4, ~~GP5~~, GP, GPX)
 - [ ] roundtrip tests: musicxml -> legacy -> musicxml
 - [ ] roundtrip tests: musicxml -> optimized -> musicxml
 - [ ] roundtrip tests: optimized -> legacy -> optimized

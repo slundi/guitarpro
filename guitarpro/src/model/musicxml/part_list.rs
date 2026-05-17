@@ -188,6 +188,7 @@ pub struct GroupBarline {
 /// One item inside `<part-list>`: either a `<score-part>` or a `<part-group>`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[allow(clippy::large_enum_variant)]
 pub enum PartListItem {
     ScorePart(ScorePart),
     PartGroup(PartGroup),

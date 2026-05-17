@@ -22,6 +22,10 @@ pub struct MeasureDef {
     pub barline_left: Option<Barline>,
     /// Right-edge barline style override. `None` = renderer default (single thin line).
     pub barline_right: Option<Barline>,
+    /// GP-format beam grouping for the time signature (4 bytes, always written when
+    /// time_signature is Some). `None` = use default beaming based on numerator.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_beams: Option<[u8; 4]>,
 }
 
 // ---------------------------------------------------------------------------
@@ -80,6 +84,9 @@ pub enum EndingKind {
 pub struct Marker {
     pub label: String,
     pub kind: MarkerKind,
+    /// GP-specific marker color (0xRRGGBB). `None` = use renderer default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_color: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
@@ -373,6 +380,7 @@ mod tests {
             duration_ticks: 3840,
             barline_left: None,
             barline_right: None,
+            gp_beams: None,
         }
     }
 

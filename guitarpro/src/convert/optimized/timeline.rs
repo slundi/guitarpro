@@ -75,52 +75,50 @@ pub fn build_timeline(src: &ScorePartwise) -> TimelineData {
                     if let Some(d) = attrs.divisions {
                         divisions = d;
                     }
-                    if let Some(time) = attrs.times.first() {
-                        if let (Some(b), Some(bt)) = (&time.beats, &time.beat_type) {
-                            if let (Ok(num), Ok(den)) = (b.parse::<u8>(), bt.parse::<u8>()) {
-                                let ts = TimeSignature {
-                                    numerator: num,
-                                    denominator: den,
-                                };
-                                if measure_idx == 0 || time_sig != ts {
-                                    measure_time_sig = Some(ts);
-                                }
-                                time_sig = ts;
-                            }
+                    if let Some(time) = attrs.times.first()
+                        && let (Some(b), Some(bt)) = (&time.beats, &time.beat_type)
+                        && let (Ok(num), Ok(den)) = (b.parse::<u8>(), bt.parse::<u8>())
+                    {
+                        let ts = TimeSignature {
+                            numerator: num,
+                            denominator: den,
+                        };
+                        if measure_idx == 0 || time_sig != ts {
+                            measure_time_sig = Some(ts);
                         }
+                        time_sig = ts;
                     }
-                    if let Some(key) = attrs.keys.first() {
-                        if let Some(fifths) = key.fifths {
-                            let ks = key_sig_from_fifths(fifths, key.mode.as_deref());
-                            if measure_idx == 0 || key_sig != ks {
-                                measure_key_sig = Some(ks);
-                            }
-                            key_sig = ks;
+                    if let Some(key) = attrs.keys.first()
+                        && let Some(fifths) = key.fifths
+                    {
+                        let ks = key_sig_from_fifths(fifths, key.mode.as_deref());
+                        if measure_idx == 0 || key_sig != ks {
+                            measure_key_sig = Some(ks);
                         }
+                        key_sig = ks;
                     }
                 }
 
                 MusicData::Direction(dir) => {
-                    if let Some(sound) = &dir.sound {
-                        if let Some(t) = sound.tempo {
-                            let t = t as f32;
-                            if t != tempo {
-                                measure_tempo = Some(t);
-                            }
-                            tempo = t;
+                    if let Some(sound) = &dir.sound
+                        && let Some(t) = sound.tempo
+                    {
+                        let t = t as f32;
+                        if t != tempo {
+                            measure_tempo = Some(t);
                         }
+                        tempo = t;
                     }
                     for dt_wrapper in &dir.direction_types {
                         use crate::model::musicxml::direction::DirectionType;
-                        if let DirectionType::Metronome(metro) = &dt_wrapper.content {
-                            if let Some(pm) = &metro.per_minute {
-                                if let Ok(bpm) = pm.value.parse::<f32>() {
-                                    if bpm != tempo {
-                                        measure_tempo = Some(bpm);
-                                    }
-                                    tempo = bpm;
-                                }
+                        if let DirectionType::Metronome(metro) = &dt_wrapper.content
+                            && let Some(pm) = &metro.per_minute
+                            && let Ok(bpm) = pm.value.parse::<f32>()
+                        {
+                            if bpm != tempo {
+                                measure_tempo = Some(bpm);
                             }
+                            tempo = bpm;
                         }
                     }
                 }
@@ -167,11 +165,10 @@ pub fn build_timeline(src: &ScorePartwise) -> TimelineData {
         }
 
         let denominator = time_sig.denominator as u32;
-        let duration_ticks = if denominator > 0 {
-            time_sig.numerator as u32 * (divisions * 4 / denominator)
-        } else {
-            divisions * 4
-        };
+        let duration_ticks = (divisions * 4)
+            .checked_div(denominator)
+            .map(|q| time_sig.numerator as u32 * q)
+            .unwrap_or(divisions * 4);
 
         measures.push(MeasureDef {
             index: MeasureIndex(measure_idx as u16),
@@ -184,6 +181,7 @@ pub fn build_timeline(src: &ScorePartwise) -> TimelineData {
             duration_ticks,
             barline_left,
             barline_right,
+            gp_beams: None,
         });
     }
 

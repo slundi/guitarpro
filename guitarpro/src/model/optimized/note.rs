@@ -28,6 +28,9 @@ pub enum NoteValue {
     Sixteenth,
     ThirtySecond,
     SixtyFourth,
+    HundredTwentyEighth,
+    /// Non-standard duration value (power of 2 beyond 1/128). Preserved for byte-identical roundtrip.
+    Other(u16),
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
@@ -107,8 +110,12 @@ pub enum TechniqueKind {
     HammerOn,
     PullOff,
     Vibrato,
-    SlideUp,
-    SlideDown,
+    SlideUp,        // generic upward slide (legacy: ShiftSlideTo)
+    SlideDown,      // generic downward slide (legacy: OutDownwards)
+    SlideLegato,    // legato slide to next note
+    SlideOutUp,     // slide out upward from note
+    SlideIntoAbove, // slide into note from above
+    SlideIntoBelow, // slide into note from below
     Glissando,
     Tapping,
     Harmonic,
@@ -123,6 +130,8 @@ pub enum TechniqueKind {
     // --- bowing ---
     UpBow,
     DownBow,
+    // --- sustain / articulation ---
+    LetRing,
     // --- other ---
     Fingernails,
 }
@@ -224,6 +233,64 @@ pub enum Finger {
 }
 
 // ---------------------------------------------------------------------------
+// GP-specific note hints (for byte-identical legacy roundtrip)
+// ---------------------------------------------------------------------------
+
+/// A single point in a GP bend effect.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GpBendPoint {
+    pub position: u8,
+    pub value: i8,
+    pub vibrato: bool,
+}
+
+/// GP bend effect (bend, tremolo bar, etc.), preserved for byte-identical roundtrip.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GpBendEffect {
+    pub kind: i8,
+    pub value: i16,
+    pub points: Vec<GpBendPoint>,
+}
+
+/// GP5 harmonic note effect, preserved for byte-identical roundtrip.
+/// `kind`: 1=Natural, 2=Artificial, 3=Tapped, 4=Pinch, 5=Semi.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GpHarmonicEffect {
+    pub kind: u8,
+    /// Semitone value of the harmonic pitch (Artificial only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pitch_just: Option<i8>,
+    /// Accidental of the harmonic pitch (Artificial only; -1=flat, 0=none, 1=sharp).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pitch_accidental: Option<i8>,
+    /// Octave index (Artificial only; 0=None, 1=Ottava, 2=Quindicesima, …).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub octave: Option<u8>,
+    /// Fret number (Tapped only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fret: Option<i8>,
+}
+
+/// GP5 grace note effect, preserved for byte-identical roundtrip.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GpGraceEffect {
+    pub fret: i8,
+    pub velocity: i16,
+    pub duration: u8,
+    pub transition: i8,
+    pub is_dead: bool,
+    pub is_on_beat: bool,
+}
+
+/// GP4/5 trill note effect, preserved for byte-identical roundtrip.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GpTrillEffect {
+    pub fret: i8,
+    /// Encoded period: 1=sixteenth, 2=thirty_second, 3=sixty_fourth.
+    pub period: i8,
+}
+
+// ---------------------------------------------------------------------------
 // Note
 // ---------------------------------------------------------------------------
 
@@ -249,4 +316,46 @@ pub struct Note {
     /// For unpitched percussion: the staff-line position to display the notehead on.
     /// Distinct from `pitch`, which may be absent for purely rhythmic parts.
     pub display_pitch: Option<Pitch>,
+
+    // --- GP-specific roundtrip hints ---
+    /// GP5 harmonic effect (Natural/Artificial/Tapped/Pinch/Semi).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_harmonic: Option<GpHarmonicEffect>,
+    /// GP4/5 grace note effect on this note.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_grace: Option<GpGraceEffect>,
+    /// GP4/5 bend/tremolo bar effect with full point data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_bend: Option<GpBendEffect>,
+    /// GP4/5 trill note effect.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_trill: Option<GpTrillEffect>,
+    /// GP4/5 ghost note flag.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gp_ghost: bool,
+    /// GP5 duration percent (1.0 = default; stored only when != 1.0).
+    #[serde(default = "default_one_f32", skip_serializing_if = "is_one_f32")]
+    pub gp_duration_percent: f32,
+    /// GP5 swap accidentals flag.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gp_swap_accidentals: bool,
+    /// Per-note MIDI velocity (GP-specific). `None` = use beat-level dynamic.
+    /// Stored to enable byte-identical legacy roundtrip when notes in a beat differ.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_velocity: Option<i16>,
+    /// Raw GP note-type byte when it falls outside the known range (0=Rest,1=Normal,2=Tie,3=Dead).
+    /// Preserved for byte-identical roundtrip of files that use non-standard type values.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_note_type_raw: Option<u8>,
+    /// When `true`, this note is a GP Rest (NoteType::Rest). Stored explicitly because
+    /// rest notes carry a non-zero value byte in the binary that must be preserved.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gp_is_rest: bool,
+}
+
+fn default_one_f32() -> f32 {
+    1.0
+}
+fn is_one_f32(v: &f32) -> bool {
+    (v - 1.0).abs() < 1e-6
 }

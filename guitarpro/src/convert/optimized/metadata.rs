@@ -2,6 +2,17 @@
 
 use std::collections::HashMap;
 
+type OpenGroupMap = HashMap<
+    String,
+    (
+        Option<String>,
+        Option<String>,
+        GroupSymbol,
+        GroupBarline,
+        usize,
+    ),
+>;
+
 use crate::model::{
     musicxml::{ScorePartwise, measure::MusicData, part_list::PartListItem},
     optimized::{
@@ -252,6 +263,7 @@ pub fn build_instruments(
                 pan,
                 kind,
                 transpose,
+                gp_strings: Vec::new(),
             }
         })
         .collect()
@@ -349,14 +361,14 @@ fn first_transpose(src: &ScorePartwise, part_idx: usize) -> Option<Transpose> {
     let part = src.parts.get(part_idx)?;
     for measure in &part.measures {
         for event in &measure.music_data {
-            if let MusicData::Attributes(attrs) = event {
-                if let Some(t) = attrs.transposes.first() {
-                    return Some(Transpose {
-                        diatonic: t.diatonic,
-                        chromatic: t.chromatic,
-                        octave_change: t.octave_change,
-                    });
-                }
+            if let MusicData::Attributes(attrs) = event
+                && let Some(t) = attrs.transposes.first()
+            {
+                return Some(Transpose {
+                    diatonic: t.diatonic,
+                    chromatic: t.chromatic,
+                    octave_change: t.octave_change,
+                });
             }
         }
     }
@@ -370,16 +382,7 @@ fn first_transpose(src: &ScorePartwise, part_idx: usize) -> Option<Transpose> {
 pub fn build_groups(src: &ScorePartwise) -> Vec<PartGroup> {
     let mut groups: Vec<PartGroup> = Vec::new();
     // Track open groups: number string → (label, abbreviation, symbol, barline, start_part_idx)
-    let mut open: HashMap<
-        String,
-        (
-            Option<String>,
-            Option<String>,
-            GroupSymbol,
-            GroupBarline,
-            usize,
-        ),
-    > = HashMap::new();
+    let mut open: OpenGroupMap = HashMap::new();
     let mut part_counter: usize = 0;
 
     for item in &src.part_list.items {

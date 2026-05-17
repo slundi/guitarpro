@@ -627,10 +627,8 @@ fn convert_note(
                     s_note.string = s as i8;
                 }
             }
-            "PalmMuted" => {
-                if prop.enable.is_some() {
-                    s_note.effect.palm_mute = true;
-                }
+            "PalmMuted" if prop.enable.is_some() => {
+                s_note.effect.palm_mute = true;
             }
             "BendOriginValue" => {
                 bend_origin = prop.float;
@@ -655,15 +653,11 @@ fn convert_note(
                     h.fret = Some(hfret as i8);
                 }
             }
-            "HopoOrigin" | "HopoDestination" => {
-                if prop.enable.is_some() {
-                    s_note.effect.hammer = true;
-                }
+            "HopoOrigin" | "HopoDestination" if prop.enable.is_some() => {
+                s_note.effect.hammer = true;
             }
-            "Dead" | "Muted" => {
-                if prop.enable.is_some() {
-                    s_note.kind = NoteType::Dead;
-                }
+            "Dead" | "Muted" if prop.enable.is_some() => {
+                s_note.kind = NoteType::Dead;
             }
             _ => {}
         }

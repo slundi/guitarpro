@@ -164,6 +164,10 @@ pub struct Instrument {
     pub kind: InstrumentKind,
     /// Written-to-sounded transposition. `None` = concert-pitch (non-transposing).
     pub transpose: Option<Transpose>,
+    /// GP-format strings for percussion tracks (tuning values, all-zero in GP5).
+    /// Preserved for byte-identical roundtrip; ignored by renderers.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gp_strings: Vec<i8>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

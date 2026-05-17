@@ -1,4 +1,7 @@
 pub mod beat;
+pub(crate) fn is_zero_u8(v: &u8) -> bool {
+    *v == 0
+}
 pub mod display;
 pub mod effect;
 pub mod global;
