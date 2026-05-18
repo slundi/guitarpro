@@ -26,6 +26,12 @@ pub struct MeasureDef {
     /// time_signature is Some). `None` = use default beaming based on numerator.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gp_beams: Option<[u8; 4]>,
+    /// GP7/GPX fermatas at this measure (type, offset) pairs, e.g. ("Medium", "1/1").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gp_fermatas: Vec<(String, String)>,
+    /// GP7/GPX free-time bar flag.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gp_free_time: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -381,6 +387,8 @@ mod tests {
             barline_left: None,
             barline_right: None,
             gp_beams: None,
+            gp_fermatas: Vec::new(),
+            gp_free_time: false,
         }
     }
 

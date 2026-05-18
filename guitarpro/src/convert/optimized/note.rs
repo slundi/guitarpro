@@ -190,6 +190,7 @@ pub fn build_measure_data(
         repeat: None,
         voices,
         gp_line_break: 0,
+        gp_simile_mark: None,
     }
 }
 
@@ -314,6 +315,7 @@ pub fn convert_note(
         gp_is_rest: false,
         gp_note_duration: None,
         gp_note_tuplet: None,
+        gp_ornament: None,
     }
 }
 

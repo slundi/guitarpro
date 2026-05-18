@@ -351,6 +351,9 @@ pub struct Note {
     /// rest notes carry a non-zero value byte in the binary that must be preserved.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub gp_is_rest: bool,
+    /// GP7/GPX ornament string on this note (e.g. "UpperMordent", "Turn").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_ornament: Option<String>,
     /// GP3/4 note-level duration override (flags & 0x01). `None` = not present.
     /// When present, two extra bytes (duration + tuplet) are written after the flags byte.
     #[serde(default, skip_serializing_if = "Option::is_none")]

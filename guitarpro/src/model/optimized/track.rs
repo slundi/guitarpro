@@ -51,6 +51,9 @@ pub struct MeasureData {
     /// GP5 line-break byte (0=None, 1=Break, 2=Protect). Written after each measure in GP5.
     #[serde(default, skip_serializing_if = "crate::model::optimized::is_zero_u8")]
     pub gp_line_break: u8,
+    /// GP7/GPX simile mark for this bar (e.g. "Simple", "FirstOfDouble", "SecondOfDouble").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_simile_mark: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

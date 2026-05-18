@@ -182,6 +182,8 @@ pub fn build_timeline(src: &ScorePartwise) -> TimelineData {
             barline_left,
             barline_right,
             gp_beams: None,
+            gp_fermatas: Vec::new(),
+            gp_free_time: false,
         });
     }
 

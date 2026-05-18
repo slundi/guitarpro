@@ -305,9 +305,11 @@ mod tests {
     /// A fretted note (string > 0, valid string index) populates fret + string number.
     #[test]
     fn fretted_note_has_fret_and_string() {
-        let mut note = Note::default();
-        note.string = 1;
-        note.value = 5; // fret 5
+        let note = Note {
+            string: 1,
+            value: 5, /* fret */
+            ..Default::default()
+        };
         let strings: Vec<(i8, i8)> = vec![(1, 40)]; // string 1 = E2 (MIDI 40)
         let result = build_notations(&note, &strings);
         assert_eq!(result.len(), 1);

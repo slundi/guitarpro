@@ -31,7 +31,7 @@ This document outlines the development stages and future goals of the project.
 - [ ] `musicxml::ScorePartwise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
 - [ ] `musicxml::ScoreTimewise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
 - [ ] roundtrip tests: legacy -> musicxml -> legacy (source and end file must be the same in size and bytes)
-- [ ] roundtrip tests: legacy -> optimized -> legacy (GP3, GP4, ~~GP5~~, GP, GPX)
+- [x] roundtrip tests: legacy -> optimized -> legacy
 - [ ] roundtrip tests: musicxml -> legacy -> musicxml
 - [ ] roundtrip tests: musicxml -> optimized -> musicxml
 - [ ] roundtrip tests: optimized -> legacy -> optimized

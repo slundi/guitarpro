@@ -316,7 +316,14 @@ fn build_measure_headers(timeline: &[MeasureDef]) -> Vec<MeasureHeader> {
         let mut header = MeasureHeader {
             number: (i + 1) as u16,
             start: starts.get(i).copied().unwrap_or(DURATION_QUARTER_TIME),
-            tempo: running_tempo as i32,
+            // Only set a non-zero tempo when the optimized model recorded an actual
+            // tempo event at this measure. Zero means "inherited from previous" and
+            // suppresses duplicate <Automation> entries in GPIF export.
+            tempo: if md.tempo.is_some() {
+                running_tempo as i32
+            } else {
+                0
+            },
             time_signature: LTimeSig {
                 numerator: running_num,
                 denominator: LDuration {
@@ -356,6 +363,9 @@ fn build_measure_headers(timeline: &[MeasureDef]) -> Vec<MeasureHeader> {
                 _ => {}
             }
         }
+
+        header.fermatas = md.gp_fermatas.clone();
+        header.free_time = md.gp_free_time;
 
         headers.push(header);
     }
@@ -569,10 +579,26 @@ fn build_tracks(
 
             let rse = build_track_rse(&get_track);
 
+            let short_name = get_track("short_name").unwrap_or_default();
+            let transpose_chromatic = get_track("transpose_chromatic")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0i32);
+            let transpose_octave = get_track("transpose_octave")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0i32);
+            // Prefer stored channel_index (GPX/GP7 preserves exact MIDI channel assignment).
+            let channel_index = get_track("channel_index")
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(channel_index);
+            let midi_program_gpif: Option<i32> =
+                get_track("midi_program_gpif").and_then(|v| v.parse().ok());
+
             LTrack {
                 number: (opt_track.id.0 + 1) as i32,
                 name: opt_track.name.clone(),
+                short_name,
                 channel_index,
+                midi_program_gpif,
                 percussion_track: percussion,
                 strings: strings.clone(),
                 port,
@@ -589,7 +615,8 @@ fn build_tracks(
                 settings,
                 rse,
                 measures,
-                ..LTrack::default()
+                transpose_chromatic,
+                transpose_octave,
             }
         })
         .collect()
@@ -656,14 +683,17 @@ fn build_legacy_measures(
                 // Restore GP5 line-break
                 measure.line_break =
                     crate::model::legacy::enums::get_line_break(md_data.gp_line_break);
-                // GP5 uses 2 voices; GP3 uses 1.
-                for vi in 0..2u8 {
-                    let voice = if let Some(opt_voice) = md_data.voices.get(&vi) {
-                        build_legacy_voice(opt_voice, vi, measure_start, strings)
-                    } else {
-                        LVoice::default()
-                    };
-                    measure.voices.push(voice);
+                measure.simile_mark = md_data.gp_simile_mark.clone();
+                // Restore exactly the voices stored in the optimized model, in index order.
+                // Empty bars (GP7 <Voices></Voices>) store no voices → produce no voices.
+                // GP5 always has 2 voices; GP7 may have 0, 1, 2, or 4 voices per bar.
+                let mut vis: Vec<u8> = md_data.voices.keys().copied().collect();
+                vis.sort_unstable();
+                for vi in vis {
+                    let opt_voice = &md_data.voices[&vi];
+                    measure
+                        .voices
+                        .push(build_legacy_voice(opt_voice, vi, measure_start, strings));
                 }
             } else {
                 measure.voices.push(LVoice::default());
@@ -1046,6 +1076,8 @@ fn build_legacy_note(note: &Note, velocity: i16, _strings: &[(i8, i8)]) -> LNote
 
     // Ghost note
     effect.ghost_note = note.gp_ghost;
+    // Ornament (GP7/GPX)
+    effect.ornament = note.gp_ornament.clone();
 
     // Finger
     if let Some(f) = note.left_finger {

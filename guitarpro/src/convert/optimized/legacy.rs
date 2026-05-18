@@ -265,9 +265,25 @@ fn build_metadata(song: &Song, timeline: &[MeasureDef]) -> Metadata {
         }
     }
 
-    // Per-track GP5 fields not in the optimized model.
+    // Per-track GP5/GPX/GP7 fields not in the optimized model.
     for (i, track) in song.tracks.iter().enumerate() {
         let rse = &track.rse;
+        misc.push((format!("gp.track.{i}.short_name"), track.short_name.clone()));
+        misc.push((
+            format!("gp.track.{i}.transpose_chromatic"),
+            track.transpose_chromatic.to_string(),
+        ));
+        misc.push((
+            format!("gp.track.{i}.transpose_octave"),
+            track.transpose_octave.to_string(),
+        ));
+        misc.push((
+            format!("gp.track.{i}.channel_index"),
+            track.channel_index.to_string(),
+        ));
+        if let Some(prog) = track.midi_program_gpif {
+            misc.push((format!("gp.track.{i}.midi_program_gpif"), prog.to_string()));
+        }
         misc.push((format!("gp.track.{i}.port"), track.port.to_string()));
         misc.push((format!("gp.track.{i}.color"), track.color.to_string()));
         misc.push((format!("gp.track.{i}.offset"), track.offset.to_string()));
@@ -375,10 +391,13 @@ fn build_timeline(song: &Song) -> Vec<MeasureDef> {
     let mut first = true;
 
     for (i, header) in song.measure_headers.iter().enumerate() {
-        // MeasureHeader.tempo is always 0 in GP3/4/5 (tempo is stored at song level,
-        // mid-song changes come from mix-table events in beats — not yet modeled).
-        // Use the song-level tempo as a constant for all measures.
-        let tempo = song.tempo as f32;
+        // GP7/GPX: mh.tempo is non-zero when a per-bar tempo automation exists.
+        // GP3/4/5: mh.tempo is always 0; use song-level tempo as fallback.
+        let tempo = if header.tempo > 0 {
+            header.tempo as f32
+        } else {
+            song.tempo as f32
+        };
         let time = TimeSignature {
             numerator: header.time_signature.numerator as u8,
             denominator: header.time_signature.denominator.value as u8,
@@ -486,6 +505,8 @@ fn build_timeline(song: &Song) -> Vec<MeasureDef> {
             barline_left: None,
             barline_right,
             gp_beams,
+            gp_fermatas: header.fermatas.clone(),
+            gp_free_time: header.free_time,
         });
     }
 
@@ -640,6 +661,7 @@ fn build_measure_data(
         repeat: None,
         voices,
         gp_line_break: from_line_break(&legacy_measure.line_break),
+        gp_simile_mark: legacy_measure.simile_mark.clone(),
     }
 }
 
@@ -1052,6 +1074,7 @@ fn build_note(legacy_note: &LNote, strings: &[(i8, i8)]) -> Note {
         gp_is_rest: is_rest,
         gp_note_duration: legacy_note.duration,
         gp_note_tuplet: legacy_note.tuplet,
+        gp_ornament: legacy_note.effect.ornament.clone(),
     }
 }
 
