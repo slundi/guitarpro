@@ -1,7 +1,8 @@
 //! Roundtrip tests: `legacy::Song` → `optimized::LoadedScore` → `legacy::Song` → GP bytes.
 //!
-//! Goal: the GP bytes written before and after conversion through the optimized model
-//! must be identical in length and content.
+//! Goal: the bytes produced by writing before and after conversion through the optimized
+//! model must be identical.  For GP3/GP4/GP5 this checks against the on-disk bytes;
+//! for GPX/.gp (XML-based) it checks write-idempotency through the optimized model.
 
 use crate::{
     convert::{
@@ -10,8 +11,14 @@ use crate::{
     model::legacy::song::Song,
 };
 
-#[test]
-fn test_gp5_via_optimized_roundtrip() {
+/// Core helper: for every file with extension `ext` under `../test`, reads with `read_fn`,
+/// writes with `write_fn` to get reference bytes, converts through the optimized model,
+/// writes again, and asserts the bytes are identical.
+fn run_via_optimized<R, W>(label: &str, ext: &str, read_fn: R, write_fn: W)
+where
+    R: Fn(&mut Song, &[u8]),
+    W: Fn(&Song) -> Vec<u8>,
+{
     use std::fs;
     let test_dir = "../test";
     let mut pass = 0;
@@ -20,7 +27,7 @@ fn test_gp5_via_optimized_roundtrip() {
     let mut entries: Vec<_> = fs::read_dir(test_dir)
         .unwrap()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().is_some_and(|x| x == "gp5"))
+        .filter(|e| e.path().extension().is_some_and(|x| x == ext))
         .collect();
     entries.sort_by_key(|e| e.file_name());
 
@@ -30,26 +37,37 @@ fn test_gp5_via_optimized_roundtrip() {
         let data = fs::read(&path).unwrap();
 
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            // 1. Read GP5 → legacy Song
+            // 1. Read → legacy Song
             let mut song1 = Song::default();
-            song1.read_gp5(&data).unwrap();
+            read_fn(&mut song1, &data);
 
             // 2. Write before conversion (reference bytes)
-            let written_before = song1.write(song1.version.number, None).unwrap();
+            let written_before = write_fn(&song1);
 
             // 3. Convert legacy → optimized → legacy
             let loaded = legacy_song_to_loaded_score(&song1);
             let song2 = loaded_score_to_legacy_song(&loaded);
 
             // 4. Write after conversion
-            let written_after = song2.write(song1.version.number, None).unwrap();
+            let written_after = write_fn(&song2);
 
             // 5. Compare
             if written_before.len() != written_after.len() {
+                // Find first difference to help diagnose
+                let min_len = written_before.len().min(written_after.len());
+                let first_diff = (0..min_len).find(|&i| written_before[i] != written_after[i]);
                 panic!(
-                    "length mismatch: before={} after={}",
+                    "length mismatch: before={} after={}, first diff at {:?}",
                     written_before.len(),
-                    written_after.len()
+                    written_after.len(),
+                    first_diff.map(|pos| {
+                        let lo = pos.saturating_sub(8);
+                        format!(
+                            "pos={pos} before={:?} after={:?}",
+                            &written_before[lo..written_before.len().min(pos + 8)],
+                            &written_after[lo..written_after.len().min(pos + 8)]
+                        )
+                    })
                 );
             }
             if written_before != written_after {
@@ -59,12 +77,10 @@ fn test_gp5_via_optimized_roundtrip() {
                     .position(|(a, b)| a != b)
                     .unwrap_or(0);
                 let lo = pos.saturating_sub(8);
-                let hi_b = written_before.len().min(pos + 8);
-                let hi_a = written_after.len().min(pos + 8);
                 panic!(
                     "bytes differ at position {pos}: before={:?} after={:?}",
-                    &written_before[lo..hi_b],
-                    &written_after[lo..hi_a],
+                    &written_before[lo..written_before.len().min(pos + 8)],
+                    &written_after[lo..written_after.len().min(pos + 8)],
                 );
             }
         }));
@@ -85,7 +101,7 @@ fn test_gp5_via_optimized_roundtrip() {
     }
 
     eprintln!(
-        "GP5 via-optimized roundtrip: {} pass, {} fail out of {}",
+        "{label} via-optimized roundtrip: {} pass, {} fail out of {}",
         pass,
         failures.len(),
         pass + failures.len()
@@ -95,7 +111,57 @@ fn test_gp5_via_optimized_roundtrip() {
     }
     assert!(
         failures.is_empty(),
-        "{} GP5 file(s) failed legacy→optimized→legacy byte-identical roundtrip",
+        "{} {label} file(s) failed legacy→optimized→legacy roundtrip",
         failures.len()
+    );
+}
+
+#[test]
+fn test_gp3_via_optimized_roundtrip() {
+    run_via_optimized(
+        "GP3",
+        "gp3",
+        |song, data| song.read_gp3(data).unwrap(),
+        |song| song.write(song.version.number, None).unwrap(),
+    );
+}
+
+#[test]
+fn test_gp4_via_optimized_roundtrip() {
+    run_via_optimized(
+        "GP4",
+        "gp4",
+        |song, data| song.read_gp4(data).unwrap(),
+        |song| song.write(song.version.number, None).unwrap(),
+    );
+}
+
+#[test]
+fn test_gp5_via_optimized_roundtrip() {
+    run_via_optimized(
+        "GP5",
+        "gp5",
+        |song, data| song.read_gp5(data).unwrap(),
+        |song| song.write(song.version.number, None).unwrap(),
+    );
+}
+
+#[test]
+fn test_gpx_via_optimized_roundtrip() {
+    run_via_optimized(
+        "GPX",
+        "gpx",
+        |song, data| song.read_gpx(data).unwrap(),
+        |song| song.write_gpx().unwrap(),
+    );
+}
+
+#[test]
+fn test_gp7_via_optimized_roundtrip() {
+    run_via_optimized(
+        "GP7",
+        "gp",
+        |song, data| song.read_gp(data).unwrap(),
+        |song| song.write_gp().unwrap(),
     );
 }

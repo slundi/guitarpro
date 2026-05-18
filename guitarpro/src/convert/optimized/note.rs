@@ -312,6 +312,8 @@ pub fn convert_note(
         gp_velocity: None,
         gp_note_type_raw: None,
         gp_is_rest: false,
+        gp_note_duration: None,
+        gp_note_tuplet: None,
     }
 }
 
@@ -378,7 +380,7 @@ fn convert_note_type(t: mx_note::NoteTypeValue) -> NoteValue {
     use mx_note::NoteTypeValue as T;
     match t {
         T::N64th => NoteValue::SixtyFourth,
-        T::N32and => NoteValue::ThirtySecond,
+        T::N32nd => NoteValue::ThirtySecond,
         T::N16th => NoteValue::Sixteenth,
         T::Eighth => NoteValue::Eighth,
         T::Quarter => NoteValue::Quarter,

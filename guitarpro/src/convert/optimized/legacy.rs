@@ -118,6 +118,10 @@ fn build_metadata(song: &Song, timeline: &[MeasureDef]) -> Metadata {
     for (i, n) in song.notice.iter().enumerate() {
         misc.push((format!("gp.notice.{}", i), n.clone()));
     }
+    misc.push((
+        "gp.triplet_feel".into(),
+        crate::model::legacy::enums::from_triplet_feel(&song.triplet_feel).to_string(),
+    ));
     misc.push(("gp.tempo_name".into(), song.tempo_name.clone()));
     misc.push((
         "gp.version".into(),
@@ -501,11 +505,9 @@ fn build_instruments(song: &Song) -> Vec<Instrument> {
                 .get(track.channel_index)
                 .cloned()
                 .unwrap_or_default();
-            let gp_strings: Vec<i8> = if track.percussion_track {
-                track.strings.iter().map(|(_, midi)| *midi).collect()
-            } else {
-                Vec::new()
-            };
+            // Always store raw MIDI tuning values for a lossless roundtrip.
+            // midi_to_pitch is lossy for MIDI values < 12 (octave clamp).
+            let gp_strings: Vec<i8> = track.strings.iter().map(|(_, midi)| *midi).collect();
             let kind = if track.percussion_track {
                 InstrumentKind::Percussion
             } else if !track.strings.is_empty() {
@@ -816,6 +818,8 @@ fn build_beat(legacy_beat: &LBeat, measure_start: i64, strings: &[(i8, i8)]) -> 
                 from_chord_alteration, from_chord_extension, from_chord_type, from_fingering,
             };
             GpChord {
+                new_format: c.new_format == Some(true),
+                length: c.length,
                 sharp: c.sharp == Some(true),
                 root: c.root.as_ref().map(|r| r.value).unwrap_or(0),
                 kind: c.kind.as_ref().map(from_chord_type).unwrap_or(0),
@@ -1046,6 +1050,8 @@ fn build_note(legacy_note: &LNote, strings: &[(i8, i8)]) -> Note {
             None
         },
         gp_is_rest: is_rest,
+        gp_note_duration: legacy_note.duration,
+        gp_note_tuplet: legacy_note.tuplet,
     }
 }
 
@@ -1196,7 +1202,7 @@ fn track_settings_flags(s: &crate::model::legacy::track::TrackSettings) -> i16 {
     if s.diagram_are_below {
         f |= 0x0004;
     }
-    if s.show_rhythm {
+    if s.show_rythm {
         f |= 0x0008;
     }
     if s.force_horizontal {
@@ -1217,7 +1223,7 @@ fn track_settings_flags(s: &crate::model::legacy::track::TrackSettings) -> i16 {
     if s.auto_brush {
         f |= 0x0400;
     }
-    if s.extend_rhythmic {
+    if s.extend_rythmic {
         f |= 0x0800;
     }
     f

@@ -101,6 +101,13 @@ pub struct Beat {
 /// Stores the values as written by `write_chord_v4`.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GpChord {
+    /// Whether the chord uses the "new format" encoding in the GP binary.
+    /// `false` = old compact format, `true` = extended format.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub new_format: bool,
+    /// String count field (chord `length`) used by the GP binary writer.
+    #[serde(default, skip_serializing_if = "crate::model::optimized::is_zero_u8")]
+    pub length: u8,
     pub sharp: bool,
     /// PitchClass.value of the chord root.
     pub root: i8,

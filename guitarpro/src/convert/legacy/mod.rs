@@ -74,6 +74,12 @@ pub fn loaded_score_to_legacy_song(score: &LoadedScore) -> Song {
         song.transcriber = get("gp.transcriber").unwrap_or_default();
         song.comments = get("gp.comments").unwrap_or_default();
         song.tempo_name = get("gp.tempo_name").unwrap_or_else(|| "Moderate".into());
+        if let Some(v) = get("gp.triplet_feel")
+            && let Ok(n) = v.parse::<i8>()
+            && let Ok(tf) = crate::model::legacy::enums::get_triplet_feel(n)
+        {
+            song.triplet_feel = tf;
+        }
         if let Some(v) = get("gp.hide_tempo")
             && let Ok(b) = v.parse::<bool>()
         {
@@ -496,20 +502,20 @@ fn build_tracks(
 
             let percussion =
                 instrument.is_some_and(|ins| matches!(ins.kind, InstrumentKind::Percussion));
-            let strings = if percussion {
-                // Percussion tracks in GP5 still carry "strings" (tuning values for drum mapping).
-                instrument
-                    .map(|ins| {
+            let strings = instrument
+                .map(|ins| {
+                    if !ins.gp_strings.is_empty() {
+                        // Prefer raw MIDI values (lossless) over Pitch conversion.
                         ins.gp_strings
                             .iter()
                             .enumerate()
                             .map(|(i, &midi)| ((i + 1) as i8, midi))
                             .collect()
-                    })
-                    .unwrap_or_default()
-            } else {
-                instrument.map(instrument_strings).unwrap_or_default()
-            };
+                    } else {
+                        instrument_strings(ins)
+                    }
+                })
+                .unwrap_or_default();
 
             let measures =
                 build_legacy_measures(opt_track, &s.timeline, &starts, &strings, percussion);
@@ -781,8 +787,8 @@ fn build_legacy_beat(
             omissions: gc.omissions.clone(),
             fingerings: gc.fingerings.iter().map(|&f| get_fingering(f)).collect(),
             show: Some(gc.show),
-            new_format: Some(true),
-            length: 6,
+            new_format: Some(gc.new_format),
+            length: gc.length,
         }
     });
     effect.tremolo_bar = beat.gp_tremolo_bar.as_ref().map(|tb| {
@@ -1060,7 +1066,8 @@ fn build_legacy_note(note: &Note, velocity: i16, _strings: &[(i8, i8)]) -> LNote
         kind,
         duration_percent: note.gp_duration_percent,
         swap_accidentals: note.gp_swap_accidentals,
-        ..LNote::default()
+        duration: note.gp_note_duration,
+        tuplet: note.gp_note_tuplet,
     }
 }
 
@@ -1180,14 +1187,14 @@ fn flags_to_track_settings(f: i16) -> crate::model::legacy::track::TrackSettings
         tablature: (f & 0x0001) != 0,
         notation: (f & 0x0002) != 0,
         diagram_are_below: (f & 0x0004) != 0,
-        show_rhythm: (f & 0x0008) != 0,
+        show_rythm: (f & 0x0008) != 0,
         force_horizontal: (f & 0x0010) != 0,
         force_channels: (f & 0x0020) != 0,
         diagram_list: (f & 0x0040) != 0,
         diagram_in_score: (f & 0x0080) != 0,
         auto_let_ring: (f & 0x0200) != 0,
         auto_brush: (f & 0x0400) != 0,
-        extend_rhythmic: (f & 0x0800) != 0,
+        extend_rythmic: (f & 0x0800) != 0,
     }
 }
 

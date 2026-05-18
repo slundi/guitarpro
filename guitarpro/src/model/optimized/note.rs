@@ -351,6 +351,13 @@ pub struct Note {
     /// rest notes carry a non-zero value byte in the binary that must be preserved.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub gp_is_rest: bool,
+    /// GP3/4 note-level duration override (flags & 0x01). `None` = not present.
+    /// When present, two extra bytes (duration + tuplet) are written after the flags byte.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_note_duration: Option<i8>,
+    /// GP3/4 note-level tuplet override (flags & 0x01). `None` = not present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gp_note_tuplet: Option<i8>,
 }
 
 fn default_one_f32() -> f32 {
