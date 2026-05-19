@@ -9,4 +9,5 @@ mod gp7;
 mod gpx;
 mod roundtrip;
 mod roundtrip_musicxml;
+mod roundtrip_musicxml_legacy;
 mod roundtrip_optimized;

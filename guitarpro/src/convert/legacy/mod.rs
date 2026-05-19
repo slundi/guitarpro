@@ -622,6 +622,11 @@ fn build_tracks(
         .collect()
 }
 
+/// Standard 6-string guitar tuning used as a fallback for non-tabbed instruments.
+/// String 1 (thinnest) = E4 (MIDI 64) … String 6 (thickest) = E2 (MIDI 40).
+const DEFAULT_GUITAR_STRINGS: [(i8, i8); 6] =
+    [(1, 64), (2, 59), (3, 55), (4, 50), (5, 45), (6, 40)];
+
 fn instrument_strings(instrument: &Instrument) -> Vec<(i8, i8)> {
     match &instrument.kind {
         InstrumentKind::Stringed { tuning, .. } => tuning
@@ -629,8 +634,27 @@ fn instrument_strings(instrument: &Instrument) -> Vec<(i8, i8)> {
             .enumerate()
             .map(|(i, pitch)| ((i + 1) as i8, pitch_to_midi(pitch)))
             .collect(),
-        _ => Vec::new(),
+        // Pitched instruments (piano, violin, …) have no string definition.
+        // Use a standard guitar tuning so pitch→fret assignment has something to work with.
+        _ => DEFAULT_GUITAR_STRINGS.to_vec(),
     }
+}
+
+/// Find the lowest-fret valid string/fret assignment for `pitch` given `strings`.
+///
+/// Iterates all strings and picks the one whose open tuning requires the fewest
+/// frets to reach `pitch` (fret range 0–24). Returns `None` when the pitch is
+/// out of range on every string.
+fn pitch_to_string_fret(pitch: &Pitch, strings: &[(i8, i8)]) -> Option<(i8, i16)> {
+    let target_midi = pitch_to_midi(pitch) as i16;
+    let mut best: Option<(i8, i16)> = None;
+    for &(string_num, open_midi) in strings {
+        let fret = target_midi - open_midi as i16;
+        if (0i16..=24).contains(&fret) && best.is_none_or(|(_, bf)| fret < bf) {
+            best = Some((string_num, fret));
+        }
+    }
+    best
 }
 
 fn build_legacy_measures(
@@ -922,13 +946,14 @@ fn build_legacy_beat(
     }
 }
 
-fn build_legacy_note(note: &Note, velocity: i16, _strings: &[(i8, i8)]) -> LNote {
+fn build_legacy_note(note: &Note, velocity: i16, strings: &[(i8, i8)]) -> LNote {
     let (string, value, kind) = if note.gp_is_rest {
         // Rest notes: string and value are preserved directly.
         let s = note.string.map(|s| s as i8).unwrap_or(0);
         let v = note.fret.map(|f| f as i16).unwrap_or(0);
         (s, v, NoteType::Rest)
     } else if let (Some(s), Some(f)) = (note.string, note.fret) {
+        // Explicit tab info (from GP files or MusicXML <technical>).
         let kind = if let Some(raw) = note.gp_note_type_raw {
             NoteType::Unknown(raw)
         } else if note.tie == Some(TieType::End) {
@@ -939,8 +964,21 @@ fn build_legacy_note(note: &Note, velocity: i16, _strings: &[(i8, i8)]) -> LNote
             NoteType::Normal
         };
         (s as i8, f as i16, kind)
+    } else if let Some(pitch) = &note.pitch {
+        // Standard notation: derive string/fret from the instrument tuning.
+        if let Some((s, f)) = pitch_to_string_fret(pitch, strings) {
+            let kind = if note.tie == Some(TieType::End) {
+                NoteType::Tie
+            } else {
+                NoteType::Normal
+            };
+            (s, f, kind)
+        } else {
+            // Pitch is out of the instrument's playable range → rest.
+            (0, 0, NoteType::Rest)
+        }
     } else if note.tie == Some(TieType::End) {
-        // Tied note without explicit string/fret — keep as tie
+        // Tied note without pitch or explicit string/fret — keep as tie.
         (0, 0, NoteType::Tie)
     } else {
         (0, 0, NoteType::Rest)
