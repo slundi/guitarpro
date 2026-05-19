@@ -8,4 +8,5 @@ mod gp345_structure;
 mod gp7;
 mod gpx;
 mod roundtrip;
+mod roundtrip_musicxml;
 mod roundtrip_optimized;
