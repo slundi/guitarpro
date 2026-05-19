@@ -783,7 +783,7 @@ mod tests {
         // 4-measure sections in order A B A B.
         // A = C-major, B = A-minor (share some pitch classes but are distinct).
         let a_pcs: &[u8] = &[0, 4, 7]; // C E G
-        let b_pcs: &[u8] = &[9, 0, 4]; // A C E  (shares 0,4 with A — but different root)
+        // let b_pcs: &[u8] = &[9, 0, 4]; // A C E  (shares 0,4 with A — but different root)
 
         // Make B distinct enough from A: use entirely different pitch classes.
         let b_pcs2: &[u8] = &[6, 10, 1]; // F# A# C# — tritone away from C, low Jaccard

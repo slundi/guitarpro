@@ -16,10 +16,10 @@ use crate::{
 // ---------------------------------------------------------------------------
 
 fn strip_doctype(xml: &str) -> String {
-    if let Some(start) = xml.find("<!DOCTYPE") {
-        if let Some(rel_end) = xml[start..].find('>') {
-            return format!("{}{}", &xml[..start], &xml[start + rel_end + 1..]);
-        }
+    if let Some(start) = xml.find("<!DOCTYPE")
+        && let Some(rel_end) = xml[start..].find('>')
+    {
+        return format!("{}{}", &xml[..start], &xml[start + rel_end + 1..]);
     }
     xml.to_string()
 }
@@ -74,10 +74,11 @@ fn xml_real_note_count(src: &ScorePartwise) -> usize {
     for measure in &part.measures {
         for event in &measure.music_data {
             use crate::model::musicxml::measure::MusicData;
-            if let MusicData::Note(n) = event {
-                if n.rest.is_none() && n.chord.is_none() {
-                    count += 1;
-                }
+            if let MusicData::Note(n) = event
+                && n.rest.is_none()
+                && n.chord.is_none()
+            {
+                count += 1;
             }
         }
     }
