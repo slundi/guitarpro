@@ -1,4 +1,5 @@
 mod command_convert;
+mod command_duplicates;
 mod command_extract;
 mod command_info;
 mod loader;
@@ -24,6 +25,8 @@ enum Commands {
     Convert(command_convert::ConvertArgs),
     /// Extract one or more tracks into a new score file
     Extract(command_extract::ExtractArgs),
+    /// Find duplicate or near-duplicate score files in a directory
+    Duplicates(command_duplicates::DuplicatesArgs),
 }
 
 fn main() {
@@ -32,6 +35,7 @@ fn main() {
         Commands::Info(args) => command_info::run(&args),
         Commands::Convert(args) => command_convert::run(&args),
         Commands::Extract(args) => command_extract::run(&args),
+        Commands::Duplicates(args) => command_duplicates::run(&args),
     };
     if let Err(e) = result {
         eprintln!("error: {e:#}");

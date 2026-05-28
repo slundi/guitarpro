@@ -90,6 +90,7 @@ score_tool extract --input song.gp5 --track-index 0,2 --output out.xml
 ### 4. `duplicates` — Find Duplicate Files
 
 Scan a directory of score files and report probable duplicates.
+Implemented in `cli/src/command_duplicates.rs`.
 
 **Usage:**
 ```
@@ -102,11 +103,11 @@ score_tool duplicates --dir ~/tabs/ --threshold 0.90
 2. Metadata match: same title + artist + approximate duration
 3. Content similarity: compare note/beat sequences across tracks (edit distance or fingerprinting)
 
-- [ ] Report groups of duplicates with similarity score
-- [ ] `--threshold <0..1>`: tune similarity cutoff
-- [ ] `--json`: machine-readable output
-- [ ] `--delete-keep-first`: interactive or automatic deduplication (destructive — confirm prompt)
-- [ ] Recurse into subdirectories with `--recursive`
+- [x] Report groups of duplicates with similarity score
+- [x] `--threshold <0..1>`: tune similarity cutoff
+- [x] `--json`: machine-readable output
+- [x] `--delete-keep-first`: interactive or automatic deduplication (destructive — confirm prompt)
+- [x] Recurse into subdirectories with `--recursive`
 
 ---
 
