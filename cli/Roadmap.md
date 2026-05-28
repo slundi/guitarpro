@@ -143,6 +143,7 @@ Single-instrument repeat shorthand within a part.
 ### 6. `form` — Detect Musical Form
 
 Identify recurring structural sections within each track (verse, chorus, bridge, intro, outro, …) based on note-sequence similarity.
+Implemented in `cli/src/command_form.rs`.
 
 **Usage:**
 ```
@@ -162,8 +163,8 @@ Track: Rhythm Guitar
 Form:  [Intro A] [Verse B] [Chorus C] [Verse B] [Chorus C] [Bridge D] [Chorus C'] [Outro A']
 ```
 
-- [ ] Measure-range output per section (e.g. `Chorus C: bars 17–24, 33–40, 49–56`)
-- [ ] `--json`: structured output for downstream processing
+- [x] Measure-range output per section (e.g. `Chorus C: bars 17–24, 33–40, 49–56`)
+- [x] `--json`: structured output for downstream processing
 - [ ] Integration with `extract`: `--form chorus` extracts only chorus measures
 
 ---
