@@ -34,11 +34,12 @@ Subcommands:
 ### 1. `info` — Metadata Inspection (refactor of current default)
 
 Expose the current metadata print as a proper subcommand.
+Implemented in `cli/src/command_info.rs`.
 
-- [ ] `--json` flag: machine-readable output
-- [ ] Per-track detail: instrument, tuning, string count, measure count, voice count
-- [ ] Show time signatures, key signatures, tempo map
-- [ ] Show markers and navigation events (repeats, jumps)
+- [x] `--json` flag: machine-readable output
+- [x] Per-track detail: instrument, tuning, string count, measure count, voice count
+- [x] Show time signatures, key signatures, tempo map
+- [x] Show markers and navigation events (repeats, jumps)
 
 ---
 
@@ -188,7 +189,7 @@ score_tool fingering --input song.gp5 --annotate --output annotated.score
 
 ## Non-Feature Work
 
-- [ ] Migrate `main.rs` to proper clap subcommands (breaking the current flat `--action` flag)
+- [x] Migrate `main.rs` to proper clap subcommands (breaking the current flat `--action` flag)
 - [ ] Add `--quiet` / `--verbose` global flags backed by `tracing`
 - [ ] Error reporting: replace `eprintln! + process::exit` with `anyhow` + `thiserror`
 - [ ] Integration tests in `cli/tests/` using small fixture files
