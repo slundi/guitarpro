@@ -114,15 +114,16 @@ score_tool duplicates --dir ~/tabs/ --threshold 0.90
 ### 5. `repeats` — Detect Repeat Structures
 
 Analyse repeat and simile marks in a score.
+Implemented in `cli/src/command_repeats.rs`.
 
 **Two levels of detection:**
 
 #### 5a. Global repeats
 All instruments are playing the same repeated section simultaneously (standard repeat barlines, DS al Coda, Da Capo, Coda, Fine, …).
 
-- [ ] Parse and list all navigation events (repeat open/close, jump targets) from the score
-- [ ] Expand the repeat map into a flat play-order sequence of measure ranges
-- [ ] Report total sounding duration vs. written measure count
+- [x] Parse and list all navigation events (repeat open/close, jump targets) from the score
+- [x] Expand the repeat map into a flat play-order sequence of measure ranges
+- [x] Report total sounding duration vs. written measure count
 
 #### 5b. Per-instrument simile marks
 Single-instrument repeat shorthand within a part.
@@ -133,9 +134,9 @@ Single-instrument repeat shorthand within a part.
 | `%%`   | Repeat previous two beats |
 | `%%%%` | Repeat previous bar |
 
-- [ ] Detect measures/beats annotated with simile marks in the optimized model (`MeasureRepeat`, `SimileMark`)
-- [ ] Report per-track where simile marks appear and what they reference
-- [ ] `--expand`: emit a version of the score with all simile marks replaced by actual notes (for analysis or export)
+- [x] Detect measures/beats annotated with simile marks in the optimized model (`MeasureRepeat`, `SimileMark`)
+- [x] Report per-track where simile marks appear and what they reference
+- [x] `--expand`: emit a version of the score with all simile marks replaced by actual notes (for analysis or export)
 
 ---
 

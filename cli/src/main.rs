@@ -2,6 +2,7 @@ mod command_convert;
 mod command_duplicates;
 mod command_extract;
 mod command_info;
+mod command_repeats;
 mod loader;
 
 use clap::{Parser, Subcommand};
@@ -27,6 +28,8 @@ enum Commands {
     Extract(command_extract::ExtractArgs),
     /// Find duplicate or near-duplicate score files in a directory
     Duplicates(command_duplicates::DuplicatesArgs),
+    /// Analyse repeat structures and per-track simile marks
+    Repeats(command_repeats::RepeatsArgs),
 }
 
 fn main() {
@@ -36,6 +39,7 @@ fn main() {
         Commands::Convert(args) => command_convert::run(&args),
         Commands::Extract(args) => command_extract::run(&args),
         Commands::Duplicates(args) => command_duplicates::run(&args),
+        Commands::Repeats(args) => command_repeats::run(&args),
     };
     if let Err(e) = result {
         eprintln!("error: {e:#}");
