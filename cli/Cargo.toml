@@ -2,7 +2,7 @@
 name = "cli"
 version = "0.0.2"
 authors = ["slundi"]
-edition = "2021"
+edition = "2024"
 description = "Rust command line interface (CLI) for guitar tab files."
 repository = "https://gitlab.com/slundi/guitar-io"
 license = "MIT"
@@ -18,5 +18,6 @@ clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
+quick-xml = { version = "0.39", features = ["serialize"] }
 
 [dev-dependencies]

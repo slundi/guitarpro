@@ -46,11 +46,12 @@ Implemented in `cli/src/command_info.rs`.
 ### 2. `convert` — Format Conversion
 
 Convert between all supported formats.
+Implemented in `cli/src/command_convert.rs`.
 
 **Supported formats:**
-- Guitar Pro: GP3, GP4, GP5, GPX, GP7
+- Guitar Pro: GP3, GP4, GP5, GPX, GP7+
 - MusicXML (`.xml`, `.musicxml`)
-- Optimized binary model (`.score` — internal format)
+- Optimized Score (`.score` — JSON-serialized `Score` model)
 
 **Usage:**
 ```
@@ -59,16 +60,18 @@ score_tool convert --input song.xml --output song.score
 score_tool convert --input dir/ --output out_dir/ --to gp5   # batch
 ```
 
-- [ ] Single-file conversion with auto-detected output format from extension
-- [ ] Explicit `--from` / `--to` format flags for ambiguous cases
-- [ ] Batch conversion: accept an input directory, convert all matching files
-- [ ] `--dry-run`: list what would be converted without writing
+- [x] Single-file conversion with auto-detected output format from extension
+- [x] Explicit `--from` / `--to` format flags for ambiguous cases
+- [x] Batch conversion: accept an input directory, convert all matching files
+- [x] `--dry-run`: list what would be converted without writing
+- [ ] `.score` binary format (currently JSON; migrate to `postcard` or custom binary)
 
 ---
 
 ### 3. `extract` — Extract Tracks
 
 Produce a new score file containing only a subset of the original tracks.
+Implemented in `cli/src/command_extract.rs`.
 
 **Usage:**
 ```
@@ -76,11 +79,11 @@ score_tool extract --input song.gp5 --tracks "Guitar,Bass" --output guitar_bass.
 score_tool extract --input song.gp5 --track-index 0,2 --output out.xml
 ```
 
-- [ ] Select tracks by name (substring match, case-insensitive)
-- [ ] Select tracks by 0-based index
-- [ ] Output format can differ from input (delegates to `convert` internally)
-- [ ] Preserve global metadata, tempo map, markers, and time/key signatures
-- [ ] `--invert`: keep all tracks *except* the selected ones
+- [x] Select tracks by name (substring match, case-insensitive)
+- [x] Select tracks by 0-based index
+- [x] Output format can differ from input (delegates to `convert` internally)
+- [x] Preserve global metadata, tempo map, markers, and time/key signatures
+- [x] `--invert`: keep all tracks *except* the selected ones
 
 ---
 

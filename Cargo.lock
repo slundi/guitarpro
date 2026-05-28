@@ -196,6 +196,7 @@ dependencies = [
  "anyhow",
  "clap",
  "guitarpro",
+ "quick-xml",
  "serde",
  "serde_json",
 ]
