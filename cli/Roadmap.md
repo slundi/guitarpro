@@ -186,9 +186,10 @@ score_tool fingering --input song.gp5 --annotate --output annotated.score
 4. Handle open strings (finger 0) and muted strings
 
 **Output options:**
+- [x] Per-string/fret/finger table output (human-readable and `--json`)
+- [x] `--annotate <path>`: write finger assignments into the optimized model's `Finger` field and save to `--output`
 - [ ] ASCII tab with finger numbers below each fret number
-- [ ] `--annotate`: write finger assignments into the optimized model's `Finger` field and save to `--output`
-- [ ] `--position <N>`: force starting position (capo / manual override)
+- [ ] `--position <N>`: force starting position (capo / manual override — flag wired, algorithm support pending)
 - [ ] Respect existing fingering annotations already present in the source file (GP5 has finger data per note)
 
 ---

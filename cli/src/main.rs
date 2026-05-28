@@ -1,6 +1,7 @@
 mod command_convert;
 mod command_duplicates;
 mod command_extract;
+mod command_fingering;
 mod command_form;
 mod command_info;
 mod command_repeats;
@@ -33,6 +34,8 @@ enum Commands {
     Repeats(command_repeats::RepeatsArgs),
     /// Detect musical form (verse/chorus/bridge/…) by section similarity
     Form(command_form::FormArgs),
+    /// Compute and display left-hand guitar fingering for tab tracks
+    Fingering(command_fingering::FingeringArgs),
 }
 
 fn main() {
@@ -44,6 +47,7 @@ fn main() {
         Commands::Duplicates(args) => command_duplicates::run(&args),
         Commands::Repeats(args) => command_repeats::run(&args),
         Commands::Form(args) => command_form::run(&args),
+        Commands::Fingering(args) => command_fingering::run(&args),
     };
     if let Err(e) = result {
         eprintln!("error: {e:#}");
