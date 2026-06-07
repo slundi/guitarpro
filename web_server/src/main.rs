@@ -6,6 +6,12 @@ use tokio::net::TcpListener;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
+mod api;
+mod error;
+mod state;
+
+use state::AppState;
+
 #[derive(FromArgs)]
 /// Guitar score web viewer and analysis tool
 struct Args {
@@ -16,6 +22,10 @@ struct Args {
     /// open the browser after binding
     #[argh(switch, short = 'o')]
     open: bool,
+
+    /// root directory allowed for /api/score/open (default: $HOME)
+    #[argh(option)]
+    root: Option<std::path::PathBuf>,
 }
 
 #[tokio::main]
@@ -27,7 +37,13 @@ async fn main() -> Result<()> {
     let args: Args = argh::from_env();
     let addr = SocketAddr::from(([127, 0, 0, 1], args.port));
 
-    let router = build_router();
+    let root = args.root.unwrap_or_else(default_root);
+    tracing::info!(root = %root.display(), "file open root");
+
+    let state = AppState::new(root);
+    state.spawn_sweep();
+
+    let router = build_router(state);
     let listener = TcpListener::bind(addr).await?;
     tracing::info!("Listening on http://localhost:{}", args.port);
 
@@ -45,6 +61,13 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+fn default_root() -> std::path::PathBuf {
+    std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::PathBuf::from("/"))
+}
+
 async fn shutdown_signal() {
     tokio::signal::ctrl_c()
         .await
@@ -55,7 +78,7 @@ async fn shutdown_signal() {
 // ── Dev mode: serve files from frontend/dist/ on disk ────────────────────────
 
 #[cfg(not(feature = "embed"))]
-fn build_router() -> Router {
+fn build_router(state: AppState) -> Router {
     use tower_http::services::{ServeDir, ServeFile};
 
     let dist = concat!(env!("CARGO_MANIFEST_DIR"), "/frontend/dist");
@@ -68,10 +91,9 @@ fn build_router() -> Router {
         );
     }
 
-    let serve = ServeDir::new(dist).fallback(ServeFile::new(index));
-
-    Router::new()
-        .fallback_service(serve)
+    api::api_routes()
+        .fallback_service(ServeDir::new(dist).fallback(ServeFile::new(index)))
+        .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(CompressionLayer::new())
 }
@@ -90,7 +112,7 @@ mod embedded {
 }
 
 #[cfg(feature = "embed")]
-fn build_router() -> Router {
+fn build_router(state: AppState) -> Router {
     use axum::{
         body::Body,
         http::{StatusCode, Uri, header},
@@ -110,7 +132,6 @@ fn build_router() -> Router {
                     .unwrap()
             }
             None => {
-                // SPA fallback: unknown paths → index.html
                 let index = Assets::get("index.html").expect("index.html not embedded");
                 Response::builder()
                     .status(StatusCode::OK)
@@ -127,8 +148,9 @@ fn build_router() -> Router {
         serve_asset(path)
     }
 
-    Router::new()
+    api::api_routes()
         .fallback(get(static_handler))
+        .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(CompressionLayer::new())
 }

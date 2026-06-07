@@ -14,7 +14,7 @@ run *args:
 
 # Build the frontend (requires pnpm and Node.js)
 frontend-build:
-    pnpm --dir {{frontend_dir}} install --frozen-lockfile
+    pnpm --dir {{frontend_dir}} install
     pnpm --dir {{frontend_dir}} build
 
 # Start the frontend dev server with hot-reload (proxies /api/* to axum on :3000)

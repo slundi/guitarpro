@@ -42,33 +42,33 @@ fingering suggestions, etc.
 
 ---
 
-## Part 1 — Project Bootstrap
+## Part 1 — Project Bootstrap ✅
 
 ### 1.1 axum server skeleton
 
-- [ ] Add `axum`, `tokio` (full), `tower-http` (ServeDir / ServeFile, CORS,
+- Add `axum`, `tokio` (full), `tower-http` (ServeDir / ServeFile, CORS,
   compression) to `web_server/Cargo.toml`
-- [ ] `main.rs`: parse `--port` (default 3000) and `--open` flags with `argh`
-- [ ] Bind `TcpListener`, start axum router
-- [ ] If `--open` passed, call `open::that("http://localhost:{port}")` after bind
-- [ ] Graceful shutdown on Ctrl-C (`tokio::signal`)
+- `main.rs`: parse `--port` (default 3000) and `--open` flags with `argh`
+- Bind `TcpListener`, start axum router
+- If `--open` passed, call `open::that("http://localhost:{port}")` after bind
+- Graceful shutdown on Ctrl-C (`tokio::signal`)
 
 ### 1.2 Static asset serving
 
-- [ ] Create `web_server/frontend/` directory for HTML / JS / CSS sources
-- [ ] Serve `frontend/dist/` via `tower_http::services::ServeDir` at `/`
-- [ ] Fallback: serve `index.html` for all unmatched GET routes (SPA routing)
-- [ ] Embed assets at compile time with `rust-embed` for single-binary deployment
+- Create `web_server/frontend/` directory for HTML / JS / CSS sources
+- Serve `frontend/dist/` via `tower_http::services::ServeDir` at `/`
+- Fallback: serve `index.html` for all unmatched GET routes (SPA routing)
+- Embed assets at compile time with `rust-embed` for single-binary deployment
   (feature-flagged so dev mode can use live files from disk)
 
 ### 1.3 Frontend toolchain
 
-- [ ] `package.json` in `web_server/frontend/` with `vite` as bundler
-- [ ] Install `@coderline/alphatab` via npm
-- [ ] Minimal `index.html` + `main.ts` that instantiates `AlphaTabApi` on a
+- `package.json` in `web_server/frontend/` with `vite` as bundler
+- Install `@coderline/alphatab` via npm
+- Minimal `index.html` + `main.ts` that instantiates `AlphaTabApi` on a
   `<div id="alphatab">` element
-- [ ] `vite build` outputs to `frontend/dist/`; add a `just frontend-build` recipe
-- [ ] Hot-reload in dev: `vite dev` proxies `/api/*` to axum
+- `vite build` outputs to `frontend/dist/`; add a `just frontend-build` recipe
+- Hot-reload in dev: `vite dev` proxies `/api/*` to axum
 
 ---
 
