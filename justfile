@@ -1,5 +1,6 @@
 # --- Variables ---
 binary_name := "MY_PROJECT" # Change this to your project name
+frontend_dir := "web_server/frontend"
 
 # --- Development ---
 
@@ -10,6 +11,20 @@ build:
 # Run the project
 run *args:
     cargo run -- {{args}}
+
+# Build the frontend (requires pnpm and Node.js)
+frontend-build:
+    pnpm --dir {{frontend_dir}} install --frozen-lockfile
+    pnpm --dir {{frontend_dir}} build
+
+# Start the frontend dev server with hot-reload (proxies /api/* to axum on :3000)
+frontend-dev:
+    pnpm --dir {{frontend_dir}} install
+    pnpm --dir {{frontend_dir}} dev
+
+# Build everything: frontend then backend with embedded assets
+build-web: frontend-build
+    cargo build -p web_server --features embed
 
 # Watch for changes and run (requires cargo-watch)
 watch:

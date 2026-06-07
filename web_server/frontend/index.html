@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guitar Score Viewer</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: system-ui, sans-serif;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #toolbar {
+        flex-shrink: 0;
+        padding: 8px 16px;
+        background: #242424;
+        border-bottom: 1px solid #333;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      #toolbar h1 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      #score-container {
+        flex: 1;
+        overflow: auto;
+      }
+
+      #alphatab {
+        min-height: 100%;
+      }
+
+      #placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 60dvh;
+        gap: 8px;
+        color: #555;
+      }
+
+      #placeholder p {
+        font-size: 1rem;
+      }
+
+      #placeholder small {
+        font-size: 0.8rem;
+        color: #444;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toolbar">
+      <h1>Guitar Score Viewer</h1>
+    </div>
+    <div id="score-container">
+      <div id="alphatab">
+        <div id="placeholder">
+          <p>Open a file to get started</p>
+          <small>Supports GP3, GP4, GP5, GP, GPX</small>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

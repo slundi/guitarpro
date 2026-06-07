@@ -1,0 +1,29 @@
+[package]
+name = "web_server"
+version = "0.1.0"
+authors = ["slundi"]
+edition = "2024"
+description = "Web-based score viewer and analysis tool"
+repository = "https://gitlab.com/slundi/guitar-io"
+license = "MIT"
+
+[[bin]]
+name = "score_server"
+path = "src/main.rs"
+
+[features]
+embed = ["dep:rust-embed", "dep:mime_guess"]
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["fs", "cors", "compression-gzip"] }
+argh = "0.1"
+open = "5"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rust-embed = { version = "8", optional = true }
+mime_guess = { version = "2", optional = true }
+
+[dev-dependencies]

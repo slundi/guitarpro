@@ -73,6 +73,8 @@
           git-cliff # Changelog generator from conventional commits
           mold # Fast linker (referenced in .cargo/config.toml)
           nil # Nix language server (referenced in .vscode/settings.json)
+          nodejs # Required by pnpm and Vite
+          pnpm # Frontend package manager (web_server/frontend/)
           custom-codium
         ];
 
