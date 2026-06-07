@@ -72,70 +72,70 @@ fingering suggestions, etc.
 
 ---
 
-## Part 2 — File Loading
+## Part 2 — File Loading ✅
 
 ### 2.1 Score session store
 
-- [ ] `AppState`: `Arc<Mutex<HashMap<Uuid, LoadedFile>>>` shared across handlers
-- [ ] `LoadedFile`: raw bytes + parsed `Song` + derived `LoadedScore` + file name
-- [ ] Sessions expire after 1 hour of inactivity (background `tokio::time` sweep)
+- `AppState`: `Arc<Mutex<HashMap<Uuid, LoadedFile>>>` shared across handlers
+- `LoadedFile`: raw bytes + parsed `Song` + derived `LoadedScore` + file name
+- Sessions expire after 1 hour of inactivity (background `tokio::time` sweep)
 
 ### 2.2 Upload endpoint
 
-- [ ] `POST /api/score/upload` — multipart form, accepts `.gp3/.gp4/.gp5/.gp/.gpx`
-- [ ] Returns `{ id: uuid, name: string, track_count: u8, measure_count: u16 }`
-- [ ] Validate extension and file size (≤ 16 MB, reuse CLI constant)
-- [ ] Return structured JSON errors with HTTP 400 on parse failure
+- `POST /api/score/upload` — multipart form, accepts `.gp3/.gp4/.gp5/.gp/.gpx`
+- Returns `{ id: uuid, name: string, track_count: u8, measure_count: u16 }`
+- Validate extension and file size (≤ 16 MB, reuse CLI constant)
+- Return structured JSON errors with HTTP 400 on parse failure
 
 ### 2.3 Local file open
 
-- [ ] `POST /api/score/open` — JSON body `{ path: string }` for server-side file
+- `POST /api/score/open` — JSON body `{ path: string }` for server-side file
   paths (useful when the server runs on the same machine)
-- [ ] Restricted to paths under a configurable `--root` directory (default: `$HOME`)
+- Restricted to paths under a configurable `--root` directory (default: `$HOME`)
 
 ### 2.4 Raw bytes endpoint
 
-- [ ] `GET /api/score/:id/raw` — returns raw GP bytes with correct `Content-Type`
-- [ ] alphaTab fetches this URL directly via `ScoreLoader.loadScoreAsync` using
+- `GET /api/score/:id/raw` — returns raw GP bytes with correct `Content-Type`
+- alphaTab fetches this URL directly via `ScoreLoader.loadScoreAsync` using
   `settings.file` = `/api/score/:id/raw`
 
 ### 2.5 Score metadata endpoint
 
-- [ ] `GET /api/score/:id/info` — title, artist, album, tempo, time signature,
+- `GET /api/score/:id/info` — title, artist, album, tempo, time signature,
   track list `[{ index, name, string_count, tuning }]`
 
 ---
 
-## Part 3 — Score Rendering with alphaTab
+## Part 3 — Score Rendering with alphaTab ✅
 
 ### 3.1 Renderer bootstrap
 
-- [ ] Initialise `AlphaTabApi` with `{ file: "/api/score/{id}/raw" }` on page load
-- [ ] Settings: `player.enablePlayer = false` initially (playback is Part 4)
-- [ ] `api.scoreLoaded` event → populate track selector, update page title
+- Initialise `AlphaTabApi` with `{ file: "/api/score/{id}/raw" }` on page load
+- Settings: `player.enablePlayer = false` initially (playback is Part 4)
+- `api.scoreLoaded` event → populate track selector, update page title
 
 ### 3.2 Track selector
 
-- [ ] Sidebar list of tracks with checkboxes; reflects `api.tracks`
-- [ ] "All tracks" / "Current track only" toggle
-- [ ] Clicking a track calls `api.renderTracks([track])`
+- Sidebar list of tracks with checkboxes; reflects `api.tracks`
+- "All tracks" / "Current track only" toggle
+- Clicking a track calls `api.renderTracks([track])`
 
 ### 3.3 Rendering mode toggle
 
-- [ ] Toolbar buttons: **Notation**, **Tab**, **Notation + Tab**
-- [ ] Maps to `api.settings.display.layoutMode` and `staveProfile`
-- [ ] Persisted in `localStorage`
+- Toolbar buttons: **Notation**, **Tab**, **Notation + Tab**
+- Maps to `api.settings.display.layoutMode` and `staveProfile`
+- Persisted in `localStorage`
 
 ### 3.4 Zoom and layout
 
-- [ ] Zoom slider → `api.settings.display.scale`
-- [ ] Layout toggle: **Page** (vertical scroll) vs **Horizontal** (single line)
-- [ ] Print view: hide toolbar, trigger `window.print()`
+- Zoom slider → `api.settings.display.scale`
+- Layout toggle: **Page** (vertical scroll) vs **Horizontal** (single line)
+- Print view: hide toolbar, trigger `window.print()`
 
 ### 3.5 Measure numbers and cursor
 
-- [ ] Enable `api.settings.display.showMeasureNumbers`
-- [ ] Highlight active measure on click: listen to `api.playedBeatChanged` /
+- Enable `api.settings.display.showMeasureNumbers`
+- Highlight active measure on click: listen to `api.playedBeatChanged` /
   `api.beatMouseDown` → scroll to measure, update status bar
 
 ---
