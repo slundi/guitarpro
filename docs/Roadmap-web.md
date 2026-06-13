@@ -200,10 +200,10 @@ and rendered as visual overlays on top of alphaTab output.
   to measure bounding boxes
 - Colour-code: index=blue, middle=green, ring=orange, pinky=red; barre = filled
 
-### 5.4 Simile marks
+### 5.4 Simile marks ✅
 
-- [ ] Surface simile-mark measures from the repeats endpoint
-- [ ] Overlay: show a "%" or "𝄎" glyph above the affected measure in the UI,
+- Surface simile-mark measures from the repeats endpoint
+- Overlay: show a "%" or "𝄎" glyph above the affected measure in the UI,
   with a tooltip showing the source measure range
 
 ---

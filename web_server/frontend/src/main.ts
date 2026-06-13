@@ -175,6 +175,31 @@ function renderRepeatsSidebar(): void {
     }
   }
 
+  // Simile runs
+  if (repeatsData.simile_runs.length > 0) {
+    const simHeading = document.createElement("p");
+    simHeading.style.cssText = "padding:4px 10px 2px;font-size:0.74rem;color:#777;";
+    simHeading.textContent =
+      `${repeatsData.simile_runs.length} simile run${repeatsData.simile_runs.length !== 1 ? "s" : ""}:`;
+    repeatsInfo.appendChild(simHeading);
+
+    for (const run of repeatsData.simile_runs) {
+      const item = document.createElement("div");
+      item.className = "repeat-block-item";
+
+      const glyph = document.createElement("span");
+      glyph.style.cssText = "color:#c8a000;font-weight:bold;font-size:0.88rem;flex-shrink:0;";
+      glyph.textContent = "%";
+
+      const lbl = document.createElement("span");
+      lbl.textContent = `${run.track}: bars ${run.bars}`;
+      lbl.title = `source: bars ${run.source_bars} · ${run.kind}`;
+
+      item.append(glyph, lbl);
+      repeatsInfo.appendChild(item);
+    }
+  }
+
   if (hasSomething && repeatsData.play_sequence.length > 0) {
     expandSeqBtn.style.display = "";
   }
@@ -274,6 +299,36 @@ function drawRepeatsOverlay(): void {
     }
 
     svg.appendChild(g);
+  }
+
+  // ── Simile mark glyphs (%) ───────────────────────────────────────────────
+  const drawnSimMeasures = new Set<number>();
+  for (const run of repeatsData.simile_runs) {
+    const [startStr, endStr] = run.bars.split("-");
+    const barStart = parseInt(startStr);
+    const barEnd = parseInt(endStr ?? startStr);
+    if (isNaN(barStart)) continue;
+
+    for (let bar = barStart; bar <= barEnd; bar++) {
+      if (drawnSimMeasures.has(bar)) continue;
+      drawnSimMeasures.add(bar);
+
+      const mb = boundsMap.get(bar - 1);
+      if (!mb?.realBounds) continue;
+      const rb = mb.realBounds;
+
+      const simText = document.createElementNS(svgNS, "text");
+      simText.setAttribute("x", String(rb.x + rb.w / 2));
+      simText.setAttribute("y", String(rb.y - 3));
+      simText.setAttribute("fill", "#c8a000");
+      simText.setAttribute("font-size", "12");
+      simText.setAttribute("font-weight", "bold");
+      simText.setAttribute("text-anchor", "middle");
+      simText.setAttribute("dominant-baseline", "auto");
+      simText.setAttribute("font-family", "system-ui,sans-serif");
+      simText.textContent = "%";
+      svg.appendChild(simText);
+    }
   }
 
   atContainer.style.position = "relative";
