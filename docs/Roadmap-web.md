@@ -183,13 +183,13 @@ and rendered as visual overlays on top of alphaTab output.
   with a right bracket; label with × N
 - Expand button: show sounding bar sequence as a numbered list below the score
 
-### 5.2 Form sections
+### 5.2 Form sections ✅
 
-- [ ] `GET /api/score/:id/analysis/form?track=<name>&threshold=0.75` — returns
+- `GET /api/score/:id/analysis/form?track=<name>&threshold=0.75` — returns
   section list `[{ start, end, label }]` (A / B / C / A' …)
-- [ ] Overlay: colour-band each section across all tracks with a translucent fill
+- Overlay: colour-band each section across all tracks with a translucent fill
   and a label badge above the first measure
-- [ ] Legend strip at the top of the score showing the full form sequence
+- Legend strip at the top of the score showing the full form sequence
 
 ### 5.3 Fingering annotations
 

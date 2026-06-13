@@ -189,6 +189,88 @@
         z-index: 10;
       }
 
+      /* ── Form legend strip ──────────────────────────────────── */
+      #form-legend {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #1a1a1acc;
+        backdrop-filter: blur(4px);
+        padding: 4px 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        border-bottom: 1px solid #333;
+      }
+
+      .form-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 1px 7px 2px;
+        border-radius: 3px;
+        font-size: 0.74rem;
+        font-weight: 600;
+        color: #fff;
+        cursor: default;
+        white-space: nowrap;
+      }
+
+      .form-badge .badge-bars {
+        font-weight: 400;
+        opacity: 0.85;
+        font-size: 0.68rem;
+      }
+
+      /* ── Form overlay ───────────────────────────────────────── */
+      #form-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        overflow: visible;
+        z-index: 9;
+      }
+
+      /* ── Form sidebar section ───────────────────────────────── */
+      #form-info {
+        padding: 0 10px 4px;
+        font-size: 0.78rem;
+        color: #999;
+        flex-shrink: 0;
+      }
+
+      .form-section-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 0;
+        font-size: 0.78rem;
+        color: #bbb;
+      }
+
+      .form-swatch {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      #form-track-select-wrap {
+        padding: 2px 10px 6px;
+        flex-shrink: 0;
+      }
+
+      #form-track-select {
+        width: 100%;
+        background: #242424;
+        color: #ccc;
+        border: 1px solid #444;
+        border-radius: 3px;
+        padding: 2px 4px;
+        font-size: 0.78rem;
+      }
+
       /* ── Repeats sidebar section ─────────────────────────────── */
       #repeats-info {
         padding: 0 10px 6px;
@@ -236,6 +318,8 @@
         #sidebar         { display: none !important; }
         #score-container { overflow: visible; }
         #repeats-overlay { display: none !important; }
+        #form-overlay    { display: none !important; }
+        #form-legend     { display: none !important; }
       }
     </style>
   </head>
@@ -271,6 +355,7 @@
       </div>
 
       <button id="repeats-btn" title="Toggle repeat structure overlay">Repeats</button>
+      <button id="form-btn"    title="Toggle form sections overlay">Form</button>
 
       <button id="print-btn" title="Print score">Print</button>
 
@@ -300,6 +385,13 @@
         <div id="repeats-info"></div>
         <button id="expand-sequence-btn">Show sequence</button>
         <div id="sequence-list"></div>
+
+        <div class="sidebar-divider" id="form-divider" style="display:none"></div>
+        <div class="sidebar-label" id="form-sidebar-label" style="display:none">Form</div>
+        <div id="form-track-select-wrap" style="display:none">
+          <select id="form-track-select"></select>
+        </div>
+        <div id="form-info"></div>
       </aside>
 
       <div id="score-container">
@@ -307,6 +399,7 @@
           <p>Drop a file here or click Open file</p>
           <small>Supports GP3 · GP4 · GP5 · GP · GPX</small>
         </div>
+        <div id="form-legend" style="display:none"></div>
         <div id="alphatab"></div>
       </div>
     </div>

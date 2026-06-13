@@ -1,10 +1,11 @@
+use std::collections::{BTreeSet, HashMap};
 use std::time::Instant;
 
 use axum::Json;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::response::IntoResponse;
-use guitarpro::DirectionSign;
-use serde::Serialize;
+use guitarpro::{DirectionSign, MeasureHeader, NoteType};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::error::ApiError;
@@ -365,4 +366,441 @@ fn collect_simile_runs(song: &guitarpro::Song, track_filter: Option<&str>) -> Ve
     }
 
     runs
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// Form analysis  (ported from cli/src/command_form.rs)
+// ════════════════════════════════════════════════════════════════════════════════
+
+// ── Query params ──────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct FormQuery {
+    pub track: Option<String>,
+    #[serde(default = "form_thresh_default")]
+    pub threshold: f64,
+    #[serde(default = "form_variant_default")]
+    pub variant_threshold: f64,
+    #[serde(default = "form_min_section_default")]
+    pub min_section: usize,
+}
+
+fn form_thresh_default() -> f64 {
+    0.75
+}
+fn form_variant_default() -> f64 {
+    0.90
+}
+fn form_min_section_default() -> usize {
+    2
+}
+
+// ── JSON output types ─────────────────────────────────────────────────────────
+
+#[derive(Serialize)]
+pub struct FormResponse {
+    tracks: Vec<FormTrack>,
+}
+
+#[derive(Serialize)]
+struct FormTrack {
+    name: String,
+    form: String,
+    sections: Vec<FormSection>,
+}
+
+#[derive(Serialize)]
+struct FormSection {
+    label: String,
+    bar_start: usize,
+    bar_end: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+}
+
+// ── Handler ───────────────────────────────────────────────────────────────────
+
+pub async fn form(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(params): Query<FormQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    let mut sessions = state.sessions.write().await;
+    let loaded = sessions
+        .get_mut(&id)
+        .ok_or_else(|| ApiError::not_found("Score session not found"))?;
+    loaded.last_accessed = Instant::now();
+
+    let threshold = params.threshold.clamp(0.0, 1.0);
+    let variant_threshold = params.variant_threshold.clamp(threshold, 1.0);
+    let headers = &loaded.song.measure_headers;
+
+    if headers.is_empty() {
+        return Ok(Json(FormResponse { tracks: vec![] }));
+    }
+
+    let sections = form_segment(headers, params.min_section);
+
+    let mut tracks: Vec<FormTrack> = Vec::new();
+    for track in &loaded.song.tracks {
+        if params
+            .track
+            .as_deref()
+            .is_some_and(|f| !track.name.to_lowercase().contains(&f.to_lowercase()))
+        {
+            continue;
+        }
+
+        let fps: Vec<SectionFp> = sections
+            .iter()
+            .map(|s| build_fingerprint(track, s.start, s.end))
+            .collect();
+        let sims = similarity_matrix(&fps);
+        let labeled = assign_labels(&sections, &sims, threshold, variant_threshold);
+
+        let form_str = labeled
+            .iter()
+            .map(|s| match &s.name {
+                Some(n) => format!("[{} {}]", n, s.label),
+                None => format!("[{}]", s.label),
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        tracks.push(FormTrack {
+            name: track.name.clone(),
+            form: form_str,
+            sections: labeled
+                .iter()
+                .map(|s| {
+                    let (bar_start, bar_end) = s.bar_range();
+                    FormSection {
+                        label: s.label.clone(),
+                        bar_start,
+                        bar_end,
+                        name: s.name.clone(),
+                    }
+                })
+                .collect(),
+        });
+    }
+
+    Ok(Json(FormResponse { tracks }))
+}
+
+// ── Domain types ──────────────────────────────────────────────────────────────
+
+struct FormSectionInner {
+    start: usize,
+    end: usize,
+    name: Option<String>,
+}
+
+struct SectionFp {
+    pitch_class: [f64; 12],
+    note_count: usize,
+    len: usize,
+}
+
+struct LabeledSection {
+    start: usize,
+    end: usize,
+    name: Option<String>,
+    label: String,
+}
+
+impl LabeledSection {
+    fn bar_range(&self) -> (usize, usize) {
+        (self.start + 1, self.end)
+    }
+}
+
+// ── Segmentation ──────────────────────────────────────────────────────────────
+
+fn form_segment(headers: &[MeasureHeader], min_len: usize) -> Vec<FormSectionInner> {
+    let n = headers.len();
+    if n == 0 {
+        return vec![];
+    }
+
+    let mut break_set: BTreeSet<usize> = BTreeSet::new();
+    break_set.insert(0);
+    break_set.insert(n);
+
+    let mut has_markers = false;
+    for (i, h) in headers.iter().enumerate() {
+        if h.marker.is_some() && i > 0 {
+            break_set.insert(i);
+            has_markers = true;
+        }
+    }
+
+    let has_repeats = headers.iter().any(|h| h.repeat_open || h.repeat_close >= 0);
+    if !has_markers && has_repeats {
+        for (i, h) in headers.iter().enumerate() {
+            if h.repeat_open && i > 0 {
+                break_set.insert(i);
+            }
+            if h.repeat_close >= 0 && i + 1 < n {
+                break_set.insert(i + 1);
+            }
+        }
+    }
+
+    let mut breaks: Vec<usize> = break_set.into_iter().collect();
+
+    if breaks.len() <= 2 {
+        let w = (n / 4).clamp(4, 16);
+        breaks = (0..=n).step_by(w).collect();
+        if *breaks.last().unwrap() != n {
+            breaks.push(n);
+        }
+        breaks.dedup();
+    }
+
+    breaks = form_merge_short(&breaks, min_len, n);
+
+    breaks
+        .windows(2)
+        .map(|w| {
+            let start = w[0];
+            let end = w[1];
+            let name = headers[start]
+                .marker
+                .as_ref()
+                .map(|m| form_clean_str(&m.title));
+            FormSectionInner { start, end, name }
+        })
+        .collect()
+}
+
+fn form_merge_short(breaks: &[usize], min_len: usize, total: usize) -> Vec<usize> {
+    if breaks.len() <= 2 {
+        return breaks.to_vec();
+    }
+    let min_len = min_len.max(1);
+    let mut out: Vec<usize> = vec![0];
+    for w in breaks.windows(2) {
+        if w[1] - w[0] >= min_len {
+            out.push(w[1]);
+        }
+    }
+    if *out.last().unwrap() != total {
+        out.push(total);
+    }
+    out.dedup();
+    if out.len() <= 1 {
+        return vec![0, total];
+    }
+    out
+}
+
+fn form_clean_str(s: &str) -> String {
+    s.chars()
+        .filter(|c| !c.is_control())
+        .collect::<String>()
+        .trim()
+        .to_owned()
+}
+
+// ── Fingerprint ───────────────────────────────────────────────────────────────
+
+fn build_fingerprint(track: &guitarpro::Track, start: usize, end: usize) -> SectionFp {
+    let mut pc = [0u32; 12];
+    let mut note_count = 0usize;
+
+    for mi in start..end.min(track.measures.len()) {
+        for voice in &track.measures[mi].voices {
+            for beat in &voice.beats {
+                for note in &beat.notes {
+                    if note.kind == NoteType::Rest || note.kind == NoteType::Tie {
+                        continue;
+                    }
+                    let midi = if track.percussion_track {
+                        note.value
+                    } else {
+                        let s = note.string as usize;
+                        if s > 0 && s <= track.strings.len() {
+                            note.value + track.strings[s - 1].1 as i16
+                        } else {
+                            note.value
+                        }
+                    };
+                    if midi >= 0 {
+                        pc[(midi % 12) as usize] += 1;
+                        note_count += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    let total: u32 = pc.iter().sum();
+    let pitch_class = if total > 0 {
+        pc.map(|c| c as f64 / total as f64)
+    } else {
+        [0.0f64; 12]
+    };
+
+    SectionFp {
+        pitch_class,
+        note_count,
+        len: end - start,
+    }
+}
+
+// ── Similarity ────────────────────────────────────────────────────────────────
+
+fn fp_similarity(a: &SectionFp, b: &SectionFp) -> f64 {
+    if a.note_count == 0 || b.note_count == 0 {
+        return if a.note_count == b.note_count {
+            1.0
+        } else {
+            0.0
+        };
+    }
+    let dot: f64 = a
+        .pitch_class
+        .iter()
+        .zip(b.pitch_class.iter())
+        .map(|(x, y)| x * y)
+        .sum();
+    let mag_a: f64 = a.pitch_class.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let mag_b: f64 = b.pitch_class.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let pc_sim = if mag_a * mag_b > 0.0 {
+        dot / (mag_a * mag_b)
+    } else {
+        0.0
+    };
+    let la = a.len as f64;
+    let lb = b.len as f64;
+    let len_sim = 1.0 - (la - lb).abs() / la.max(lb).max(1.0);
+    0.80 * pc_sim + 0.20 * len_sim
+}
+
+fn similarity_matrix(fps: &[SectionFp]) -> Vec<Vec<f64>> {
+    let n = fps.len();
+    let mut m = vec![vec![0.0f64; n]; n];
+    for i in 0..n {
+        m[i][i] = 1.0;
+        for j in (i + 1)..n {
+            let s = fp_similarity(&fps[i], &fps[j]);
+            m[i][j] = s;
+            m[j][i] = s;
+        }
+    }
+    m
+}
+
+// ── Clustering and labels ─────────────────────────────────────────────────────
+
+fn form_find_root(parent: &mut [usize], mut i: usize) -> usize {
+    let mut root = i;
+    while parent[root] != root {
+        root = parent[root];
+    }
+    while parent[i] != root {
+        let next = parent[i];
+        parent[i] = root;
+        i = next;
+    }
+    root
+}
+
+fn form_cluster(sims: &[Vec<f64>], threshold: f64) -> Vec<usize> {
+    let n = sims.len();
+    let mut parent: Vec<usize> = (0..n).collect();
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..n {
+        for j in (i + 1)..n {
+            if sims[i][j] >= threshold {
+                let ri = form_find_root(&mut parent, i);
+                let rj = form_find_root(&mut parent, j);
+                if ri != rj {
+                    parent[rj] = ri;
+                }
+            }
+        }
+    }
+    (0..n).map(|i| form_find_root(&mut parent, i)).collect()
+}
+
+fn cluster_label(idx: usize) -> String {
+    if idx < 26 {
+        char::from(b'A' + idx as u8).to_string()
+    } else {
+        format!(
+            "{}{}",
+            char::from(b'A' + (idx / 26 - 1) as u8),
+            char::from(b'A' + (idx % 26) as u8),
+        )
+    }
+}
+
+fn assign_labels(
+    sections: &[FormSectionInner],
+    sims: &[Vec<f64>],
+    threshold: f64,
+    variant_threshold: f64,
+) -> Vec<LabeledSection> {
+    let n = sections.len();
+    if n == 0 {
+        return vec![];
+    }
+
+    let coarse = form_cluster(sims, threshold);
+
+    let mut root_to_letter: HashMap<usize, usize> = HashMap::new();
+    let mut letter_counter = 0usize;
+    for &root in &coarse {
+        root_to_letter.entry(root).or_insert_with(|| {
+            let l = letter_counter;
+            letter_counter += 1;
+            l
+        });
+    }
+
+    let mut variant_group: Vec<usize> = vec![0; n];
+    let mut cluster_subgroups: HashMap<usize, Vec<usize>> = HashMap::new();
+
+    for i in 0..n {
+        let root = coarse[i];
+        let subgroups = cluster_subgroups.entry(root).or_default();
+        let mut found = None;
+        for (sg_idx, &exemplar) in subgroups.iter().enumerate() {
+            if sims[exemplar][i] >= variant_threshold {
+                found = Some(sg_idx);
+                break;
+            }
+        }
+        if let Some(sg_idx) = found {
+            variant_group[i] = sg_idx;
+        } else {
+            let sg_idx = subgroups.len();
+            subgroups.push(i);
+            variant_group[i] = sg_idx;
+        }
+    }
+
+    sections
+        .iter()
+        .enumerate()
+        .map(|(i, s)| {
+            let root = coarse[i];
+            let base_idx = root_to_letter[&root];
+            let base = cluster_label(base_idx);
+            let vg = variant_group[i];
+            let label = if vg == 0 {
+                base
+            } else {
+                format!("{}{}", base, "'".repeat(vg.min(3)))
+            };
+            LabeledSection {
+                start: s.start,
+                end: s.end,
+                name: s.name.clone(),
+                label,
+            }
+        })
+        .collect()
 }
