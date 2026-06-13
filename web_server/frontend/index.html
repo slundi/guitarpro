@@ -179,11 +179,63 @@
       #placeholder p     { font-size: 1rem; }
       #placeholder small { font-size: 0.78rem; color: #444; }
 
+      /* ── Repeats overlay ────────────────────────────────────── */
+      #repeats-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        overflow: visible;
+        z-index: 10;
+      }
+
+      /* ── Repeats sidebar section ─────────────────────────────── */
+      #repeats-info {
+        padding: 0 10px 6px;
+        font-size: 0.78rem;
+        color: #999;
+        flex-shrink: 0;
+      }
+
+      .repeat-block-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 0;
+        font-size: 0.78rem;
+        color: #bbb;
+      }
+
+      .repeat-swatch {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      #expand-sequence-btn {
+        display: none;
+        margin: 4px 10px 2px;
+        width: calc(100% - 20px);
+        font-size: 0.78rem;
+      }
+
+      #sequence-list {
+        display: none;
+        padding: 4px 10px 8px;
+        font-size: 0.74rem;
+        color: #888;
+        line-height: 1.6;
+        word-break: break-all;
+        flex-shrink: 0;
+      }
+
       /* ── Print ──────────────────────────────────────────────── */
       @media print {
         #toolbar         { display: none !important; }
         #sidebar         { display: none !important; }
         #score-container { overflow: visible; }
+        #repeats-overlay { display: none !important; }
       }
     </style>
   </head>
@@ -218,6 +270,8 @@
         <output id="zoom-value">100%</output>
       </div>
 
+      <button id="repeats-btn" title="Toggle repeat structure overlay">Repeats</button>
+
       <button id="print-btn" title="Print score">Print</button>
 
       <span id="status-bar"></span>
@@ -240,6 +294,12 @@
             Current track only
           </label>
         </div>
+
+        <div class="sidebar-divider" id="repeats-divider" style="display:none"></div>
+        <div class="sidebar-label" id="repeats-label" style="display:none">Repeats</div>
+        <div id="repeats-info"></div>
+        <button id="expand-sequence-btn">Show sequence</button>
+        <div id="sequence-list"></div>
       </aside>
 
       <div id="score-container">

@@ -174,14 +174,14 @@ fingering suggestions, etc.
 All analysis is fetched from the axum backend (computed by the `guitarpro` crate)
 and rendered as visual overlays on top of alphaTab output.
 
-### 5.1 Repeat structure
+### 5.1 Repeat structure ✅
 
-- [ ] `GET /api/score/:id/analysis/repeats` — returns the same JSON as
+- `GET /api/score/:id/analysis/repeats` — returns the same JSON as
   `score_tool repeats --json`: written/sounding bar counts, repeat blocks
   `[{ open, close, total_plays, voltas }]`, play sequence
-- [ ] Overlay: colour repeat-open bars with a left bracket, repeat-close bars
+- Overlay: colour repeat-open bars with a left bracket, repeat-close bars
   with a right bracket; label with × N
-- [ ] Expand button: show sounding bar sequence as a numbered list below the score
+- Expand button: show sounding bar sequence as a numbered list below the score
 
 ### 5.2 Form sections
 

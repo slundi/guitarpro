@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
+mod analysis;
 mod open;
 mod score;
 mod upload;
@@ -23,4 +24,5 @@ pub fn api_routes() -> Router<AppState> {
         .route("/api/score/open", post(open::handler))
         .route("/api/score/{id}/raw", get(score::raw))
         .route("/api/score/{id}/info", get(score::info))
+        .route("/api/score/{id}/analysis/repeats", get(analysis::repeats))
 }

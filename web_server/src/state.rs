@@ -16,7 +16,6 @@ const SWEEP_INTERVAL: Duration = Duration::from_secs(300); // check every 5 minu
 
 pub struct LoadedFile {
     pub bytes: Vec<u8>,
-    #[expect(dead_code)] // used in Part 8 (score export)
     pub song: Song,
     pub score: LoadedScore,
     pub file_name: String,
