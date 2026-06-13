@@ -4,6 +4,8 @@ use std::time::Instant;
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::response::IntoResponse;
+use guitarpro::analysis::fingering::{FingerRole, suggest_fingering};
+use guitarpro::model::optimized::track::MeasureData;
 use guitarpro::{DirectionSign, MeasureHeader, NoteType};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -803,4 +805,103 @@ fn assign_labels(
             }
         })
         .collect()
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// Fingering analysis  (Part 5.3)
+// ════════════════════════════════════════════════════════════════════════════════
+
+#[derive(Deserialize)]
+pub struct FingeringQuery {
+    pub track: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct FingeringResponse {
+    tracks: Vec<FingeringTrack>,
+}
+
+#[derive(Serialize)]
+struct FingeringTrack {
+    name: String,
+    measures: Vec<FingeringMeasure>,
+}
+
+#[derive(Serialize)]
+struct FingeringMeasure {
+    measure: u16,
+    assignments: Vec<FingeringAssignment>,
+}
+
+#[derive(Serialize)]
+struct FingeringAssignment {
+    string: i8,
+    fret: i16,
+    finger: u8,
+    role: &'static str,
+    position_shift: bool,
+}
+
+pub async fn fingering(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(params): Query<FingeringQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    let mut sessions = state.sessions.write().await;
+    let loaded = sessions
+        .get_mut(&id)
+        .ok_or_else(|| ApiError::not_found("Score session not found"))?;
+    loaded.last_accessed = Instant::now();
+
+    let filter = params.track.as_deref().map(|s| s.to_lowercase());
+    let mut result_tracks: Vec<FingeringTrack> = Vec::new();
+
+    for track in &loaded.score.score.tracks {
+        if filter
+            .as_deref()
+            .is_some_and(|f| !track.name.to_lowercase().contains(f))
+        {
+            continue;
+        }
+
+        let measures: Vec<&MeasureData> = track.measures.values().collect();
+        let all_assignments = suggest_fingering(&measures, &[]);
+
+        let mut result_measures: Vec<FingeringMeasure> = Vec::new();
+        for (mdata, measure_assignments) in track.measures.values().zip(all_assignments.iter()) {
+            if measure_assignments.is_empty() {
+                continue;
+            }
+            result_measures.push(FingeringMeasure {
+                measure: mdata.measure_index.0 + 1,
+                assignments: measure_assignments
+                    .iter()
+                    .map(|a| FingeringAssignment {
+                        string: a.string,
+                        fret: a.fret,
+                        finger: a.finger,
+                        role: fing_role_str(a.role),
+                        position_shift: a.position_shift,
+                    })
+                    .collect(),
+            });
+        }
+
+        result_tracks.push(FingeringTrack {
+            name: track.name.clone(),
+            measures: result_measures,
+        });
+    }
+
+    Ok(Json(FingeringResponse {
+        tracks: result_tracks,
+    }))
+}
+
+fn fing_role_str(role: FingerRole) -> &'static str {
+    match role {
+        FingerRole::Single => "single",
+        FingerRole::BarreAnchor => "barre_anchor",
+        FingerRole::BarreMember => "barre_member",
+    }
 }

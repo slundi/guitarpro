@@ -26,4 +26,8 @@ pub fn api_routes() -> Router<AppState> {
         .route("/api/score/{id}/info", get(score::info))
         .route("/api/score/{id}/analysis/repeats", get(analysis::repeats))
         .route("/api/score/{id}/analysis/form", get(analysis::form))
+        .route(
+            "/api/score/{id}/analysis/fingering",
+            get(analysis::fingering),
+        )
 }

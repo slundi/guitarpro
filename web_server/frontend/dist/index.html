@@ -189,6 +189,16 @@
         z-index: 10;
       }
 
+      /* ── Fingering overlay ──────────────────────────────────── */
+      #fingering-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        overflow: visible;
+        z-index: 11;
+      }
+
       /* ── Form legend strip ──────────────────────────────────── */
       #form-legend {
         position: sticky;
@@ -317,12 +327,13 @@
         #toolbar         { display: none !important; }
         #sidebar         { display: none !important; }
         #score-container { overflow: visible; }
-        #repeats-overlay { display: none !important; }
-        #form-overlay    { display: none !important; }
-        #form-legend     { display: none !important; }
+        #repeats-overlay   { display: none !important; }
+        #form-overlay      { display: none !important; }
+        #form-legend       { display: none !important; }
+        #fingering-overlay { display: none !important; }
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-DcwmThQM.js"></script>
+    <script type="module" crossorigin src="/assets/index-nJDFriZz.js"></script>
   </head>
   <body>
     <!-- Toolbar -->
@@ -357,6 +368,7 @@
 
       <button id="repeats-btn" title="Toggle repeat structure overlay">Repeats</button>
       <button id="form-btn"    title="Toggle form sections overlay">Form</button>
+      <button id="fing-btn"    title="Toggle fingering annotations">Fingering</button>
 
       <button id="print-btn" title="Print score">Print</button>
 
@@ -393,6 +405,10 @@
           <select id="form-track-select"></select>
         </div>
         <div id="form-info"></div>
+
+        <div class="sidebar-divider" id="fing-divider" style="display:none"></div>
+        <div class="sidebar-label" id="fing-label" style="display:none">Fingering</div>
+        <div id="fing-info"></div>
       </aside>
 
       <div id="score-container">

@@ -191,14 +191,14 @@ and rendered as visual overlays on top of alphaTab output.
   and a label badge above the first measure
 - Legend strip at the top of the score showing the full form sequence
 
-### 5.3 Fingering annotations
+### 5.3 Fingering annotations ✅
 
-- [ ] `GET /api/score/:id/analysis/fingering?track=<name>` — returns per-measure
+- `GET /api/score/:id/analysis/fingering?track=<name>` — returns per-measure
   finger assignments `[{ measure, string, fret, finger, role, position_shift }]`
-- [ ] Overlay: render finger numbers (1–4) below each fret digit in the tab staff
+- Overlay: render finger numbers (1–4) below each fret digit in the tab staff
   using alphaTab's `CustomScoreRenderer` hook or a transparent SVG layer aligned
   to measure bounding boxes
-- [ ] Colour-code: index=blue, middle=green, ring=orange, pinky=red; barre = filled
+- Colour-code: index=blue, middle=green, ring=orange, pinky=red; barre = filled
 
 ### 5.4 Simile marks
 

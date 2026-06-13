@@ -25,6 +25,10 @@ const formSidebarLabel  = document.getElementById("form-sidebar-label")!;
 const formTrackWrap     = document.getElementById("form-track-select-wrap")!;
 const formTrackSelect   = document.getElementById("form-track-select") as HTMLSelectElement;
 const formInfo          = document.getElementById("form-info")!;
+const fingDivider       = document.getElementById("fing-divider")!;
+const fingLabel         = document.getElementById("fing-label")!;
+const fingInfo          = document.getElementById("fing-info")!;
+const fingBtn           = document.getElementById("fing-btn") as HTMLButtonElement;
 
 // ── Persisted preferences ─────────────────────────────────────────────────────
 const PREF_MODE   = "staveProfile";
@@ -48,6 +52,7 @@ const initScale        = parseFloat(localStorage.getItem(PREF_SCALE) ?? "1");
 
 // ── alphaTab initialisation ───────────────────────────────────────────────────
 const api = new alphaTab.AlphaTabApi(atContainer, {
+  core: { includeNoteBounds: true },
   player: { enablePlayer: false },
   display: {
     scale:        initScale,
@@ -184,14 +189,14 @@ function drawRepeatsOverlay(): void {
   if (!boundsLookup) return;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const masterBars: any[] = boundsLookup.masterBars ?? [];
+  const masterBars: any[] = (boundsLookup.staffSystems ?? []).flatMap((ss: any) => ss.bars ?? []);
   if (!masterBars.length) return;
 
   // Build 0-based measure index → bounds map
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const boundsMap = new Map<number, any>();
   for (const mb of masterBars) {
-    const idx: number = mb.masterBar?.index ?? mb.index ?? -1;
+    const idx: number = mb.masterBar?.index ?? -1;
     if (idx >= 0) boundsMap.set(idx, mb);
   }
 
@@ -546,13 +551,13 @@ function drawFormOverlay(): void {
   if (!boundsLookup) return;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const masterBars: any[] = boundsLookup.masterBars ?? [];
+  const masterBars: any[] = (boundsLookup.staffSystems ?? []).flatMap((ss: any) => ss.bars ?? []);
   if (!masterBars.length) return;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const boundsMap = new Map<number, any>();
   for (const mb of masterBars) {
-    const idx: number = mb.masterBar?.index ?? mb.index ?? -1;
+    const idx: number = mb.masterBar?.index ?? -1;
     if (idx >= 0) boundsMap.set(idx, mb);
   }
 
@@ -633,6 +638,170 @@ function removeFormOverlay(): void {
   document.getElementById("form-overlay")?.remove();
 }
 
+// ── Fingering analysis state ──────────────────────────────────────────────────
+
+interface FingAssignment {
+  string: number;
+  fret: number;
+  finger: number;
+  role: string;
+  position_shift: boolean;
+}
+
+interface FingData {
+  tracks: Array<{
+    name: string;
+    measures: Array<{ measure: number; assignments: FingAssignment[] }>;
+  }>;
+}
+
+// index 0 unused; 1=index(blue), 2=middle(green), 3=ring(orange), 4=pinky(red)
+const FING_COLORS = ["", "#3498db", "#2ecc71", "#e67e22", "#e74c3c"];
+const FING_NAMES  = ["", "Index", "Middle", "Ring", "Pinky"];
+
+let fingeringData: FingData | null = null;
+let fingeringVisible = false;
+// trackIdx → measureNum(1-based) → `string:fret` → assignment
+let fingeringLookup: Map<number, Map<number, Map<string, FingAssignment>>> = new Map();
+
+async function fetchFingering(id: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/score/${id}/analysis/fingering`);
+    if (!res.ok) return;
+    fingeringData = await res.json() as FingData;
+    buildFingeringLookup();
+    renderFingInfo();
+    if (fingeringVisible) drawFingeringOverlay();
+  } catch {
+    // silently ignore
+  }
+}
+
+function buildFingeringLookup(): void {
+  fingeringLookup.clear();
+  if (!fingeringData) return;
+  fingeringData.tracks.forEach((track, trackIdx) => {
+    const measMap = new Map<number, Map<string, FingAssignment>>();
+    for (const m of track.measures) {
+      const noteMap = new Map<string, FingAssignment>();
+      for (const a of m.assignments) {
+        noteMap.set(`${a.string}:${a.fret}`, a);
+      }
+      measMap.set(m.measure, noteMap);
+    }
+    fingeringLookup.set(trackIdx, measMap);
+  });
+}
+
+function renderFingInfo(): void {
+  if (!fingeringData) return;
+  const hasData = fingeringData.tracks.some(t => t.measures.length > 0);
+  if (!hasData) return;
+
+  fingDivider.style.display = "";
+  fingLabel.style.display = "";
+  fingInfo.innerHTML = "";
+
+  for (let f = 1; f <= 4; f++) {
+    const item = document.createElement("div");
+    item.className = "form-section-item";
+    const swatch = document.createElement("span");
+    swatch.className = "form-swatch";
+    swatch.style.background = FING_COLORS[f];
+    const lbl = document.createElement("span");
+    lbl.textContent = FING_NAMES[f];
+    item.append(swatch, lbl);
+    fingInfo.appendChild(item);
+  }
+}
+
+function drawFingeringOverlay(): void {
+  removeFingeringOverlay();
+  if (!fingeringData) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const boundsLookup = (api as any).renderer?.boundsLookup;
+  if (!boundsLookup) return;
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.id = "fingering-overlay";
+
+  let maxY = 0, maxX = 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const staffSystems: any[] = boundsLookup.staffSystems ?? [];
+  for (const ss of staffSystems) {
+    for (const mb of (ss.bars ?? []) as any[]) {
+      const measureNum: number = (mb.masterBar?.index ?? 0) + 1;
+      for (const barBounds of (mb.bars ?? []) as any[]) {
+        const rb = barBounds.realBounds;
+        if (rb) {
+          maxY = Math.max(maxY, rb.y + rb.h);
+          maxX = Math.max(maxX, rb.x + rb.w);
+        }
+        for (const beatBounds of (barBounds.beats ?? []) as any[]) {
+          const notes: any[] = beatBounds.notes ?? [];
+          for (const nb of notes) {
+            const note = nb.note;
+            if (!note) continue;
+            const trackIdx: number = note.voice?.bar?.track?.index ?? 0;
+            const string: number = note.string ?? 0;
+            const fret: number = note.fret ?? 0;
+            const assignment = fingeringLookup.get(trackIdx)?.get(measureNum)?.get(`${string}:${fret}`);
+            if (!assignment) continue;
+
+            const hb = nb.noteHeadBounds;
+            if (!hb) continue;
+
+            const cx = hb.x + hb.w / 2;
+            const cy = hb.y + hb.h / 2;
+            const r = 6;
+            const color = FING_COLORS[assignment.finger] ?? "#888";
+            maxY = Math.max(maxY, cy + r + 2);
+            maxX = Math.max(maxX, cx + r + 2);
+
+            const isBarre = assignment.role !== "single";
+
+            const circle = document.createElementNS(svgNS, "circle");
+            circle.setAttribute("cx", String(cx));
+            circle.setAttribute("cy", String(cy));
+            circle.setAttribute("r", String(r));
+            circle.setAttribute("fill", color);
+            circle.setAttribute("opacity", isBarre ? "0.55" : "0.80");
+            if (isBarre) {
+              circle.setAttribute("stroke", color);
+              circle.setAttribute("stroke-width", "1.5");
+            }
+            svg.appendChild(circle);
+
+            const text = document.createElementNS(svgNS, "text");
+            text.setAttribute("x", String(cx));
+            text.setAttribute("y", String(cy + 1));
+            text.setAttribute("fill", "#fff");
+            text.setAttribute("font-size", "8");
+            text.setAttribute("font-weight", "bold");
+            text.setAttribute("font-family", "system-ui,sans-serif");
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("dominant-baseline", "middle");
+            text.textContent = String(assignment.finger);
+            svg.appendChild(text);
+          }
+        }
+      }
+    }
+  }
+
+  svg.setAttribute("width",  String(maxX + 20));
+  svg.setAttribute("height", String(maxY + 20));
+  atContainer.style.position = "relative";
+  atContainer.appendChild(svg);
+}
+
+function removeFingeringOverlay(): void {
+  document.getElementById("fingering-overlay")?.remove();
+}
+
 // ── File loading ──────────────────────────────────────────────────────────────
 async function uploadFile(file: File): Promise<void> {
   const form = new FormData();
@@ -669,6 +838,13 @@ function loadScore(id: string): void {
   formTrackWrap.style.display = "none";
   formDivider.style.display = "none";
   formSidebarLabel.style.display = "none";
+  // Reset fingering state
+  fingeringData = null;
+  fingeringLookup.clear();
+  removeFingeringOverlay();
+  fingInfo.innerHTML = "";
+  fingDivider.style.display = "none";
+  fingLabel.style.display = "none";
   const url = new URL(location.href);
   url.searchParams.set("id", id);
   history.replaceState(null, "", url.toString());
@@ -694,6 +870,7 @@ api.scoreLoaded.on((score) => {
   if (currentScoreId) {
     void fetchRepeats(currentScoreId);
     void fetchForm(currentScoreId);
+    void fetchFingering(currentScoreId);
   }
 });
 
@@ -701,6 +878,7 @@ api.scoreLoaded.on((score) => {
 api.postRenderFinished.on(() => {
   if (repeatsVisible) drawRepeatsOverlay();
   if (formVisible) drawFormOverlay();
+  if (fingeringVisible) drawFingeringOverlay();
 });
 
 // ── Track selector ────────────────────────────────────────────────────────────
@@ -882,6 +1060,17 @@ expandSeqBtn.addEventListener("click", () => {
   } else {
     sequenceList.style.display = "none";
     expandSeqBtn.textContent = "Show sequence";
+  }
+});
+
+// ── Fingering toggle ──────────────────────────────────────────────────────────
+fingBtn.addEventListener("click", () => {
+  fingeringVisible = !fingeringVisible;
+  fingBtn.classList.toggle("active", fingeringVisible);
+  if (fingeringVisible) {
+    drawFingeringOverlay();
+  } else {
+    removeFingeringOverlay();
   }
 });
 
