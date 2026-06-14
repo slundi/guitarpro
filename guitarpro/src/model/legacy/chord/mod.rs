@@ -156,8 +156,8 @@ mod test {
     }
     #[test]
     fn test_pitch_4() {
-        //let p = PitchClass::from(3, None, None);
-        //TODO: assert_eq!("Eb", p.to_string(), "Note should be Eb");
+        let p = PitchClass::from(3, None, None);
+        assert_eq!("D#", p.to_string());
     }
     #[test]
     fn test_pitch_5() {
