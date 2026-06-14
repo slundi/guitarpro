@@ -29,6 +29,11 @@ const fingDivider       = document.getElementById("fing-divider")!;
 const fingLabel         = document.getElementById("fing-label")!;
 const fingInfo          = document.getElementById("fing-info")!;
 const fingBtn           = document.getElementById("fing-btn") as HTMLButtonElement;
+const markersDivider    = document.getElementById("markers-divider")!;
+const markersLabel      = document.getElementById("markers-label")!;
+const markersSearchWrap = document.getElementById("markers-search-wrap")!;
+const markersSearch     = document.getElementById("markers-search") as HTMLInputElement;
+const markersList       = document.getElementById("markers-list")!;
 
 // ── Persisted preferences ─────────────────────────────────────────────────────
 const PREF_MODE   = "staveProfile";
@@ -894,6 +899,13 @@ function loadScore(id: string): void {
   formTrackWrap.style.display = "none";
   formDivider.style.display = "none";
   formSidebarLabel.style.display = "none";
+  // Reset markers state
+  markersData = [];
+  markersDivider.style.display = "none";
+  markersLabel.style.display = "none";
+  markersSearchWrap.style.display = "none";
+  markersSearch.value = "";
+  markersList.innerHTML = "";
   // Reset section nav
   currentMeasure = 1;
   updateSectionNav();
@@ -930,6 +942,7 @@ api.scoreLoaded.on((score) => {
     void fetchRepeats(currentScoreId);
     void fetchForm(currentScoreId);
     void fetchFingering(currentScoreId);
+    void fetchMarkers(currentScoreId);
   }
 });
 
@@ -1137,6 +1150,77 @@ fingBtn.addEventListener("click", () => {
     removeFingeringOverlay();
   }
 });
+
+// ── Marker search ─────────────────────────────────────────────────────────────
+
+interface MarkerInfo {
+  measure: number;
+  title: string;
+}
+
+let markersData: MarkerInfo[] = [];
+
+async function fetchMarkers(id: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/score/${id}/info`);
+    if (!res.ok) return;
+    const info = await res.json() as { markers?: MarkerInfo[] };
+    markersData = info.markers ?? [];
+    renderMarkersList("");
+  } catch {
+    // silently ignore
+  }
+}
+
+function renderMarkersList(filter: string): void {
+  markersList.innerHTML = "";
+
+  if (!markersData.length) {
+    markersDivider.style.display = "none";
+    markersLabel.style.display = "none";
+    markersSearchWrap.style.display = "none";
+    return;
+  }
+
+  markersDivider.style.display = "";
+  markersLabel.style.display = "";
+  markersSearchWrap.style.display = "";
+
+  const lf = filter.toLowerCase();
+  const visible = lf
+    ? markersData.filter(
+        (m) => m.title.toLowerCase().includes(lf) || String(m.measure).includes(lf),
+      )
+    : markersData;
+
+  if (!visible.length) {
+    const p = document.createElement("p");
+    p.style.cssText = "padding:4px 10px;font-size:0.74rem;color:#666;";
+    p.textContent = "No match";
+    markersList.appendChild(p);
+    return;
+  }
+
+  for (const marker of visible) {
+    const item = document.createElement("button");
+    item.className = "marker-item";
+
+    const bar = document.createElement("span");
+    bar.className = "marker-bar";
+    bar.textContent = String(marker.measure);
+
+    const title = document.createElement("span");
+    title.className = "marker-title";
+    title.textContent = marker.title;
+    title.title = marker.title;
+
+    item.append(bar, title);
+    item.addEventListener("click", () => jumpToMeasure(marker.measure));
+    markersList.appendChild(item);
+  }
+}
+
+markersSearch.addEventListener("input", () => renderMarkersList(markersSearch.value));
 
 // ── Section navigation ────────────────────────────────────────────────────────
 const sectionNav       = document.getElementById("section-nav")!;

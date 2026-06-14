@@ -21,6 +21,13 @@ struct ScoreInfo {
     tempo: f32,
     time_signature: TimeSigInfo,
     tracks: Vec<TrackInfo>,
+    markers: Vec<MarkerInfo>,
+}
+
+#[derive(Serialize)]
+struct MarkerInfo {
+    measure: u16,
+    title: String,
 }
 
 #[derive(Serialize)]
@@ -101,6 +108,19 @@ pub async fn info(
         })
         .collect();
 
+    let markers: Vec<MarkerInfo> = loaded
+        .score
+        .score
+        .timeline
+        .iter()
+        .filter_map(|md| {
+            md.marker.as_ref().map(|m| MarkerInfo {
+                measure: md.index.0 + 1, // 1-based
+                title: m.label.clone(),
+            })
+        })
+        .collect();
+
     Ok(Json(ScoreInfo {
         title: meta.title.clone(),
         artist: meta.artist.clone(),
@@ -111,6 +131,7 @@ pub async fn info(
             denominator: meta.time_signature.denominator,
         },
         tracks,
+        markers,
     }))
 }
 

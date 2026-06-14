@@ -222,10 +222,10 @@ and rendered as visual overlays on top of alphaTab output.
   label (A, B, …)
 - Prev / Next section buttons jump to the start of the previous/next section
 
-### 6.3 Marker search
+### 6.3 Marker search ✅
 
-- [ ] `GET /api/score/:id/info` includes `markers: [{ measure, title }]`
-- [ ] Search box filters markers; clicking a result jumps to that measure
+- `GET /api/score/:id/info` includes `markers: [{ measure, title }]`
+- Search box filters markers; clicking a result jumps to that measure
 
 ---
 

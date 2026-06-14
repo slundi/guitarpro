@@ -360,6 +360,55 @@
 
       #jump-hint { color: #666; font-size: 0.74rem; }
 
+      /* ── Markers sidebar section ────────────────────────────── */
+      #markers-search-wrap {
+        padding: 2px 10px 6px;
+        flex-shrink: 0;
+      }
+
+      #markers-search {
+        width: 100%;
+        background: #1a1a1a;
+        color: #ccc;
+        border: 1px solid #444;
+        border-radius: 3px;
+        padding: 2px 6px;
+        font-size: 0.78rem;
+      }
+
+      #markers-search:focus { outline: 1px solid #666; border-color: #666; }
+
+      #markers-list { flex-shrink: 0; }
+
+      .marker-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        width: 100%;
+        padding: 4px 10px;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: #bbb;
+        font-size: 0.78rem;
+        cursor: pointer;
+        text-align: left;
+        white-space: normal;
+        line-height: 1.4;
+      }
+
+      .marker-item:hover { background: #252525; color: #e0e0e0; }
+
+      .marker-bar {
+        font-size: 0.7rem;
+        color: #666;
+        min-width: 3ch;
+        text-align: right;
+        flex-shrink: 0;
+      }
+
+      .marker-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
       /* ── Section navigation ─────────────────────────────────── */
       #section-nav {
         display: none;
@@ -489,6 +538,13 @@
         <div class="sidebar-divider" id="fing-divider" style="display:none"></div>
         <div class="sidebar-label" id="fing-label" style="display:none">Fingering</div>
         <div id="fing-info"></div>
+
+        <div class="sidebar-divider" id="markers-divider" style="display:none"></div>
+        <div class="sidebar-label" id="markers-label" style="display:none">Markers</div>
+        <div id="markers-search-wrap" style="display:none">
+          <input id="markers-search" type="text" placeholder="Filter markers…" autocomplete="off">
+        </div>
+        <div id="markers-list"></div>
       </aside>
 
       <div id="score-container">
