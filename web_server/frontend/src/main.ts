@@ -143,6 +143,7 @@ function renderRepeatsSidebar(): void {
   repeatsDivider.style.display = "";
   repeatsLabel.style.display = "";
   repeatsInfo.innerHTML = "";
+  repeatsJsonBtn.style.display = "";
 
   if (blocks.length === 0) {
     const p = document.createElement("p");
@@ -471,6 +472,7 @@ function renderFormSidebar(): void {
 
   formDivider.style.display = "";
   formSidebarLabel.style.display = "";
+  formJsonBtn.style.display = "";
 
   // Track selector (only when more than one track)
   if (formData.tracks.length > 1) {
@@ -762,6 +764,7 @@ function renderFingInfo(): void {
   fingDivider.style.display = "";
   fingLabel.style.display = "";
   fingInfo.innerHTML = "";
+  fingJsonBtn.style.display = "";
 
   for (let f = 1; f <= 4; f++) {
     const item = document.createElement("div");
@@ -890,6 +893,7 @@ function loadScore(id: string): void {
   sequenceExpanded = false;
   repeatsDivider.style.display = "none";
   repeatsLabel.style.display = "none";
+  repeatsJsonBtn.style.display = "none";
   // Reset form state
   formData = null;
   activeFormTrackIdx = 0;
@@ -900,6 +904,7 @@ function loadScore(id: string): void {
   formTrackWrap.style.display = "none";
   formDivider.style.display = "none";
   formSidebarLabel.style.display = "none";
+  formJsonBtn.style.display = "none";
   // Reset markers state
   markersData = [];
   markersDivider.style.display = "none";
@@ -917,6 +922,7 @@ function loadScore(id: string): void {
   fingInfo.innerHTML = "";
   fingDivider.style.display = "none";
   fingLabel.style.display = "none";
+  fingJsonBtn.style.display = "none";
   const url = new URL(location.href);
   url.searchParams.set("id", id);
   history.replaceState(null, "", url.toString());
@@ -1629,6 +1635,40 @@ dupThresholdInput.addEventListener("input", () => {
 });
 
 dupScanBtn.addEventListener("click", () => void runDupScan());
+
+// ── Analysis JSON export (Part 8.3) ──────────────────────────────────────────
+const repeatsJsonBtn = document.getElementById("repeats-json-btn") as HTMLButtonElement;
+const formJsonBtn    = document.getElementById("form-json-btn")    as HTMLButtonElement;
+const fingJsonBtn    = document.getElementById("fing-json-btn")    as HTMLButtonElement;
+
+function downloadJson(data: unknown, filename: string): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function jsonFilename(suffix: string): string {
+  const title = document.title.replace(/[^\w\-]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  return `${title || "score"}_${suffix}.json`;
+}
+
+repeatsJsonBtn.addEventListener("click", () => {
+  if (repeatsData) downloadJson(repeatsData, jsonFilename("repeats"));
+});
+
+formJsonBtn.addEventListener("click", () => {
+  if (formData) downloadJson(formData, jsonFilename("form"));
+});
+
+fingJsonBtn.addEventListener("click", () => {
+  if (fingeringData) downloadJson(fingeringData, jsonFilename("fingering"));
+});
 
 // ── Format conversion download (Part 8.2) ────────────────────────────────────
 const saveasBtn      = document.getElementById("saveas-btn")!;

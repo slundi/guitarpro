@@ -261,9 +261,9 @@ and rendered as visual overlays on top of alphaTab output.
 - `GET /api/score/:id/download?format=gp5` — re-encodes the loaded score and
   streams it as a file download
 
-### 8.3 Analysis JSON export
+### 8.3 Analysis JSON export ✅
 
-- [ ] Download buttons in each analysis panel export the current JSON payload
+- Download buttons in each analysis panel export the current JSON payload
   (repeats, form, fingering) as `.json`
 
 ### 8.4 SVG export
