@@ -65,8 +65,10 @@ pub async fn handler(
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
         .to_string();
-    let track_count = song.tracks.len() as u8;
-    let measure_count = song.measure_headers.len() as u16;
+    let track_count = u8::try_from(song.tracks.len())
+        .map_err(|_| ApiError::bad_request("Score too large", "Track count exceeds 255"))?;
+    let measure_count = u16::try_from(song.measure_headers.len())
+        .map_err(|_| ApiError::bad_request("Score too large", "Measure count exceeds 65535"))?;
     let score = legacy_song_to_loaded_score(&song);
 
     let id = Uuid::new_v4();
