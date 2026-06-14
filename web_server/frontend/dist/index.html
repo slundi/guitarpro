@@ -360,6 +360,41 @@
 
       #jump-hint { color: #666; font-size: 0.74rem; }
 
+      /* ── Section navigation ─────────────────────────────────── */
+      #section-nav {
+        display: none;
+        align-items: center;
+        gap: 1px;
+      }
+
+      #section-nav.visible { display: flex; }
+
+      #section-nav button {
+        padding: 3px 7px;
+        border-radius: 0;
+        margin-left: -1px;
+      }
+
+      #section-nav button:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
+      #section-nav button:last-child  { border-radius: 0 3px 3px 0; }
+
+      #section-indicator {
+        display: inline-block;
+        padding: 2px 7px;
+        border: 1px solid #444;
+        border-left: none;
+        background: #2a2a2a;
+        color: #ddd;
+        font-size: 0.82rem;
+        font-weight: 600;
+        min-width: 3.2ch;
+        text-align: center;
+        line-height: 1.5;
+        cursor: default;
+        white-space: nowrap;
+        user-select: none;
+      }
+
       /* ── Print ──────────────────────────────────────────────── */
       @media print {
         #toolbar         { display: none !important; }
@@ -372,7 +407,7 @@
         #jump-dialog       { display: none !important; }
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-vYkwJWAo.js"></script>
+    <script type="module" crossorigin src="/assets/index-DGv_gdgO.js"></script>
   </head>
   <body>
     <!-- Toolbar -->
@@ -407,6 +442,13 @@
 
       <button id="repeats-btn" title="Toggle repeat structure overlay">Repeats</button>
       <button id="form-btn"    title="Toggle form sections overlay">Form</button>
+
+      <div id="section-nav" title="Section navigation ([ / ])">
+        <button id="prev-section-btn" title="Previous section ([)">‹</button>
+        <span   id="section-indicator">–</span>
+        <button id="next-section-btn" title="Next section (])">›</button>
+      </div>
+
       <button id="fing-btn"    title="Toggle fingering annotations">Fingering</button>
 
       <button id="print-btn" title="Print score">Print</button>

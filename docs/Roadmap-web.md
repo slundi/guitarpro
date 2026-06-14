@@ -216,11 +216,11 @@ and rendered as visual overlays on top of alphaTab output.
   api.score.masterBars[n].start`
 - Keyboard shortcut `g` opens the jump dialog (like vim `G`)
 
-### 6.2 Section navigation
+### 6.2 Section navigation ✅
 
-- [ ] Once form analysis is loaded, a dropdown/breadcrumb shows current section
+- Once form analysis is loaded, a dropdown/breadcrumb shows current section
   label (A, B, …)
-- [ ] Prev / Next section buttons jump to the start of the previous/next section
+- Prev / Next section buttons jump to the start of the previous/next section
 
 ### 6.3 Marker search
 

@@ -446,6 +446,7 @@ async function fetchForm(id: string): Promise<void> {
     if (!res.ok) return;
     formData = await res.json() as FormData;
     renderFormSidebar();
+    updateSectionNav();
     if (formVisible) {
       renderFormLegend();
       drawFormOverlay();
@@ -893,6 +894,9 @@ function loadScore(id: string): void {
   formTrackWrap.style.display = "none";
   formDivider.style.display = "none";
   formSidebarLabel.style.display = "none";
+  // Reset section nav
+  currentMeasure = 1;
+  updateSectionNav();
   // Reset fingering state
   fingeringData = null;
   fingeringLookup.clear();
@@ -1063,11 +1067,15 @@ zoomSlider.addEventListener("input", () => {
 document.getElementById("print-btn")!.addEventListener("click", () => window.print());
 
 // ── Measure cursor (status bar) ───────────────────────────────────────────────
+let currentMeasure = 1;
+
 api.beatMouseDown.on((beat) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bar = (beat as any)?.voice?.bar;
   if (bar !== undefined) {
-    statusBar.textContent = `Measure ${(bar.index as number) + 1}`;
+    currentMeasure = (bar.index as number) + 1;
+    statusBar.textContent = `Measure ${currentMeasure}`;
+    updateSectionNav();
   }
 });
 
@@ -1099,6 +1107,7 @@ formBtn.addEventListener("click", () => {
 formTrackSelect.addEventListener("change", () => {
   activeFormTrackIdx = parseInt(formTrackSelect.value);
   renderFormInfo();
+  updateSectionNav();
   if (formVisible) {
     renderFormLegend();
     drawFormOverlay();
@@ -1128,6 +1137,50 @@ fingBtn.addEventListener("click", () => {
     removeFingeringOverlay();
   }
 });
+
+// ── Section navigation ────────────────────────────────────────────────────────
+const sectionNav       = document.getElementById("section-nav")!;
+const prevSectionBtn   = document.getElementById("prev-section-btn") as HTMLButtonElement;
+const sectionIndicator = document.getElementById("section-indicator")!;
+const nextSectionBtn   = document.getElementById("next-section-btn") as HTMLButtonElement;
+
+function findSectionIndex(measure: number): number {
+  const sections = activeFormTrack()?.sections ?? [];
+  return sections.findIndex((s) => measure >= s.bar_start && measure <= s.bar_end);
+}
+
+function updateSectionNav(): void {
+  const sections = activeFormTrack()?.sections ?? [];
+  if (!sections.length) {
+    sectionNav.classList.remove("visible");
+    return;
+  }
+  sectionNav.classList.add("visible");
+
+  const idx = findSectionIndex(currentMeasure);
+  sectionIndicator.textContent = idx >= 0 ? sections[idx].label : "–";
+  sectionIndicator.title = idx >= 0
+    ? `${sections[idx].label}: bars ${sections[idx].bar_start}–${sections[idx].bar_end}`
+    : "";
+
+  prevSectionBtn.disabled = idx <= 0;
+  nextSectionBtn.disabled = idx < 0 || idx >= sections.length - 1;
+}
+
+function prevSection(): void {
+  const sections = activeFormTrack()?.sections ?? [];
+  const idx = findSectionIndex(currentMeasure);
+  if (idx > 0) jumpToMeasure(sections[idx - 1].bar_start);
+}
+
+function nextSection(): void {
+  const sections = activeFormTrack()?.sections ?? [];
+  const idx = findSectionIndex(currentMeasure);
+  if (idx >= 0 && idx < sections.length - 1) jumpToMeasure(sections[idx + 1].bar_start);
+}
+
+prevSectionBtn.addEventListener("click", prevSection);
+nextSectionBtn.addEventListener("click", nextSection);
 
 // ── Jump-to-measure ───────────────────────────────────────────────────────────
 const jumpDialog = document.getElementById("jump-dialog")!;
@@ -1195,15 +1248,22 @@ document.addEventListener("mousedown", () => {
   if (jumpDialog.classList.contains("visible")) closeJumpDialog();
 });
 
-// 'g' keyboard shortcut — only when no text input is focused
+// Global keyboard shortcuts — skip when a text input is focused
 document.addEventListener("keydown", (e) => {
-  if (e.key !== "g") return;
   const tag = (document.activeElement as HTMLElement)?.tagName?.toLowerCase();
   if (tag === "input" || tag === "select" || tag === "textarea") return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (!api.score) return;
-  e.preventDefault();
-  openJumpDialog();
+
+  if (e.key === "g" && api.score) {
+    e.preventDefault();
+    openJumpDialog();
+  } else if (e.key === "[") {
+    e.preventDefault();
+    prevSection();
+  } else if (e.key === "]") {
+    e.preventDefault();
+    nextSection();
+  }
 });
 
 // ── URL ?id= auto-load ────────────────────────────────────────────────────────
