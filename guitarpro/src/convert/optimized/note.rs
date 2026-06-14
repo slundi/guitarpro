@@ -55,8 +55,8 @@ pub fn build_measure_data(
         match event {
             MusicData::Note(n) => {
                 // Grace notes are appended to the next real beat's grace_notes
-                if n.grace.is_some() {
-                    handle_grace_note(n, &mut voice_beats, cursor, part_idx, lyric_state);
+                if let Some(grace) = &n.grace {
+                    handle_grace_note(n, grace, &mut voice_beats, cursor, part_idx, lyric_state);
                     continue;
                 }
 
@@ -216,12 +216,12 @@ struct BeatAcc {
 
 fn handle_grace_note(
     n: &mx_note::Note,
+    grace: &mx_note::Grace,
     voice_beats: &mut HashMap<String, Vec<BeatAcc>>,
     cursor: u32,
     part_idx: usize,
     lyric_state: &mut LyricState<'_>,
 ) {
-    let grace = n.grace.as_ref().unwrap();
     let slash = grace.slash.as_deref() == Some("yes");
     let steal_time = grace
         .steal_time_following
