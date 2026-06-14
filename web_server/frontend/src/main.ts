@@ -926,6 +926,8 @@ function loadScore(id: string): void {
   const url = new URL(location.href);
   url.searchParams.set("id", id);
   history.replaceState(null, "", url.toString());
+  saveasSvgBtn.disabled = true;
+  saveasSvgBtn.title = "Render must complete before export";
   api.load(`/api/score/${id}/raw`);
 }
 
@@ -958,6 +960,8 @@ api.postRenderFinished.on(() => {
   if (repeatsVisible) drawRepeatsOverlay();
   if (formVisible) drawFormOverlay();
   if (fingeringVisible) drawFingeringOverlay();
+  saveasSvgBtn.disabled = false;
+  saveasSvgBtn.title = "Download score as SVG";
 });
 
 // ── Track selector ────────────────────────────────────────────────────────────
@@ -1669,6 +1673,83 @@ formJsonBtn.addEventListener("click", () => {
 fingJsonBtn.addEventListener("click", () => {
   if (fingeringData) downloadJson(fingeringData, jsonFilename("fingering"));
 });
+
+// ── SVG export (Part 8.4) ────────────────────────────────────────────────────
+const saveasSvgBtn = document.getElementById("saveas-svg") as HTMLButtonElement;
+
+function getTopLevelSvgs(): SVGSVGElement[] {
+  const container = document.getElementById("alphatab")!;
+  return Array.from(container.querySelectorAll<SVGSVGElement>("svg")).filter(
+    (svg) => !svg.parentElement?.closest("svg")
+  );
+}
+
+function mergeSvgs(svgs: SVGSVGElement[]): string {
+  const ns = "http://www.w3.org/2000/svg";
+  const serializer = new XMLSerializer();
+
+  if (svgs.length === 0) return "";
+  if (svgs.length === 1) return serializer.serializeToString(svgs[0]);
+
+  // Collect per-SVG dimensions from viewBox or bounding rect
+  const dims = svgs.map((svg) => {
+    const vb = svg.viewBox.baseVal;
+    return {
+      w: vb.width  > 0 ? vb.width  : svg.getBoundingClientRect().width,
+      h: vb.height > 0 ? vb.height : svg.getBoundingClientRect().height,
+    };
+  });
+
+  const totalH = dims.reduce((s, d) => s + d.h, 0);
+  const maxW   = dims.reduce((m, d) => Math.max(m, d.w), 0);
+
+  // Build merged SVG by extracting inner markup from each SVG and wrapping in
+  // a translated <g>. IDs within each group are prefixed to avoid conflicts.
+  let out = `<svg xmlns="${ns}" xmlns:xlink="http://www.w3.org/1999/xlink"`;
+  out += ` width="${maxW}" height="${totalH}"`;
+  out += ` viewBox="0 0 ${maxW} ${totalH}">`;
+
+  let yOffset = 0;
+  svgs.forEach((svg, i) => {
+    // Serialize full SVG string then pull out its inner content.
+    let inner = serializer.serializeToString(svg);
+    // Strip outer <svg …> wrapper
+    inner = inner.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
+    // Prefix every id= and url(#…) reference with "p{i}_" to avoid conflicts
+    const prefix = `p${i}_`;
+    inner = inner.replace(/\bid="([^"]+)"/g, `id="${prefix}$1"`);
+    inner = inner.replace(/url\(#([^)]+)\)/g, `url(#${prefix}$1)`);
+    inner = inner.replace(/xlink:href="#([^"]+)"/g, `xlink:href="#${prefix}$1"`);
+    inner = inner.replace(/href="#([^"]+)"/g, `href="#${prefix}$1"`);
+    out += `<g transform="translate(0,${yOffset})">${inner}</g>`;
+    yOffset += dims[i].h;
+  });
+
+  out += `</svg>`;
+  return out;
+}
+
+function downloadSvg(): void {
+  const svgs = getTopLevelSvgs();
+  if (svgs.length === 0) {
+    alert("No SVG content found. Make sure a score is loaded and fully rendered.");
+    return;
+  }
+  const svgStr = mergeSvgs(svgs);
+  const blob = new Blob([svgStr], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const stem = document.title.replace(/[^\w\-]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "") || "score";
+  a.download = `${stem}.svg`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  closeSaveasPopover();
+}
+
+saveasSvgBtn.addEventListener("click", downloadSvg);
 
 // ── Format conversion download (Part 8.2) ────────────────────────────────────
 const saveasBtn      = document.getElementById("saveas-btn")!;

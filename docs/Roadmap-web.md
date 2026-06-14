@@ -266,10 +266,10 @@ and rendered as visual overlays on top of alphaTab output.
 - Download buttons in each analysis panel export the current JSON payload
   (repeats, form, fingering) as `.json`
 
-### 8.4 SVG export
+### 8.4 SVG export ✅
 
-- [ ] alphaTab exposes `api.renderer` events with SVG strings per page/line
-- [ ] Capture them and offer a "Save as SVG" download (per page or whole score)
+- [x] alphaTab exposes `api.renderer` events with SVG strings per page/line
+- [x] Capture them and offer a "Save as SVG" download (whole score, merged)
 - [ ] Alternative: `GET /api/score/:id/svg?measures=1-8&track=<name>` — server-side
   SVG generation via LilyPond or a headless renderer (future / optional)
 
