@@ -2,12 +2,12 @@ use std::time::Instant;
 
 use axum::Json;
 use axum::body::Body;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use guitarpro::model::optimized::global::InstrumentKind;
 use guitarpro::model::optimized::note::{Pitch, PitchStep};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::error::ApiError;
@@ -69,6 +69,62 @@ pub async fn raw(
             format!("attachment; filename=\"{file_name}\""),
         )
         .body(Body::from(bytes))
+        .unwrap())
+}
+
+#[derive(Deserialize)]
+pub struct DownloadQuery {
+    format: DownloadFormat,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum DownloadFormat {
+    Gp5,
+    Gpx,
+}
+
+pub async fn download(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(query): Query<DownloadQuery>,
+) -> Result<Response, ApiError> {
+    let (song, file_name) = {
+        let mut sessions = state.sessions.write().await;
+        let loaded = sessions
+            .get_mut(&id)
+            .ok_or_else(|| ApiError::not_found("Score session not found"))?;
+        loaded.last_accessed = Instant::now();
+        (loaded.song.clone(), loaded.file_name.clone())
+    };
+
+    let (encoded, ext) = match query.format {
+        DownloadFormat::Gp5 => (
+            song.write((5, 1, 0), None)
+                .map_err(|e| ApiError::bad_request("Encode failed", e.to_string()))?,
+            "gp5",
+        ),
+        DownloadFormat::Gpx => (
+            song.write_gpx()
+                .map_err(|e| ApiError::bad_request("Encode failed", e.to_string()))?,
+            "gpx",
+        ),
+    };
+
+    let stem = file_name
+        .rsplit_once('.')
+        .map(|(s, _)| s)
+        .unwrap_or(&file_name);
+    let download_name = format!("{stem}.{ext}");
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/octet-stream")
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{download_name}\""),
+        )
+        .body(Body::from(encoded))
         .unwrap())
 }
 

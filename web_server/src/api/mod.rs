@@ -28,6 +28,7 @@ pub fn api_routes() -> Router<AppState> {
         .route("/api/score/open", post(open::handler))
         .route("/api/score/{id}/extract", post(extract::handler))
         .route("/api/score/{id}/raw", get(score::raw))
+        .route("/api/score/{id}/download", get(score::download))
         .route("/api/score/{id}/info", get(score::info))
         .route("/api/score/{id}/analysis/repeats", get(analysis::repeats))
         .route("/api/score/{id}/analysis/form", get(analysis::form))

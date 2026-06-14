@@ -880,6 +880,7 @@ async function uploadFile(file: File): Promise<void> {
 
 function loadScore(id: string): void {
   currentScoreId = id;
+  updateSaveasLinks();
   // Reset repeats state
   repeatsData = null;
   removeRepeatsOverlay();
@@ -1628,6 +1629,53 @@ dupThresholdInput.addEventListener("input", () => {
 });
 
 dupScanBtn.addEventListener("click", () => void runDupScan());
+
+// ── Format conversion download (Part 8.2) ────────────────────────────────────
+const saveasBtn      = document.getElementById("saveas-btn")!;
+const saveasPopover  = document.getElementById("saveas-popover")!;
+const saveasGp5      = document.getElementById("saveas-gp5") as HTMLAnchorElement;
+const saveasGpx      = document.getElementById("saveas-gpx") as HTMLAnchorElement;
+
+function updateSaveasLinks(): void {
+  if (!currentScoreId) return;
+  saveasGp5.href = `/api/score/${currentScoreId}/download?format=gp5`;
+  saveasGpx.href = `/api/score/${currentScoreId}/download?format=gpx`;
+}
+
+function openSaveasPopover(): void {
+  if (!currentScoreId) return;
+  updateSaveasLinks();
+  const rect = saveasBtn.getBoundingClientRect();
+  saveasPopover.style.top = `${rect.bottom + 4}px`;
+  saveasPopover.style.left = `${rect.left}px`;
+  saveasPopover.classList.add("visible");
+}
+
+function closeSaveasPopover(): void {
+  saveasPopover.classList.remove("visible");
+}
+
+saveasBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (saveasPopover.classList.contains("visible")) {
+    closeSaveasPopover();
+  } else {
+    openSaveasPopover();
+  }
+});
+
+saveasGp5.addEventListener("click", () => closeSaveasPopover());
+saveasGpx.addEventListener("click", () => closeSaveasPopover());
+
+document.addEventListener("click", (e) => {
+  if (!saveasPopover.contains(e.target as Node) && e.target !== saveasBtn) {
+    closeSaveasPopover();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeSaveasPopover();
+}, { capture: false });
 
 // ── Track extraction (Part 8.1) ───────────────────────────────────────────────
 const extractBtn      = document.getElementById("extract-btn")!;

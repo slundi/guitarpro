@@ -256,9 +256,9 @@ and rendered as visual overlays on top of alphaTab output.
   format: "gp5" | "gpx" }`
 - Returns the extracted score as a binary download
 
-### 8.2 Format conversion download
+### 8.2 Format conversion download ✅
 
-- [ ] `GET /api/score/:id/download?format=gp5` — re-encodes the loaded score and
+- `GET /api/score/:id/download?format=gp5` — re-encodes the loaded score and
   streams it as a file download
 
 ### 8.3 Analysis JSON export

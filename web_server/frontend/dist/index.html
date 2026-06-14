@@ -683,6 +683,35 @@
       .file-entry-icon { flex-shrink: 0; }
       .file-entry-name { overflow: hidden; text-overflow: ellipsis; }
 
+      /* ── Save-as popover ────────────────────────────────────── */
+      #saveas-popover {
+        display: none;
+        position: fixed;
+        z-index: 100;
+        background: #2a2a2a;
+        border: 1px solid #555;
+        border-radius: 6px;
+        padding: 6px 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+        flex-direction: column;
+        gap: 4px;
+        min-width: 120px;
+      }
+
+      #saveas-popover.visible { display: flex; }
+
+      .saveas-item {
+        padding: 5px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 0.82rem;
+        color: #ccc;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .saveas-item:hover { background: #3a3a3a; color: #e0e0e0; }
+
       /* ── Extract dialog ─────────────────────────────────────── */
       #extract-dialog {
         display: none;
@@ -741,7 +770,7 @@
         .files-modal-overlay { display: none !important; }
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-ClrcUeJM.js"></script>
+    <script type="module" crossorigin src="/assets/index-BZW6WB_7.js"></script>
   </head>
   <body>
     <!-- Toolbar -->
@@ -786,6 +815,8 @@
       </div>
 
       <button id="fing-btn"    title="Toggle fingering annotations">Fingering</button>
+
+      <button id="saveas-btn" title="Save score as a different format">Save as</button>
 
       <button id="extract-btn" title="Extract selected tracks">Extract</button>
 
@@ -882,6 +913,12 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Save-as popover -->
+    <div id="saveas-popover" role="menu" aria-label="Save score as">
+      <a id="saveas-gp5" class="saveas-item" href="#" download>Download as GP5</a>
+      <a id="saveas-gpx" class="saveas-item" href="#" download>Download as GPX</a>
     </div>
 
     <!-- Extract dialog -->
