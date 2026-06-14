@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use argh::FromArgs;
 use axum::Router;
 use std::net::SocketAddr;
@@ -38,6 +38,9 @@ async fn main() -> Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], args.port));
 
     let root = args.root.unwrap_or_else(default_root);
+    let root = root
+        .canonicalize()
+        .with_context(|| format!("Root directory '{}' does not exist or is not accessible", root.display()))?;
     tracing::info!(root = %root.display(), "file open root");
 
     let state = AppState::new(root);

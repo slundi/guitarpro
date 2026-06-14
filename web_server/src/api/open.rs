@@ -24,11 +24,7 @@ pub async fn handler(
         .canonicalize()
         .map_err(|_| ApiError::bad_request("Invalid path", "File not found or not accessible"))?;
 
-    let canonical_root = state
-        .root
-        .canonicalize()
-        .unwrap_or_else(|_| state.root.clone());
-    if !canonical.starts_with(&canonical_root) {
+    if !canonical.starts_with(&state.root) {
         return Err(ApiError::forbidden(
             "Path is outside the allowed root directory",
         ));
