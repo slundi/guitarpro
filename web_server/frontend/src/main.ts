@@ -1350,6 +1350,285 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ── Files modal ───────────────────────────────────────────────────────────────
+
+const filesBtn         = document.getElementById("files-btn") as HTMLButtonElement;
+const filesModal       = document.getElementById("files-modal")!;
+const filesModalClose  = document.getElementById("files-modal-close") as HTMLButtonElement;
+const breadcrumbs      = document.getElementById("breadcrumbs")!;
+const fileList         = document.getElementById("file-list")!;
+const dupDirInput      = document.getElementById("dup-dir-input") as HTMLInputElement;
+const dupThresholdInput = document.getElementById("dup-threshold-input") as HTMLInputElement;
+const dupThresholdVal  = document.getElementById("dup-threshold-val")!;
+const dupRecursiveInput = document.getElementById("dup-recursive-input") as HTMLInputElement;
+const dupScanBtn       = document.getElementById("dup-scan-btn") as HTMLButtonElement;
+const dupProgress      = document.getElementById("dup-progress")!;
+const dupResults       = document.getElementById("dup-results")!;
+
+interface FileEntry { name: string; path: string; size: number; modified: number; is_dir: boolean; }
+interface DupFile   { path: string; name: string; similarity: number; }
+interface DupGroup  { files: DupFile[]; }
+type SseMsg =
+  | { type: "progress"; file: string; current: number; total: number }
+  | { type: "result";   groups: DupGroup[] }
+  | { type: "error";    message: string };
+
+let dupAbortController: AbortController | null = null;
+
+function openFilesModal(): void {
+  filesModal.classList.add("visible");
+  void browseDir("");
+}
+
+function closeFilesModal(): void {
+  filesModal.classList.remove("visible");
+  if (dupAbortController) {
+    dupAbortController.abort();
+    dupAbortController = null;
+  }
+}
+
+async function browseDir(path: string): Promise<void> {
+  try {
+    const url = path ? `/api/files?path=${encodeURIComponent(path)}` : "/api/files";
+    const res = await fetch(url);
+    if (!res.ok) {
+      fileList.textContent = "Error loading directory";
+      return;
+    }
+    const data = await res.json() as { current: string; entries: FileEntry[] };
+    renderBreadcrumbs(data.current);
+    renderFileList(data.entries);
+    dupDirInput.value = data.current;
+  } catch {
+    fileList.textContent = "Failed to fetch file list";
+  }
+}
+
+function renderBreadcrumbs(current: string): void {
+  breadcrumbs.innerHTML = "";
+  const parts = current.split("/").filter((p) => p.length > 0);
+
+  // Root segment
+  const rootBtn = document.createElement("button");
+  rootBtn.className = "breadcrumb-btn";
+  rootBtn.textContent = "/";
+  rootBtn.addEventListener("click", () => void browseDir("/"));
+  breadcrumbs.appendChild(rootBtn);
+
+  // Build up paths segment by segment
+  let accumulated = "";
+  for (let i = 0; i < parts.length; i++) {
+    accumulated += "/" + parts[i];
+    const capturedPath = accumulated;
+
+    const sep = document.createElement("span");
+    sep.className = "breadcrumb-sep";
+    sep.textContent = "/";
+    breadcrumbs.appendChild(sep);
+
+    const btn = document.createElement("button");
+    btn.className = "breadcrumb-btn";
+    btn.textContent = parts[i];
+    if (i === parts.length - 1) {
+      btn.style.color = "#ccc";
+      btn.style.cursor = "default";
+    } else {
+      btn.addEventListener("click", () => void browseDir(capturedPath));
+    }
+    breadcrumbs.appendChild(btn);
+  }
+}
+
+function renderFileList(entries: FileEntry[]): void {
+  fileList.innerHTML = "";
+  if (entries.length === 0) {
+    const p = document.createElement("p");
+    p.style.cssText = "padding: 12px 14px; color: #555; font-size: 0.8rem;";
+    p.textContent = "(empty directory)";
+    fileList.appendChild(p);
+    return;
+  }
+
+  for (const entry of entries) {
+    const btn = document.createElement("button");
+    btn.className = "file-entry";
+
+    const icon = document.createElement("span");
+    icon.className = "file-entry-icon";
+    icon.textContent = entry.is_dir ? "📁" : "🎵";
+
+    const name = document.createElement("span");
+    name.className = "file-entry-name";
+    name.textContent = entry.name;
+    name.title = entry.path;
+
+    btn.append(icon, name);
+
+    if (entry.is_dir) {
+      btn.addEventListener("click", () => void browseDir(entry.path));
+    } else {
+      btn.addEventListener("click", () => void openFilePath(entry.path));
+    }
+
+    fileList.appendChild(btn);
+  }
+}
+
+async function openFilePath(path: string): Promise<void> {
+  try {
+    const res = await fetch("/api/score/open", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
+    if (!res.ok) {
+      const err = await res.json() as { error: string; detail: string };
+      console.error(`Open failed: ${err.error} — ${err.detail}`);
+      return;
+    }
+    const { id } = await res.json() as { id: string };
+    loadScore(id);
+    closeFilesModal();
+  } catch {
+    console.error("Failed to open file");
+  }
+}
+
+async function runDupScan(): Promise<void> {
+  if (dupAbortController) {
+    dupAbortController.abort();
+  }
+  dupAbortController = new AbortController();
+
+  dupProgress.textContent = "Starting scan…";
+  dupResults.innerHTML = "";
+  dupScanBtn.disabled = true;
+
+  const body = {
+    dir: dupDirInput.value,
+    threshold: parseFloat(dupThresholdInput.value),
+    recursive: dupRecursiveInput.checked,
+  };
+
+  try {
+    const res = await fetch("/api/duplicates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: dupAbortController.signal,
+    });
+
+    if (!res.ok) {
+      const err = await res.json() as { error: string; detail: string };
+      dupProgress.textContent = `Error: ${err.error}`;
+      return;
+    }
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const messages = buffer.split("\n\n");
+      buffer = messages.pop() ?? "";
+      for (const message of messages) {
+        for (const line of message.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (!raw || raw === "ping") continue;
+          try { handleDupEvent(JSON.parse(raw) as SseMsg); } catch { /* skip */ }
+        }
+      }
+    }
+  } catch (err) {
+    if ((err as Error).name !== "AbortError") {
+      dupProgress.textContent = "Scan failed";
+    }
+  } finally {
+    dupScanBtn.disabled = false;
+    dupAbortController = null;
+  }
+}
+
+function handleDupEvent(msg: SseMsg): void {
+  if (msg.type === "progress") {
+    dupProgress.textContent = `${msg.current}/${msg.total}: ${msg.file.split("/").pop() ?? msg.file}`;
+  } else if (msg.type === "result") {
+    if (msg.groups.length === 0) {
+      dupProgress.textContent = "No duplicates found.";
+    } else {
+      dupProgress.textContent = `Found ${msg.groups.length} group${msg.groups.length !== 1 ? "s" : ""}.`;
+      renderDupResults(msg.groups);
+    }
+  } else if (msg.type === "error") {
+    dupProgress.textContent = `Error: ${msg.message}`;
+  }
+}
+
+function renderDupResults(groups: DupGroup[]): void {
+  dupResults.innerHTML = "";
+  for (const [gi, group] of groups.entries()) {
+    const card = document.createElement("div");
+    card.className = "dup-group";
+
+    const header = document.createElement("div");
+    header.className = "dup-group-header";
+    header.textContent = `Group ${gi + 1} · ${group.files.length} files`;
+    card.appendChild(header);
+
+    for (const file of group.files) {
+      const item = document.createElement("div");
+      item.className = "dup-file-item";
+
+      const nameLine = document.createElement("div");
+      nameLine.className = "dup-file-name";
+      nameLine.textContent = file.name;
+      nameLine.title = file.path;
+
+      const metaLine = document.createElement("div");
+      metaLine.className = "dup-file-meta";
+
+      const simBadge = document.createElement("span");
+      simBadge.className = "dup-sim-badge";
+      simBadge.textContent = `${Math.round(file.similarity * 100)}%`;
+
+      const pathSpan = document.createElement("span");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const dirPart = file.path.split("/").slice(0, -1).join("/") || "/";
+      pathSpan.textContent = dirPart;
+      pathSpan.title = file.path;
+      pathSpan.style.overflow = "hidden";
+      pathSpan.style.textOverflow = "ellipsis";
+      pathSpan.style.whiteSpace = "nowrap";
+
+      metaLine.append(simBadge, pathSpan);
+      item.append(nameLine, metaLine);
+      card.appendChild(item);
+    }
+
+    dupResults.appendChild(card);
+  }
+}
+
+// ── Files modal event wiring ──────────────────────────────────────────────────
+filesBtn.addEventListener("click", openFilesModal);
+filesModalClose.addEventListener("click", closeFilesModal);
+
+filesModal.addEventListener("mousedown", (e) => {
+  if (e.target === filesModal) closeFilesModal();
+});
+
+dupThresholdInput.addEventListener("input", () => {
+  const pct = Math.round(parseFloat(dupThresholdInput.value) * 100);
+  dupThresholdVal.textContent = `${pct}%`;
+});
+
+dupScanBtn.addEventListener("click", () => void runDupScan());
+
 // ── URL ?id= auto-load ────────────────────────────────────────────────────────
 const urlId = new URLSearchParams(location.search).get("id");
 if (urlId) loadScore(urlId);

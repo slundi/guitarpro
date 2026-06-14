@@ -229,21 +229,21 @@ and rendered as visual overlays on top of alphaTab output.
 
 ---
 
-## Part 7 — File Browser and Duplicate Detection
+## Part 7 — File Browser and Duplicate Detection ✅
 
-### 7.1 Local directory listing
+### 7.1 Local directory listing ✅
 
-- [ ] `GET /api/files?path=<dir>` — lists `.gp*` files under `--root`, returns
-  `[{ name, path, size, modified }]`
-- [ ] Simple tree-view sidebar in the UI; click a file to open it
+- `GET /api/files?path=<dir>` — lists `.gp*` files under `--root`, returns
+  `{ current, entries: [{ name, path, size, modified, is_dir }] }`
+- Simple tree-view sidebar in the UI; click a file to open it
 
-### 7.2 Duplicate scan
+### 7.2 Duplicate scan ✅
 
-- [ ] `POST /api/duplicates` — JSON body `{ dir: string, threshold: f64,
+- `POST /api/duplicates` — JSON body `{ dir: string, threshold: f64,
   recursive: bool }`; runs `command_duplicates` logic server-side
-- [ ] Streams results via SSE (`text/event-stream`) so large directories show
+- Streams results via SSE (`text/event-stream`) so large directories show
   progress incrementally
-- [ ] UI: grouped result cards showing duplicate sets with similarity scores;
+- UI: grouped result cards showing duplicate sets with similarity scores;
   click any file to load it
 
 ---

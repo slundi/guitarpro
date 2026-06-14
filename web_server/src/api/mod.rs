@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::state::AppState;
 
 mod analysis;
+mod files;
 mod open;
 mod score;
 mod upload;
@@ -20,6 +21,8 @@ pub struct ScoreSummary {
 
 pub fn api_routes() -> Router<AppState> {
     Router::new()
+        .route("/api/files", get(files::list))
+        .route("/api/duplicates", post(files::duplicates))
         .route("/api/score/upload", post(upload::handler))
         .route("/api/score/open", post(open::handler))
         .route("/api/score/{id}/raw", get(score::raw))

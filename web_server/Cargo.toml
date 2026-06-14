@@ -16,6 +16,7 @@ embed = ["dep:rust-embed", "dep:mime_guess"]
 
 [dependencies]
 axum = { version = "0.8", features = ["multipart"] }
+tokio-stream = "0.1"
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["fs", "cors", "compression-gzip"] }
 argh = "0.1"

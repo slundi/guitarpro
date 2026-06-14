@@ -444,6 +444,245 @@
         user-select: none;
       }
 
+      /* ── Files modal ────────────────────────────────────────── */
+      .files-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        background: rgba(0, 0, 0, 0.7);
+        align-items: center;
+        justify-content: center;
+      }
+
+      .files-modal-overlay.visible { display: flex; }
+
+      .files-modal-box {
+        background: #1e1e1e;
+        border: 1px solid #444;
+        border-radius: 6px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+        display: flex;
+        flex-direction: column;
+        width: min(90vw, 820px);
+        max-height: calc(100vh - 80px);
+        overflow: hidden;
+      }
+
+      .files-modal-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid #333;
+        flex-shrink: 0;
+      }
+
+      .files-modal-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #e0e0e0;
+        flex-shrink: 0;
+      }
+
+      #breadcrumbs {
+        flex: 1;
+        font-size: 0.78rem;
+        color: #888;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: flex;
+        gap: 2px;
+        flex-wrap: nowrap;
+        align-items: center;
+      }
+
+      .breadcrumb-btn {
+        background: none;
+        border: none;
+        color: #7ab;
+        font-size: 0.78rem;
+        padding: 1px 3px;
+        border-radius: 2px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .breadcrumb-btn:hover { background: #2a2a2a; color: #acd; border-color: transparent; }
+      .breadcrumb-sep { color: #555; font-size: 0.74rem; }
+
+      #files-modal-close {
+        padding: 2px 8px;
+        border-color: #555;
+        font-size: 0.82rem;
+        flex-shrink: 0;
+      }
+
+      .files-modal-body {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .files-pane {
+        flex: 1;
+        overflow-y: auto;
+        border-right: 1px solid #2a2a2a;
+        padding: 4px 0;
+      }
+
+      .dup-pane {
+        width: 300px;
+        flex-shrink: 0;
+        overflow-y: auto;
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .dup-pane-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #555;
+        margin-bottom: 2px;
+      }
+
+      .dup-pane label {
+        font-size: 0.78rem;
+        color: #aaa;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .dup-pane input[type="text"],
+      .dup-pane input[type="range"] {
+        width: 100%;
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 3px;
+        color: #ccc;
+        font-size: 0.78rem;
+        padding: 3px 6px;
+      }
+
+      .dup-pane input[type="range"] {
+        padding: 0;
+        accent-color: #888;
+        cursor: pointer;
+      }
+
+      .dup-threshold-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #dup-threshold-val {
+        font-size: 0.78rem;
+        color: #aaa;
+        min-width: 3.5ch;
+      }
+
+      .dup-pane input[type="checkbox"] { accent-color: #888; cursor: pointer; }
+
+      .dup-checkbox-label {
+        flex-direction: row !important;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #dup-scan-btn {
+        width: 100%;
+        margin-top: 4px;
+        font-size: 0.82rem;
+        padding: 5px 8px;
+      }
+
+      #dup-progress {
+        font-size: 0.74rem;
+        color: #777;
+        min-height: 1.4em;
+      }
+
+      #dup-results { flex: 1; overflow-y: auto; }
+
+      .dup-group {
+        background: #242424;
+        border: 1px solid #333;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        padding: 6px 8px;
+      }
+
+      .dup-group-header {
+        font-size: 0.7rem;
+        color: #666;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .dup-file-item {
+        display: flex;
+        flex-direction: column;
+        padding: 3px 0;
+        border-top: 1px solid #2a2a2a;
+      }
+
+      .dup-file-item:first-of-type { border-top: none; }
+
+      .dup-file-name {
+        font-size: 0.8rem;
+        color: #ccc;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .dup-file-meta {
+        font-size: 0.7rem;
+        color: #666;
+        display: flex;
+        gap: 6px;
+      }
+
+      .dup-sim-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0 4px;
+        border-radius: 2px;
+        background: #2a3a2a;
+        color: #7c7;
+      }
+
+      .file-entry {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        width: 100%;
+        padding: 5px 12px;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: #bbb;
+        font-size: 0.82rem;
+        cursor: pointer;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .file-entry:hover { background: #252525; color: #e0e0e0; border-color: transparent; }
+
+      .file-entry-icon { flex-shrink: 0; }
+      .file-entry-name { overflow: hidden; text-overflow: ellipsis; }
+
       /* ── Print ──────────────────────────────────────────────── */
       @media print {
         #toolbar         { display: none !important; }
@@ -454,6 +693,7 @@
         #form-legend       { display: none !important; }
         #fingering-overlay { display: none !important; }
         #jump-dialog       { display: none !important; }
+        .files-modal-overlay { display: none !important; }
       }
     </style>
   </head>
@@ -466,6 +706,8 @@
         Open file
         <input type="file" id="file-input" accept=".gp3,.gp4,.gp5,.gp,.gpx">
       </label>
+
+      <button id="files-btn" title="Browse files and scan for duplicates">Files</button>
 
       <span id="score-title">Guitar Score Viewer</span>
 
@@ -554,6 +796,43 @@
         </div>
         <div id="form-legend" style="display:none"></div>
         <div id="alphatab"></div>
+      </div>
+    </div>
+
+    <!-- Files modal -->
+    <div id="files-modal" class="files-modal-overlay" role="dialog" aria-label="File browser">
+      <div class="files-modal-box">
+        <div class="files-modal-header">
+          <span class="files-modal-title">Files</span>
+          <div id="breadcrumbs"></div>
+          <button id="files-modal-close">✕</button>
+        </div>
+        <div class="files-modal-body">
+          <div class="files-pane">
+            <div id="file-list"></div>
+          </div>
+          <div class="dup-pane">
+            <div class="dup-pane-label">Duplicate scanner</div>
+            <label>
+              Directory
+              <input type="text" id="dup-dir-input" placeholder="Directory path…" autocomplete="off">
+            </label>
+            <label>
+              Threshold
+              <div class="dup-threshold-row">
+                <input type="range" id="dup-threshold-input" min="0" max="1" step="0.01" value="0.85">
+                <span id="dup-threshold-val">85%</span>
+              </div>
+            </label>
+            <label class="dup-checkbox-label">
+              <input type="checkbox" id="dup-recursive-input">
+              Recursive
+            </label>
+            <button id="dup-scan-btn">Scan for duplicates</button>
+            <div id="dup-progress"></div>
+            <div id="dup-results"></div>
+          </div>
+        </div>
       </div>
     </div>
 
