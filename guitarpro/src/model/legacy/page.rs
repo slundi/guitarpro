@@ -170,18 +170,7 @@ impl SongPageOps for Song {
                 .to_i32_gp("score size proportion")?,
         );
 
-        write_byte(
-            data,
-            (self.page_setup.header_and_footer & 0xff).to_u8_gp("header and footer")?,
-        );
-
-        let mut flags2 = 0u8;
-        if self.page_setup.header_and_footer != 0
-            && (self.page_setup.header_and_footer & HEADER_FOOTER_PAGE_NUMBER) != 0
-        {
-            flags2 |= 0x01;
-        } //TODO: check
-        write_byte(data, flags2);
+        write_i16(data, self.page_setup.header_and_footer as i16);
         write_int_size_string(data, &self.page_setup.title);
         write_int_size_string(data, &self.page_setup.subtitle);
         write_int_size_string(data, &self.page_setup.artist);
