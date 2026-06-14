@@ -1129,6 +1129,83 @@ fingBtn.addEventListener("click", () => {
   }
 });
 
+// ── Jump-to-measure ───────────────────────────────────────────────────────────
+const jumpDialog = document.getElementById("jump-dialog")!;
+const jumpInput  = document.getElementById("jump-input") as HTMLInputElement;
+const jumpHint   = document.getElementById("jump-hint")!;
+
+function openJumpDialog(): void {
+  const score = api.score as unknown as { masterBars?: unknown[] } | null;
+  if (!score) return;
+  const total = (score.masterBars ?? []).length;
+  jumpInput.max   = String(total);
+  jumpInput.value = "";
+  jumpHint.textContent = `1–${total}  ·  Enter · Esc`;
+  jumpDialog.classList.add("visible");
+  jumpInput.focus();
+}
+
+function closeJumpDialog(): void {
+  jumpDialog.classList.remove("visible");
+}
+
+function jumpToMeasure(n: number): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const score = api.score as any;
+  if (!score) return;
+  const masterBars: unknown[] = score.masterBars ?? [];
+  if (n < 1 || n > masterBars.length) return;
+
+  // Set tick position (scrolls cursor when player is active; no-op when disabled)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const barTick = (masterBars[n - 1] as any)?.start;
+  if (barTick !== undefined) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (api as any).tickPosition = barTick;
+  }
+
+  // Scroll the score container to the bar using rendered bounds
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const boundsLookup = (api as any).renderer?.boundsLookup;
+  if (boundsLookup) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allBars: any[] = (boundsLookup.staffSystems ?? []).flatMap((ss: any) => ss.bars ?? []);
+    const target = allBars.find((mb) => (mb.masterBar?.index ?? -1) === n - 1);
+    if (target?.realBounds) {
+      scoreContainer.scrollTo({ top: Math.max(0, target.realBounds.y - 32), behavior: "smooth" });
+    }
+  }
+}
+
+jumpInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const n = parseInt(jumpInput.value, 10);
+    if (!isNaN(n)) jumpToMeasure(n);
+    closeJumpDialog();
+    e.preventDefault();
+  } else if (e.key === "Escape") {
+    closeJumpDialog();
+    e.preventDefault();
+  }
+});
+
+// Close when clicking outside the dialog
+jumpDialog.addEventListener("mousedown", (e) => e.stopPropagation());
+document.addEventListener("mousedown", () => {
+  if (jumpDialog.classList.contains("visible")) closeJumpDialog();
+});
+
+// 'g' keyboard shortcut — only when no text input is focused
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "g") return;
+  const tag = (document.activeElement as HTMLElement)?.tagName?.toLowerCase();
+  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!api.score) return;
+  e.preventDefault();
+  openJumpDialog();
+});
+
 // ── URL ?id= auto-load ────────────────────────────────────────────────────────
 const urlId = new URLSearchParams(location.search).get("id");
 if (urlId) loadScore(urlId);

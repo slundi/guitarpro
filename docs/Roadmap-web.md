@@ -210,11 +210,11 @@ and rendered as visual overlays on top of alphaTab output.
 
 ## Part 6 — Navigation and Search
 
-### 6.1 Jump to measure
+### 6.1 Jump to measure ✅
 
-- [ ] Input field: enter a measure number → `api.tickPosition =
+- Input field: enter a measure number → `api.tickPosition =
   api.score.masterBars[n].start`
-- [ ] Keyboard shortcut `g` opens the jump dialog (like vim `G`)
+- Keyboard shortcut `g` opens the jump dialog (like vim `G`)
 
 ### 6.2 Section navigation
 

@@ -322,6 +322,44 @@
         flex-shrink: 0;
       }
 
+      /* ── Jump-to-measure dialog ─────────────────────────────── */
+      #jump-dialog {
+        display: none;
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        background: #2a2a2a;
+        border: 1px solid #555;
+        border-radius: 6px;
+        padding: 8px 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+        display: none;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.82rem;
+        color: #ccc;
+        white-space: nowrap;
+      }
+
+      #jump-dialog.visible { display: flex; }
+
+      #jump-input {
+        width: 6ch;
+        background: #1a1a1a;
+        border: 1px solid #555;
+        border-radius: 3px;
+        color: #e0e0e0;
+        font-size: 0.82rem;
+        padding: 2px 5px;
+        text-align: right;
+      }
+
+      #jump-input:focus { outline: 1px solid #888; border-color: #888; }
+
+      #jump-hint { color: #666; font-size: 0.74rem; }
+
       /* ── Print ──────────────────────────────────────────────── */
       @media print {
         #toolbar         { display: none !important; }
@@ -331,6 +369,7 @@
         #form-overlay      { display: none !important; }
         #form-legend       { display: none !important; }
         #fingering-overlay { display: none !important; }
+        #jump-dialog       { display: none !important; }
       }
     </style>
   </head>
@@ -418,6 +457,13 @@
         <div id="form-legend" style="display:none"></div>
         <div id="alphatab"></div>
       </div>
+    </div>
+
+    <!-- Jump-to-measure dialog (opened with 'g') -->
+    <div id="jump-dialog" role="dialog" aria-label="Jump to measure">
+      <label for="jump-input">Go to measure</label>
+      <input id="jump-input" type="number" min="1" step="1" placeholder="1">
+      <span id="jump-hint">Enter · Esc</span>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
