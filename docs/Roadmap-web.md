@@ -248,13 +248,13 @@ and rendered as visual overlays on top of alphaTab output.
 
 ---
 
-## Part 8 — Track Extraction and Export
+## Part 8 — Track Extraction and Export ✅
 
-### 8.1 Track extraction
+### 8.1 Track extraction ✅
 
-- [ ] `POST /api/score/:id/extract` — JSON body `{ tracks: [string], invert: bool,
+- `POST /api/score/:id/extract` — JSON body `{ tracks: [usize], invert: bool,
   format: "gp5" | "gpx" }`
-- [ ] Returns the extracted score as a binary download
+- Returns the extracted score as a binary download
 
 ### 8.2 Format conversion download
 

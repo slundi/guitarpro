@@ -683,6 +683,51 @@
       .file-entry-icon { flex-shrink: 0; }
       .file-entry-name { overflow: hidden; text-overflow: ellipsis; }
 
+      /* ── Extract dialog ─────────────────────────────────────── */
+      #extract-dialog {
+        display: none;
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        background: #2a2a2a;
+        border: 1px solid #555;
+        border-radius: 6px;
+        padding: 10px 14px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+        flex-direction: column;
+        gap: 8px;
+        font-size: 0.82rem;
+        color: #ccc;
+        min-width: 220px;
+      }
+
+      #extract-dialog.visible { display: flex; }
+
+      .extract-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .extract-row label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82rem;
+        color: #ccc;
+        cursor: pointer;
+      }
+
+      .extract-label { color: #888; min-width: 5ch; }
+
+      #extract-summary {
+        font-size: 0.74rem;
+        color: #666;
+        padding: 2px 0;
+      }
+
       /* ── Print ──────────────────────────────────────────────── */
       @media print {
         #toolbar         { display: none !important; }
@@ -696,7 +741,7 @@
         .files-modal-overlay { display: none !important; }
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-CVTPrvfA.js"></script>
+    <script type="module" crossorigin src="/assets/index-ClrcUeJM.js"></script>
   </head>
   <body>
     <!-- Toolbar -->
@@ -741,6 +786,8 @@
       </div>
 
       <button id="fing-btn"    title="Toggle fingering annotations">Fingering</button>
+
+      <button id="extract-btn" title="Extract selected tracks">Extract</button>
 
       <button id="print-btn" title="Print score">Print</button>
 
@@ -834,6 +881,25 @@
             <div id="dup-results"></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Extract dialog -->
+    <div id="extract-dialog" role="dialog" aria-label="Extract tracks">
+      <div class="extract-row">
+        <span class="extract-label">Format</span>
+        <div class="btn-group">
+          <button id="extract-fmt-gp5" class="active">GP5</button>
+          <button id="extract-fmt-gpx">GPX</button>
+        </div>
+      </div>
+      <div class="extract-row">
+        <label><input type="checkbox" id="extract-invert"> Invert selection</label>
+      </div>
+      <div id="extract-summary"></div>
+      <div class="extract-row">
+        <button id="extract-download-btn" style="flex:1">Download</button>
+        <button id="extract-close-btn" style="color:#888">✕</button>
       </div>
     </div>
 

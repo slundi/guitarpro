@@ -1629,6 +1629,122 @@ dupThresholdInput.addEventListener("input", () => {
 
 dupScanBtn.addEventListener("click", () => void runDupScan());
 
+// ── Track extraction (Part 8.1) ───────────────────────────────────────────────
+const extractBtn      = document.getElementById("extract-btn")!;
+const extractDialog   = document.getElementById("extract-dialog")!;
+const extractFmtGp5   = document.getElementById("extract-fmt-gp5") as HTMLButtonElement;
+const extractFmtGpx   = document.getElementById("extract-fmt-gpx") as HTMLButtonElement;
+const extractInvert   = document.getElementById("extract-invert") as HTMLInputElement;
+const extractSummary  = document.getElementById("extract-summary")!;
+const extractDownload = document.getElementById("extract-download-btn") as HTMLButtonElement;
+const extractClose    = document.getElementById("extract-close-btn") as HTMLButtonElement;
+
+let extractFormat: "gp5" | "gpx" = "gp5";
+
+function getSelectedTrackIndices(): number[] {
+  return Array.from(
+    trackList.querySelectorAll<HTMLInputElement>("input[type=checkbox]:checked")
+  ).map((cb) => parseInt(cb.dataset.index ?? "0"));
+}
+
+function updateExtractSummary(): void {
+  const selected = getSelectedTrackIndices();
+  const total = trackList.querySelectorAll<HTMLInputElement>("input[type=checkbox]").length;
+  const invert = extractInvert.checked;
+  const kept = invert ? total - selected.length : selected.length;
+  const keptStr = kept === 1 ? "1 track" : `${kept} tracks`;
+  if (total === 0) {
+    extractSummary.textContent = "No score loaded";
+    extractDownload.disabled = true;
+    return;
+  }
+  if (kept === 0) {
+    extractSummary.textContent = "No tracks would remain";
+    extractDownload.disabled = true;
+    return;
+  }
+  extractSummary.textContent = `${keptStr} of ${total} will be exported`;
+  extractDownload.disabled = false;
+}
+
+function openExtractDialog(): void {
+  if (!currentScoreId) return;
+  updateExtractSummary();
+  extractDialog.classList.add("visible");
+}
+
+function closeExtractDialog(): void {
+  extractDialog.classList.remove("visible");
+}
+
+async function runExtract(): Promise<void> {
+  if (!currentScoreId) return;
+  const selected = getSelectedTrackIndices();
+  const invert = extractInvert.checked;
+  const format = extractFormat;
+
+  if (!invert && selected.length === 0) {
+    extractSummary.textContent = "Select at least one track";
+    return;
+  }
+
+  extractDownload.disabled = true;
+  extractDownload.textContent = "Downloading…";
+
+  try {
+    const res = await fetch(`/api/score/${currentScoreId}/extract`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tracks: selected, invert, format }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      extractSummary.textContent = `Error: ${err.error ?? res.statusText}`;
+      return;
+    }
+
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const fnMatch = disposition.match(/filename="([^"]+)"/);
+    const fileName = fnMatch ? fnMatch[1] : `extracted.${format}`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    closeExtractDialog();
+  } catch (e) {
+    extractSummary.textContent = `Error: ${e instanceof Error ? e.message : String(e)}`;
+  } finally {
+    extractDownload.disabled = false;
+    extractDownload.textContent = "Download";
+  }
+}
+
+extractBtn.addEventListener("click", openExtractDialog);
+extractClose.addEventListener("click", closeExtractDialog);
+extractDownload.addEventListener("click", () => void runExtract());
+
+extractInvert.addEventListener("change", updateExtractSummary);
+
+extractFmtGp5.addEventListener("click", () => {
+  extractFormat = "gp5";
+  extractFmtGp5.classList.add("active");
+  extractFmtGpx.classList.remove("active");
+});
+
+extractFmtGpx.addEventListener("click", () => {
+  extractFormat = "gpx";
+  extractFmtGpx.classList.add("active");
+  extractFmtGp5.classList.remove("active");
+});
+
 // ── URL ?id= auto-load ────────────────────────────────────────────────────────
 const urlId = new URLSearchParams(location.search).get("id");
 if (urlId) loadScore(urlId);

@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::state::AppState;
 
 mod analysis;
+mod extract;
 mod files;
 mod open;
 mod score;
@@ -25,6 +26,7 @@ pub fn api_routes() -> Router<AppState> {
         .route("/api/duplicates", post(files::duplicates))
         .route("/api/score/upload", post(upload::handler))
         .route("/api/score/open", post(open::handler))
+        .route("/api/score/{id}/extract", post(extract::handler))
         .route("/api/score/{id}/raw", get(score::raw))
         .route("/api/score/{id}/info", get(score::info))
         .route("/api/score/{id}/analysis/repeats", get(analysis::repeats))
