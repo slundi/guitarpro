@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
     let state = AppState::new(root);
     state.spawn_sweep();
 
-    let router = build_router(state);
+    let router = build_router(state, args.port);
     let listener = TcpListener::bind(addr).await?;
     tracing::info!("Listening on http://localhost:{}", args.port);
 
@@ -81,7 +81,7 @@ async fn shutdown_signal() {
 // ── Dev mode: serve files from frontend/dist/ on disk ────────────────────────
 
 #[cfg(not(feature = "embed"))]
-fn build_router(state: AppState) -> Router {
+fn build_router(state: AppState, _port: u16) -> Router {
     use tower_http::services::{ServeDir, ServeFile};
 
     let dist = concat!(env!("CARGO_MANIFEST_DIR"), "/frontend/dist");
@@ -115,10 +115,10 @@ mod embedded {
 }
 
 #[cfg(feature = "embed")]
-fn build_router(state: AppState) -> Router {
+fn build_router(state: AppState, port: u16) -> Router {
     use axum::{
         body::Body,
-        http::{StatusCode, Uri, header},
+        http::{HeaderValue, Method, StatusCode, Uri, header},
         response::{IntoResponse, Response},
         routing::get,
     };
@@ -151,9 +151,21 @@ fn build_router(state: AppState) -> Router {
         serve_asset(path)
     }
 
+    let cors = CorsLayer::new()
+        .allow_origin([
+            format!("http://localhost:{port}")
+                .parse::<HeaderValue>()
+                .expect("valid origin"),
+            format!("http://127.0.0.1:{port}")
+                .parse::<HeaderValue>()
+                .expect("valid origin"),
+        ])
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::CONTENT_TYPE]);
+
     api::api_routes()
         .fallback(get(static_handler))
         .with_state(state)
-        .layer(CorsLayer::permissive())
+        .layer(cors)
         .layer(CompressionLayer::new())
 }
