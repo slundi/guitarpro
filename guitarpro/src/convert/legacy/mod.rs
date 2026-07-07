@@ -717,7 +717,7 @@ fn build_legacy_measures(
                     let opt_voice = &md_data.voices[&vi];
                     measure
                         .voices
-                        .push(build_legacy_voice(opt_voice, vi, measure_start, strings));
+                        .push(build_legacy_voice(opt_voice, vi, strings));
                 }
             } else {
                 measure.voices.push(LVoice::default());
@@ -729,16 +729,11 @@ fn build_legacy_measures(
         .collect()
 }
 
-fn build_legacy_voice(
-    opt_voice: &Voice,
-    voice_id: u8,
-    measure_start: i64,
-    strings: &[(i8, i8)],
-) -> LVoice {
+fn build_legacy_voice(opt_voice: &Voice, voice_id: u8, strings: &[(i8, i8)]) -> LVoice {
     let beats = opt_voice
         .beats
         .iter()
-        .map(|b| build_legacy_beat(b, voice_id, measure_start, strings))
+        .map(|b| build_legacy_beat(b, voice_id, strings))
         .collect();
     LVoice {
         beats,
@@ -746,13 +741,13 @@ fn build_legacy_voice(
     }
 }
 
-fn build_legacy_beat(
-    beat: &Beat,
-    _voice_id: u8,
-    measure_start: i64,
-    strings: &[(i8, i8)],
-) -> LBeat {
-    let start = Some(measure_start + beat.tick_offset as i64);
+fn build_legacy_beat(beat: &Beat, _voice_id: u8, strings: &[(i8, i8)]) -> LBeat {
+    // Legacy `Beat.start` is measure-relative (each measure's beats start at
+    // `DURATION_QUARTER_TIME`), matching the parser. `tick_offset` is the 0-based
+    // in-measure position, so `start = 960 + tick_offset`. (Using the cumulative
+    // song position here would break the optimized→legacy→optimized round-trip,
+    // since `legacy_song_to_loaded_score` recovers `tick_offset` as `start - 960`.)
+    let start = Some(DURATION_QUARTER_TIME + beat.tick_offset as i64);
     let duration = duration_to_legacy(&beat.duration);
     let velocity = dynamic_to_velocity(beat.dynamic);
     let notes = beat

@@ -34,7 +34,7 @@ This document outlines the development stages and future goals of the project.
 - [x] roundtrip tests: legacy -> optimized -> legacy
 - [x] roundtrip tests: musicxml -> legacy -> musicxml
 - [x] roundtrip tests: musicxml -> optimized -> musicxml
-- [ ] roundtrip tests: optimized -> legacy -> optimized
+- [x] roundtrip tests: optimized -> legacy -> optimized
 - [ ] roundtrip tests: optimized -> musicxml -> optimized
 
 ### Documentation & Tooling
