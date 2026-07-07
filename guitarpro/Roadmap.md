@@ -26,10 +26,10 @@ This document outlines the development stages and future goals of the project.
 
 - [x] `legacy::Song` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
 - [x] `musicxml::ScorePartwise` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
-- [x] `musicxml::ScoreTimewise` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
-- [ ] `optimized::LoadedScore` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
+- [ ] `musicxml::ScoreTimewise` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
+- [x] `optimized::LoadedScore` to `legacy::Song` in `guitarpro/src/convert/legacy/`
 - [x] `musicxml::ScorePartwise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
-- [x] `musicxml::ScoreTimewise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
+- [ ] `musicxml::ScoreTimewise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
 - [ ] roundtrip tests: legacy -> musicxml -> legacy (source and end file must be the same in size and bytes)
 - [x] roundtrip tests: legacy -> optimized -> legacy
 - [ ] roundtrip tests: musicxml -> legacy -> musicxml
