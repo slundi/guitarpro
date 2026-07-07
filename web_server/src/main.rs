@@ -75,9 +75,10 @@ fn default_root() -> std::path::PathBuf {
 }
 
 async fn shutdown_signal() {
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to install Ctrl+C handler");
+    if let Err(e) = tokio::signal::ctrl_c().await {
+        tracing::error!("failed to install Ctrl+C handler: {e}");
+        return;
+    }
     tracing::info!("Shutting down");
 }
 
@@ -120,7 +121,6 @@ mod embedded {
 #[cfg(feature = "embed")]
 fn build_router(state: AppState, port: u16) -> Router {
     use axum::{
-        body::Body,
         http::{HeaderValue, Method, StatusCode, Uri, header},
         response::{IntoResponse, Response},
         routing::get,
@@ -131,20 +131,20 @@ fn build_router(state: AppState, port: u16) -> Router {
         match Assets::get(path) {
             Some(content) => {
                 let mime = mime_guess::from_path(path).first_or_octet_stream();
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header(header::CONTENT_TYPE, mime.as_ref())
-                    .body(Body::from(content.data.to_vec()))
-                    .unwrap()
+                (
+                    [(header::CONTENT_TYPE, mime.as_ref().to_string())],
+                    content.data.to_vec(),
+                )
+                    .into_response()
             }
-            None => {
-                let index = Assets::get("index.html").expect("index.html not embedded");
-                Response::builder()
-                    .status(StatusCode::OK)
-                    .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
-                    .body(Body::from(index.data.to_vec()))
-                    .unwrap()
-            }
+            None => match Assets::get("index.html") {
+                Some(index) => (
+                    [(header::CONTENT_TYPE, "text/html; charset=utf-8".to_string())],
+                    index.data.to_vec(),
+                )
+                    .into_response(),
+                None => (StatusCode::NOT_FOUND, "index.html not embedded").into_response(),
+            },
         }
     }
 
@@ -154,15 +154,16 @@ fn build_router(state: AppState, port: u16) -> Router {
         serve_asset(path)
     }
 
+    let origins: Vec<HeaderValue> = [
+        format!("http://localhost:{port}"),
+        format!("http://127.0.0.1:{port}"),
+    ]
+    .into_iter()
+    .filter_map(|s| s.parse().ok())
+    .collect();
+
     let cors = CorsLayer::new()
-        .allow_origin([
-            format!("http://localhost:{port}")
-                .parse::<HeaderValue>()
-                .expect("valid origin"),
-            format!("http://127.0.0.1:{port}")
-                .parse::<HeaderValue>()
-                .expect("valid origin"),
-        ])
+        .allow_origin(origins)
         .allow_methods([Method::GET, Method::POST])
         .allow_headers([header::CONTENT_TYPE]);
 
