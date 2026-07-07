@@ -23,7 +23,7 @@ use crate::{
             track::Track,
         },
         musicxml::{
-            Part, ScorePartwise,
+            Part, ScorePartwise, ScoreTimewise,
             measure::MusicData,
             note::{Note as XmlNote, NoteTypeValue},
             part_list::PartListItem,
@@ -54,6 +54,20 @@ pub fn musicxml_to_legacy_song(src: &ScorePartwise) -> Song {
     song.tracks = build_tracks(src, measure_count);
 
     song
+}
+
+/// Convert a MusicXML [`ScoreTimewise`] document into a Guitar Pro [`Song`].
+///
+/// `score-timewise` and `score-partwise` encode identical musical content with
+/// inverse nesting (measure→part vs part→measure). This transposes the timewise
+/// document into the equivalent [`ScorePartwise`] — a pure restructuring within
+/// the `musicxml` model, via [`ScoreTimewise::into_partwise`] — then reuses
+/// [`musicxml_to_legacy_song`]. It never passes through the optimized model.
+///
+/// The value is consumed because the transpose moves the (non-`Clone`) music
+/// data out of the timewise measures rather than duplicating it.
+pub fn musicxml_timewise_to_legacy_song(src: ScoreTimewise) -> Song {
+    musicxml_to_legacy_song(&src.into_partwise())
 }
 
 // ---------------------------------------------------------------------------
@@ -309,13 +323,13 @@ fn build_tracks(src: &ScorePartwise, measure_count: usize) -> Vec<Track> {
             let name = sp
                 .part_name
                 .as_ref()
-                .and_then(|pn| pn.value.as_deref())
+                .and_then(|on| on.value.as_deref())
                 .unwrap_or("Track")
                 .to_string();
             let short_name = sp
                 .part_abbreviation
                 .as_ref()
-                .and_then(|pn| pn.value.as_deref())
+                .and_then(|on| on.value.as_deref())
                 .unwrap_or("")
                 .to_string();
 

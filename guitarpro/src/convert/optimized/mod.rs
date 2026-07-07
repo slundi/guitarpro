@@ -17,11 +17,7 @@ mod timeline;
 use std::collections::HashMap;
 
 use crate::model::{
-    musicxml::{
-        Part, ScorePartwise, ScoreTimewise, TimewiseMeasure,
-        measure::{Measure, MusicData},
-        part_list::PartListItem,
-    },
+    musicxml::{ScorePartwise, ScoreTimewise, measure::MusicData, part_list::PartListItem},
     optimized::{
         LoadedScore,
         global::{MeasureIndex, Score, StaffId, TrackId},
@@ -89,90 +85,7 @@ pub fn score_partwise_to_loaded_score(src: &ScorePartwise) -> LoadedScore {
 /// The value is consumed because the transpose moves the (non-`Clone`) music
 /// data out of the timewise measures rather than duplicating it.
 pub fn score_timewise_to_loaded_score(src: ScoreTimewise) -> LoadedScore {
-    let partwise = timewise_to_partwise(src);
-    score_partwise_to_loaded_score(&partwise)
-}
-
-/// Transpose a [`ScoreTimewise`] into the equivalent [`ScorePartwise`].
-///
-/// The header, defaults and part-list move across unchanged. The per-measure
-/// `<part>` fragments are regrouped into per-part `<measure>` sequences in
-/// part-list order (the partwise convention), preserving document order within
-/// each part. A part listed in `<part-list>` but absent from every measure
-/// yields an empty measure list; `<part>` fragments referencing an id not in
-/// the part-list are dropped (mirroring how the partwise converter only
-/// considers part-list entries).
-fn timewise_to_partwise(src: ScoreTimewise) -> ScorePartwise {
-    let ScoreTimewise {
-        version,
-        work,
-        movement_number,
-        movement_title,
-        identification,
-        defaults,
-        credits,
-        part_list,
-        measures,
-    } = src;
-
-    // Output part order follows the <part-list> (partwise convention).
-    let part_ids: Vec<String> = part_list
-        .items
-        .iter()
-        .filter_map(|item| match item {
-            PartListItem::ScorePart(sp) => Some(sp.id.clone()),
-            _ => None,
-        })
-        .collect();
-
-    // Accumulate each part's measures in document order.
-    let mut per_part: HashMap<String, Vec<Measure>> = HashMap::new();
-    for tw_measure in measures {
-        let TimewiseMeasure {
-            number,
-            implicit,
-            non_controlling,
-            width,
-            text,
-            id,
-            parts,
-        } = tw_measure;
-        for tw_part in parts {
-            let measure = Measure {
-                number: number.clone(),
-                implicit: implicit.clone(),
-                non_controlling: non_controlling.clone(),
-                width,
-                text: text.clone(),
-                id: id.clone(),
-                music_data: tw_part.music_data,
-            };
-            per_part.entry(tw_part.id).or_default().push(measure);
-        }
-    }
-
-    let parts = part_ids
-        .into_iter()
-        .map(|part_id| {
-            let measures = per_part.remove(&part_id).unwrap_or_default();
-            Part {
-                id: part_id,
-                measures,
-            }
-        })
-        .collect();
-
-    ScorePartwise {
-        version,
-        work,
-        movement_number,
-        movement_title,
-        identification,
-        defaults,
-        credits,
-        part_list,
-        parts,
-    }
+    score_partwise_to_loaded_score(&src.into_partwise())
 }
 
 // ---------------------------------------------------------------------------
