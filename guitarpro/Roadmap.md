@@ -33,7 +33,7 @@ This document outlines the development stages and future goals of the project.
 - [ ] roundtrip tests: legacy -> musicxml -> legacy (source and end file must be the same in size and bytes)
 - [x] roundtrip tests: legacy -> optimized -> legacy
 - [x] roundtrip tests: musicxml -> legacy -> musicxml
-- [ ] roundtrip tests: musicxml -> optimized -> musicxml
+- [x] roundtrip tests: musicxml -> optimized -> musicxml
 - [ ] roundtrip tests: optimized -> legacy -> optimized
 - [ ] roundtrip tests: optimized -> musicxml -> optimized
 

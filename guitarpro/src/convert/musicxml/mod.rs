@@ -8,11 +8,14 @@
 //! - [`note`]     — beat/note construction
 //! - [`notations`] — technical markings, ornaments, articulations
 
+mod from_optimized;
 pub mod helpers;
 mod measure;
 mod metadata;
 mod notations;
 mod note;
+
+pub use from_optimized::loaded_score_to_score_partwise;
 
 use crate::model::{legacy::song::Song, musicxml};
 

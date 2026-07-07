@@ -12,7 +12,7 @@
 pub mod legacy;
 mod metadata;
 mod note;
-mod timeline;
+pub(crate) mod timeline;
 
 use std::collections::HashMap;
 
