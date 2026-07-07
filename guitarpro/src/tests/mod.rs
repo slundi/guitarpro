@@ -17,3 +17,4 @@ mod roundtrip_musicxml_timewise;
 mod roundtrip_musicxml_timewise_legacy;
 mod roundtrip_optimized;
 mod roundtrip_optimized_legacy_optimized;
+mod roundtrip_optimized_musicxml;
