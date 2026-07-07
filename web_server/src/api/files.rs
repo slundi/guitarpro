@@ -257,7 +257,7 @@ fn run_dup_scan(
         match Fingerprint::build(path) {
             Ok(fp) => fps.push(fp),
             Err(_) => {
-                // skip unparseable files silently
+                // skip unparsable files silently
             }
         }
     }
@@ -487,7 +487,10 @@ fn collect_files(dir: &Path, recursive: bool) -> io::Result<Vec<PathBuf>> {
         let mut children: Vec<PathBuf> = entries.filter_map(|e| e.ok()).map(|e| e.path()).collect();
         children.sort();
         for path in children {
-            if path.is_dir() && recursive {
+            // Descend only into *real* directories. `is_dir()` follows symlinks,
+            // so a symlink pointing at an ancestor would otherwise make the scan
+            // loop forever; skip symlinked directories to break such cycles.
+            if recursive && path.is_dir() && !path.is_symlink() {
                 stack.push(path);
             } else if is_gp_file(&path) {
                 result.push(path);
@@ -497,4 +500,30 @@ fn collect_files(dir: &Path, recursive: bool) -> io::Result<Vec<PathBuf>> {
 
     result.sort();
     Ok(result)
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::collect_files;
+    use std::fs;
+
+    #[test]
+    fn recursive_scan_terminates_on_symlink_cycle() {
+        // Unique scratch dir under the system temp directory.
+        let root = std::env::temp_dir().join(format!("ws_dup_{}", uuid::Uuid::new_v4()));
+        let sub = root.join("sub");
+        fs::create_dir_all(&sub).unwrap();
+        fs::write(sub.join("song.gp5"), b"not a real score").unwrap();
+
+        // A symlink pointing back at the root would loop forever if followed.
+        std::os::unix::fs::symlink(&root, root.join("loop")).unwrap();
+
+        // Must return (not hang) and find the single real gp file exactly once.
+        let found = collect_files(&root, true).unwrap();
+        let cleanup = fs::remove_dir_all(&root);
+
+        assert_eq!(found.len(), 1, "cycle must not inflate or hang the scan");
+        assert!(found[0].ends_with("sub/song.gp5"));
+        cleanup.unwrap();
+    }
 }

@@ -41,6 +41,16 @@ impl ApiError {
             },
         )
     }
+
+    pub fn internal(detail: impl Into<String>) -> Self {
+        Self(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorBody {
+                error: "Internal error".into(),
+                detail: detail.into(),
+            },
+        )
+    }
 }
 
 impl IntoResponse for ApiError {

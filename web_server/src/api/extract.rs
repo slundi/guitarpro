@@ -1,14 +1,12 @@
 use std::collections::HashSet;
-use std::time::Instant;
 
 use axum::Json;
-use axum::body::Body;
 use axum::extract::{Path, State};
-use axum::http::{StatusCode, header};
 use axum::response::Response;
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::api::attachment;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -35,11 +33,11 @@ pub async fn handler(
 ) -> Result<Response, ApiError> {
     // Clone what we need, then release the lock before the (possibly slow) encode.
     let (mut song, file_name) = {
-        let mut sessions = state.sessions.write().await;
+        let sessions = state.sessions.read().await;
         let loaded = sessions
-            .get_mut(&id)
+            .get(&id)
             .ok_or_else(|| ApiError::not_found("Score session not found"))?;
-        loaded.last_accessed = Instant::now();
+        loaded.touch();
         (loaded.song.clone(), loaded.file_name.clone())
     };
 
@@ -56,7 +54,10 @@ pub async fn handler(
         if idx >= total {
             return Err(ApiError::bad_request(
                 "Invalid track index",
-                format!("index {idx} out of range (score has {total} track(s), indices 0..{})", total.saturating_sub(1)),
+                format!(
+                    "index {idx} out of range (score has {total} track(s), indices 0..{})",
+                    total.saturating_sub(1)
+                ),
             ));
         }
     }
@@ -113,13 +114,5 @@ pub async fn handler(
         .unwrap_or(&file_name);
     let download_name = format!("{stem}_extracted.{ext}");
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "application/octet-stream")
-        .header(
-            header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{download_name}\""),
-        )
-        .body(Body::from(encoded))
-        .unwrap())
+    attachment(encoded, &download_name)
 }

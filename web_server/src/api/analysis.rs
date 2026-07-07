@@ -1,5 +1,4 @@
 use std::collections::{BTreeSet, HashMap};
-use std::time::Instant;
 
 use axum::Json;
 use axum::extract::{Path, Query, State};
@@ -74,11 +73,11 @@ pub async fn repeats(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut sessions = state.sessions.write().await;
+    let sessions = state.sessions.read().await;
     let loaded = sessions
-        .get_mut(&id)
+        .get(&id)
         .ok_or_else(|| ApiError::not_found("Score session not found"))?;
-    loaded.last_accessed = Instant::now();
+    loaded.touch();
 
     let headers = &loaded.song.measure_headers;
     let nav_events = collect_nav_events(headers);
@@ -427,11 +426,11 @@ pub async fn form(
     Path(id): Path<Uuid>,
     Query(params): Query<FormQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut sessions = state.sessions.write().await;
+    let sessions = state.sessions.read().await;
     let loaded = sessions
-        .get_mut(&id)
+        .get(&id)
         .ok_or_else(|| ApiError::not_found("Score session not found"))?;
-    loaded.last_accessed = Instant::now();
+    loaded.touch();
 
     let threshold = params.threshold.clamp(0.0, 1.0);
     let variant_threshold = params.variant_threshold.clamp(threshold, 1.0);
@@ -847,11 +846,11 @@ pub async fn fingering(
     Path(id): Path<Uuid>,
     Query(params): Query<FingeringQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut sessions = state.sessions.write().await;
+    let sessions = state.sessions.read().await;
     let loaded = sessions
-        .get_mut(&id)
+        .get(&id)
         .ok_or_else(|| ApiError::not_found("Score session not found"))?;
-    loaded.last_accessed = Instant::now();
+    loaded.touch();
 
     let filter = params.track.as_deref().map(|s| s.to_lowercase());
     let mut result_tracks: Vec<FingeringTrack> = Vec::new();
@@ -880,7 +879,7 @@ pub async fn fingering(
                         string: a.string,
                         fret: a.fret,
                         finger: a.finger,
-                        role: fing_role_str(a.role),
+                        role: find_role_str(a.role),
                         position_shift: a.position_shift,
                     })
                     .collect(),
@@ -898,7 +897,7 @@ pub async fn fingering(
     }))
 }
 
-fn fing_role_str(role: FingerRole) -> &'static str {
+fn find_role_str(role: FingerRole) -> &'static str {
     match role {
         FingerRole::Single => "single",
         FingerRole::BarreAnchor => "barre_anchor",

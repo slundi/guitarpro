@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::time::Instant;
 
 use axum::Json;
 use axum::extract::State;
@@ -68,17 +67,12 @@ pub async fn handler(
     let score = legacy_song_to_loaded_score(&song);
 
     let id = Uuid::new_v4();
-    state.sessions.write().await.insert(
-        id,
-        LoadedFile {
-            bytes,
-            song,
-            score,
-            file_name: file_name.clone(),
-            ext,
-            last_accessed: Instant::now(),
-        },
-    );
+    state
+        .insert_session(
+            id,
+            LoadedFile::new(bytes, song, score, file_name.clone(), ext),
+        )
+        .await;
 
     Ok(Json(ScoreSummary {
         id,

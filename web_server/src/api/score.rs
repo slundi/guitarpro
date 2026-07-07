@@ -1,15 +1,12 @@
-use std::time::Instant;
-
 use axum::Json;
-use axum::body::Body;
 use axum::extract::{Path, Query, State};
-use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use guitarpro::model::optimized::global::InstrumentKind;
 use guitarpro::model::optimized::note::{Pitch, PitchStep};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::api::attachment;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -52,24 +49,16 @@ pub async fn raw(
     let bytes;
     let file_name;
     {
-        let mut sessions = state.sessions.write().await;
+        let sessions = state.sessions.read().await;
         let loaded = sessions
-            .get_mut(&id)
+            .get(&id)
             .ok_or_else(|| ApiError::not_found("Score session not found"))?;
-        loaded.last_accessed = Instant::now();
+        loaded.touch();
         bytes = loaded.bytes.clone();
         file_name = loaded.file_name.clone();
     }
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "application/octet-stream")
-        .header(
-            header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{file_name}\""),
-        )
-        .body(Body::from(bytes))
-        .unwrap())
+    attachment(bytes, &file_name)
 }
 
 #[derive(Deserialize)]
@@ -90,11 +79,11 @@ pub async fn download(
     Query(query): Query<DownloadQuery>,
 ) -> Result<Response, ApiError> {
     let (song, file_name) = {
-        let mut sessions = state.sessions.write().await;
+        let sessions = state.sessions.read().await;
         let loaded = sessions
-            .get_mut(&id)
+            .get(&id)
             .ok_or_else(|| ApiError::not_found("Score session not found"))?;
-        loaded.last_accessed = Instant::now();
+        loaded.touch();
         (loaded.song.clone(), loaded.file_name.clone())
     };
 
@@ -117,26 +106,18 @@ pub async fn download(
         .unwrap_or(&file_name);
     let download_name = format!("{stem}.{ext}");
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "application/octet-stream")
-        .header(
-            header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{download_name}\""),
-        )
-        .body(Body::from(encoded))
-        .unwrap())
+    attachment(encoded, &download_name)
 }
 
 pub async fn info(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut sessions = state.sessions.write().await;
+    let sessions = state.sessions.read().await;
     let loaded = sessions
-        .get_mut(&id)
+        .get(&id)
         .ok_or_else(|| ApiError::not_found("Score session not found"))?;
-    loaded.last_accessed = Instant::now();
+    loaded.touch();
 
     let meta = &loaded.score.score.metadata;
     let instruments = &loaded.score.score.instruments;
