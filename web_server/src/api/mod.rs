@@ -62,6 +62,24 @@ pub fn attachment(bytes: Vec<u8>, filename: &str) -> Result<Response, ApiError> 
         .map_err(|e| ApiError::internal(e.to_string()))
 }
 
+pub fn api_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/files", get(files::list))
+        .route("/api/duplicates", post(files::duplicates))
+        .route("/api/score/upload", post(upload::handler))
+        .route("/api/score/open", post(open::handler))
+        .route("/api/score/{id}/extract", post(extract::handler))
+        .route("/api/score/{id}/raw", get(score::raw))
+        .route("/api/score/{id}/download", get(score::download))
+        .route("/api/score/{id}/info", get(score::info))
+        .route("/api/score/{id}/analysis/repeats", get(analysis::repeats))
+        .route("/api/score/{id}/analysis/form", get(analysis::form))
+        .route(
+            "/api/score/{id}/analysis/fingering",
+            get(analysis::fingering),
+        )
+}
+
 #[cfg(test)]
 mod tests {
     use super::sanitize_filename;
@@ -92,22 +110,4 @@ mod tests {
         let value = format!("attachment; filename=\"{safe}\"");
         assert!(axum::http::HeaderValue::try_from(value).is_ok());
     }
-}
-
-pub fn api_routes() -> Router<AppState> {
-    Router::new()
-        .route("/api/files", get(files::list))
-        .route("/api/duplicates", post(files::duplicates))
-        .route("/api/score/upload", post(upload::handler))
-        .route("/api/score/open", post(open::handler))
-        .route("/api/score/{id}/extract", post(extract::handler))
-        .route("/api/score/{id}/raw", get(score::raw))
-        .route("/api/score/{id}/download", get(score::download))
-        .route("/api/score/{id}/info", get(score::info))
-        .route("/api/score/{id}/analysis/repeats", get(analysis::repeats))
-        .route("/api/score/{id}/analysis/form", get(analysis::form))
-        .route(
-            "/api/score/{id}/analysis/fingering",
-            get(analysis::fingering),
-        )
 }

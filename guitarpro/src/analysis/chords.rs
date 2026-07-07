@@ -276,9 +276,7 @@ pub fn identify_chord(beat: &Beat, strings: &[(i8, i8)]) -> Option<ChordName> {
     }
 
     // --- 3. Bass note (lowest MIDI pitch) -------------------------------------
-    let Some(&bass_midi) = midis.iter().min() else {
-        return None;
-    };
+    let &bass_midi = midis.iter().min()?;
     let bass_pc = PitchClass(bass_midi.rem_euclid(12) as u8);
 
     // --- 4. Score all (root, template) pairs ----------------------------------
