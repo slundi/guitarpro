@@ -26,7 +26,7 @@ This document outlines the development stages and future goals of the project.
 
 - [x] `legacy::Song` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
 - [x] `musicxml::ScorePartwise` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
-- [ ] `musicxml::ScoreTimewise` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
+- [x] `musicxml::ScoreTimewise` to `optimized::LoadedScore` in `guitarpro/src/convert/optimized/`
 - [x] `optimized::LoadedScore` to `legacy::Song` in `guitarpro/src/convert/legacy/`
 - [x] `musicxml::ScorePartwise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
 - [ ] `musicxml::ScoreTimewise` to `legacy::Song` in `guitarpro/src/convert/guitarpro/`
