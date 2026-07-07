@@ -7,40 +7,37 @@ mod command_info;
 mod command_repeats;
 mod loader;
 
-use clap::{Parser, Subcommand};
+use bpaf::{Parser, construct};
 
-#[derive(Parser, Debug)]
-#[command(
-    name = "score_tool",
-    about = "Inspect and process Guitar Pro score files",
-    version
-)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand, Debug)]
+#[derive(Debug)]
 enum Commands {
-    /// Print metadata, track listing, and timeline for a score file
     Info(command_info::InfoArgs),
-    /// Convert a score file between formats (GP3/4/5/GPX/GP, MusicXML, Optimized)
     Convert(command_convert::ConvertArgs),
-    /// Extract one or more tracks into a new score file
     Extract(command_extract::ExtractArgs),
-    /// Find duplicate or near-duplicate score files in a directory
     Duplicates(command_duplicates::DuplicatesArgs),
-    /// Analyse repeat structures and per-track simile marks
     Repeats(command_repeats::RepeatsArgs),
-    /// Detect musical form (verse/chorus/bridge/…) by section similarity
     Form(command_form::FormArgs),
-    /// Compute and display left-hand guitar fingering for tab tracks
     Fingering(command_fingering::FingeringArgs),
 }
 
+fn parse_command() -> Commands {
+    let info = command_info::info_args().map(Commands::Info);
+    let convert = command_convert::convert_args().map(Commands::Convert);
+    let extract = command_extract::extract_args().map(Commands::Extract);
+    let duplicates = command_duplicates::duplicates_args().map(Commands::Duplicates);
+    let repeats = command_repeats::repeats_args().map(Commands::Repeats);
+    let form = command_form::form_args().map(Commands::Form);
+    let fingering = command_fingering::fingering_args().map(Commands::Fingering);
+
+    construct!([info, convert, extract, duplicates, repeats, form, fingering])
+        .to_options()
+        .descr("Inspect and process Guitar Pro score files")
+        .version(env!("CARGO_PKG_VERSION"))
+        .run()
+}
+
 fn main() {
-    let cli = Cli::parse();
-    let result = match cli.command {
+    let result = match parse_command() {
         Commands::Info(args) => command_info::run(&args),
         Commands::Convert(args) => command_convert::run(&args),
         Commands::Extract(args) => command_extract::run(&args),

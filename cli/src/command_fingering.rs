@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Context;
-use clap::Args;
+use bpaf::Bpaf;
 use serde::Serialize;
 
 use guitarpro::{
@@ -12,26 +12,30 @@ use guitarpro::{
 
 use crate::loader::load_song;
 
-#[derive(Args, Debug)]
+/// Compute and display left-hand guitar fingering for tab tracks
+#[derive(Bpaf, Debug)]
+#[bpaf(command("fingering"))]
 pub struct FingeringArgs {
     /// Input Guitar Pro file (.gp3/.gp4/.gp5/.gp/.gpx)
-    #[arg(long, short)]
+    #[bpaf(short, long, argument("PATH"))]
     pub input: String,
 
     /// Filter by track name (case-insensitive substring match)
-    #[arg(long)]
+    #[bpaf(long, argument("NAME"))]
     pub track: Option<String>,
 
     /// Output JSON instead of human-readable text
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub json: bool,
 
     /// Persist finger assignments into the optimized model and write to this path (.score JSON)
-    #[arg(long)]
+    #[bpaf(long, argument("PATH"))]
     pub annotate: Option<String>,
 
     /// Force starting hand position (fret number; not yet implemented in the underlying algorithm)
-    #[arg(long)]
+    // parsed for forward-compat; not yet wired into the fingering algorithm
+    #[bpaf(long, argument("FRET"))]
+    #[allow(dead_code)]
     pub position: Option<u8>,
 }
 

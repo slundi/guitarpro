@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use clap::Args;
+use bpaf::Bpaf;
 use guitarpro::Song;
 use guitarpro::convert::guitarpro::musicxml_to_legacy_song;
 use guitarpro::convert::legacy::loaded_score_to_legacy_song;
@@ -10,26 +10,28 @@ use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
 use guitarpro::model::musicxml::ScorePartwise;
 use guitarpro::model::optimized::global::Score;
 
-#[derive(Args, Debug)]
+/// Convert a score file between formats (GP3/4/5/GPX/GP, MusicXML, Optimized)
+#[derive(Bpaf, Debug)]
+#[bpaf(command("convert"))]
 pub struct ConvertArgs {
     /// Input file or directory
-    #[arg(short, long)]
+    #[bpaf(short, long, argument("PATH"))]
     pub input: String,
 
     /// Output file or directory
-    #[arg(short, long)]
+    #[bpaf(short, long, argument("PATH"))]
     pub output: String,
 
     /// Force output format: gp3, gp4, gp5, gpx, gp, xml, score
-    #[arg(long = "to")]
+    #[bpaf(long("to"), argument("FORMAT"))]
     pub to: Option<String>,
 
     /// Force input format: gp3, gp4, gp5, gpx, gp, xml, score
-    #[arg(long = "from")]
+    #[bpaf(long("from"), argument("FORMAT"))]
     pub from: Option<String>,
 
     /// Show what would be done without writing any files
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub dry_run: bool,
 }
 

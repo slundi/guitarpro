@@ -1,37 +1,39 @@
 use std::collections::HashSet;
 
-use clap::Args;
+use bpaf::Bpaf;
 
 use crate::command_convert::{ConvertFormats, resolve_formats};
 
-#[derive(Args, Debug)]
+/// Extract one or more tracks into a new score file
+#[derive(Bpaf, Debug)]
+#[bpaf(command("extract"))]
 pub struct ExtractArgs {
     /// Input score file
-    #[arg(short, long)]
+    #[bpaf(short, long, argument("PATH"))]
     pub input: String,
 
     /// Output file (format auto-detected from extension, or use --to)
-    #[arg(short, long)]
+    #[bpaf(short, long, argument("PATH"))]
     pub output: String,
 
     /// Select tracks by name (comma-separated, case-insensitive substring match)
-    #[arg(long)]
+    #[bpaf(long, argument("NAMES"))]
     pub tracks: Option<String>,
 
     /// Select tracks by 0-based index (comma-separated, e.g. "0,2")
-    #[arg(long = "track-index")]
+    #[bpaf(long("track-index"), argument("INDICES"))]
     pub track_index: Option<String>,
 
     /// Keep all tracks EXCEPT the selected ones
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub invert: bool,
 
     /// Force output format: gp3, gp4, gp5, gpx, gp, xml, score
-    #[arg(long = "to")]
+    #[bpaf(long("to"), argument("FORMAT"))]
     pub to: Option<String>,
 
     /// Force input format: gp3, gp4, gp5, gpx, gp, xml, score
-    #[arg(long = "from")]
+    #[bpaf(long("from"), argument("FORMAT"))]
     pub from: Option<String>,
 }
 

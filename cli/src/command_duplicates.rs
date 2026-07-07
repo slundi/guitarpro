@@ -3,7 +3,7 @@ use std::io::BufRead;
 use std::path::PathBuf;
 use std::{fs, io};
 
-use clap::Args;
+use bpaf::Bpaf;
 use guitarpro::NoteType;
 use serde::Serialize;
 
@@ -15,26 +15,28 @@ const GP_EXTENSIONS: &[&str] = &["gp3", "gp4", "gp5", "gp", "gpx"];
 // CLI args
 // ---------------------------------------------------------------------------
 
-#[derive(Args, Debug)]
+/// Find duplicate or near-duplicate score files in a directory
+#[derive(Bpaf, Debug)]
+#[bpaf(command("duplicates"))]
 pub struct DuplicatesArgs {
     /// Directory to scan for score files
-    #[arg(short, long)]
+    #[bpaf(short, long, argument("DIR"))]
     pub dir: String,
 
     /// Similarity threshold 0.0–1.0 (default: 0.85)
-    #[arg(long, default_value_t = 0.85)]
+    #[bpaf(long, argument("NUM"), fallback(0.85), display_fallback)]
     pub threshold: f64,
 
     /// Print results as JSON
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub json: bool,
 
     /// After reporting, delete all but the first file in each group (asks for confirmation)
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub delete_keep_first: bool,
 
     /// Recurse into subdirectories
-    #[arg(long, short = 'r')]
+    #[bpaf(short('r'), long, switch)]
     pub recursive: bool,
 }
 

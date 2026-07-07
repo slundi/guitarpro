@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashMap};
 
-use clap::Args;
+use bpaf::Bpaf;
 use guitarpro::{MeasureHeader, NoteType};
 use serde::Serialize;
 
@@ -10,36 +10,38 @@ use crate::loader::load_song;
 // CLI args
 // ---------------------------------------------------------------------------
 
-#[derive(Args, Debug)]
+/// Detect musical form (verse/chorus/bridge/…) by section similarity
+#[derive(Bpaf, Debug)]
+#[bpaf(command("form"))]
 pub struct FormArgs {
     /// Input score file
-    #[arg(short, long)]
+    #[bpaf(short, long, argument("PATH"))]
     pub input: String,
 
     /// Print results as JSON
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub json: bool,
 
     /// Restrict analysis to tracks whose name contains this substring (case-insensitive)
-    #[arg(long)]
+    #[bpaf(long, argument("NAME"))]
     pub track: Option<String>,
 
     /// Similarity threshold for coarse clustering, 0.0–1.0 (default: 0.75)
-    #[arg(long, default_value_t = 0.75)]
+    #[bpaf(long, argument("NUM"), fallback(0.75), display_fallback)]
     pub threshold: f64,
 
     /// Similarity threshold above which a section is treated as an exact (non-variant)
     /// repetition of its cluster exemplar, 0.0–1.0 (default: 0.90)
-    #[arg(long, default_value_t = 0.90)]
+    #[bpaf(long, argument("NUM"), fallback(0.90), display_fallback)]
     pub variant_threshold: f64,
 
     /// Minimum bars per auto-detected section (default: 2)
-    #[arg(long, default_value_t = 2)]
+    #[bpaf(long, argument("N"), fallback(2), display_fallback)]
     pub min_section: usize,
 
     /// Fixed-window size for fallback segmentation when no markers or repeats are
     /// present (default: 0 = auto)
-    #[arg(long, default_value_t = 0)]
+    #[bpaf(long, argument("N"), fallback(0), display_fallback)]
     pub window: usize,
 }
 

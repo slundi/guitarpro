@@ -1,16 +1,18 @@
-use clap::Args;
+use bpaf::Bpaf;
 use guitarpro::audio::midi::CHANNEL_DEFAULT_NAMES;
 use guitarpro::{DirectionSign, Song};
 use serde::Serialize;
 
-#[derive(Args, Debug)]
+/// Print metadata, track listing, and timeline for a score file
+#[derive(Bpaf, Debug)]
+#[bpaf(command("info"))]
 pub struct InfoArgs {
     /// Input file path (.gp3, .gp4, .gp5, .gp, .gpx)
-    #[arg(short, long)]
+    #[bpaf(short, long, argument("FILE"))]
     pub input: String,
 
     /// Print as JSON instead of human-readable text
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub json: bool,
 }
 

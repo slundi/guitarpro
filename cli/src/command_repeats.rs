@@ -1,4 +1,4 @@
-use clap::Args;
+use bpaf::Bpaf;
 use serde::Serialize;
 
 use guitarpro::DirectionSign;
@@ -10,34 +10,36 @@ use crate::loader::load_song;
 // CLI args
 // ---------------------------------------------------------------------------
 
-#[derive(Args, Debug)]
+/// Analyse repeat structures and per-track simile marks
+#[derive(Bpaf, Debug)]
+#[bpaf(command("repeats"))]
 pub struct RepeatsArgs {
     /// Input score file
-    #[arg(short, long)]
+    #[bpaf(short, long, argument("PATH"))]
     pub input: String,
 
     /// Print results as JSON
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub json: bool,
 
     /// Filter simile-mark analysis to a specific track (substring match)
-    #[arg(long)]
+    #[bpaf(long, argument("NAME"))]
     pub track: Option<String>,
 
     /// Emit a new file with all simile marks replaced by their referenced content
-    #[arg(long)]
+    #[bpaf(long, switch)]
     pub expand: bool,
 
     /// Output path when using --expand
-    #[arg(long, short)]
+    #[bpaf(short, long, argument("PATH"))]
     pub output: Option<String>,
 
     /// Force output format when using --expand: gp3, gp4, gp5, gpx, gp, xml, score
-    #[arg(long = "to")]
+    #[bpaf(long("to"), argument("FORMAT"))]
     pub to: Option<String>,
 
     /// Force input format: gp3, gp4, gp5, gpx, gp, xml, score
-    #[arg(long = "from")]
+    #[bpaf(long("from"), argument("FORMAT"))]
     pub from: Option<String>,
 }
 
