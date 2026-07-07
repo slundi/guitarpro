@@ -11,6 +11,7 @@ mod roundtrip;
 mod roundtrip_musicxml;
 mod roundtrip_musicxml_bytes;
 mod roundtrip_musicxml_legacy;
+mod roundtrip_musicxml_roundtrip;
 mod roundtrip_musicxml_timewise;
 mod roundtrip_musicxml_timewise_legacy;
 mod roundtrip_optimized;

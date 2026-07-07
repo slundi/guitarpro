@@ -4,7 +4,7 @@ version = "0.3.0"
 authors = ["slundi"]
 edition = "2024"
 description = "Rust library and command line interface (CLI) for guitar tab files."
-repository = "https://gitlab.com/slundi/guitar-io"
+repository = "https://codeberg.org/slundi/scorelib"
 license = "MIT"
 readme = "README.md"
 
