@@ -777,6 +777,43 @@
         padding: 2px 0;
       }
 
+      /* ── Keyboard shortcuts modal ───────────────────────────── */
+      .shortcuts-body {
+        padding: 12px 16px 14px;
+        overflow-y: auto;
+      }
+
+      .shortcuts-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+        color: #ccc;
+      }
+
+      .shortcuts-table td {
+        padding: 5px 6px;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .shortcuts-table tr:last-child td { border-bottom: none; }
+      .shortcuts-table td:first-child {
+        width: 30%;
+        white-space: nowrap;
+      }
+
+      kbd {
+        display: inline-block;
+        padding: 1px 6px;
+        margin: 0 1px;
+        border: 1px solid #444;
+        border-bottom-width: 2px;
+        border-radius: 3px;
+        background: #1a1a1a;
+        color: #ddd;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 0.78rem;
+        line-height: 1.2;
+      }
+
       /* ── Settings modal ─────────────────────────────────────── */
       .settings-body {
         padding: 12px 16px 14px;
@@ -966,9 +1003,10 @@
         #toast-container   { display: none !important; }
         #global-loading    { display: none !important; }
         #settings-modal    { display: none !important; }
+        #shortcuts-modal   { display: none !important; }
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-t2B3bjVe.js"></script>
+    <script type="module" crossorigin src="/assets/index-CLgoAsf6.js"></script>
   </head>
   <body>
     <!-- Toolbar -->
@@ -1019,6 +1057,8 @@
       <button id="extract-btn" title="Extract selected tracks">Extract</button>
 
       <button id="print-btn" title="Print score">Print</button>
+
+      <button id="shortcuts-btn" title="Keyboard shortcuts (?)">?</button>
 
       <button id="settings-btn" title="Settings">⚙</button>
 
@@ -1150,6 +1190,32 @@
       <label for="jump-input">Go to measure</label>
       <input id="jump-input" type="number" min="1" step="1" placeholder="1">
       <span id="jump-hint">Enter · Esc</span>
+    </div>
+
+    <!-- Keyboard shortcuts modal -->
+    <div id="shortcuts-modal" class="files-modal-overlay" role="dialog" aria-label="Keyboard shortcuts">
+      <div class="files-modal-box" style="width:min(90vw, 420px)">
+        <div class="files-modal-header">
+          <span class="files-modal-title">Keyboard shortcuts</span>
+          <div style="flex:1"></div>
+          <button id="shortcuts-close">✕</button>
+        </div>
+        <div class="shortcuts-body">
+          <table class="shortcuts-table">
+            <tbody>
+              <tr><td><kbd>Space</kbd></td><td>Play / Pause</td></tr>
+              <tr><td><kbd>Esc</kbd></td><td>Stop / dismiss dialog</td></tr>
+              <tr><td><kbd>g</kbd></td><td>Jump to measure</td></tr>
+              <tr><td><kbd>[</kbd> / <kbd>]</kbd></td><td>Previous / Next section</td></tr>
+              <tr><td><kbd>+</kbd> / <kbd>-</kbd></td><td>Zoom in / out</td></tr>
+              <tr><td><kbd>t</kbd></td><td>Cycle rendering mode (N+T / Notation / Tab)</td></tr>
+              <tr><td><kbd>f</kbd></td><td>Toggle fingering overlay</td></tr>
+              <tr><td><kbd>r</kbd></td><td>Toggle repeats overlay</td></tr>
+              <tr><td><kbd>?</kbd></td><td>Show this help</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Settings modal -->

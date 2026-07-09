@@ -291,18 +291,19 @@ and rendered as visual overlays on top of alphaTab output.
 - Server-side: `--root`, `--port`, `--no-open` flags; optionally read from a
   `score_server.toml` config file
 
-### 9.3 Keyboard shortcuts reference
+### 9.3 Keyboard shortcuts reference ✅
 
 | Key | Action |
 |-----|--------|
 | `Space` | Play / Pause |
-| `Escape` | Stop |
+| `Escape` | Stop / dismiss dialog |
 | `g` | Jump to measure |
 | `[` / `]` | Previous / Next section |
 | `+` / `-` | Zoom in / out |
-| `t` | Toggle tab / notation mode |
+| `t` | Cycle rendering mode (N+T / Notation / Tab) |
 | `f` | Toggle fingering overlay |
 | `r` | Toggle repeats overlay |
+| `?` | Show shortcut help modal |
 
 ### 9.4 Build and distribution
 

@@ -1212,15 +1212,26 @@ document.querySelectorAll<HTMLButtonElement>(".layout-btn").forEach((btn) => {
 });
 
 // ── Zoom ──────────────────────────────────────────────────────────────────────
-zoomSlider.addEventListener("input", () => {
-  const pct   = parseInt(zoomSlider.value);
-  const scale = pct / 100;
-  zoomValue.textContent = `${pct}%`;
+const ZOOM_MIN = 50;
+const ZOOM_MAX = 200;
+const ZOOM_STEP = 10;
+
+function setZoomPct(pct: number): void {
+  const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(pct)));
+  const scale = clamped / 100;
+  zoomSlider.value = String(clamped);
+  zoomValue.textContent = `${clamped}%`;
   localStorage.setItem(PREF_SCALE, String(scale));
   api.settings.display.scale = scale;
   api.updateSettings();
   api.render();
-});
+}
+
+function currentZoomPct(): number {
+  return parseInt(zoomSlider.value, 10) || 100;
+}
+
+zoomSlider.addEventListener("input", () => setZoomPct(parseInt(zoomSlider.value, 10)));
 
 // ── Print ─────────────────────────────────────────────────────────────────────
 document.getElementById("print-btn")!.addEventListener("click", () => window.print());
@@ -1482,21 +1493,100 @@ document.addEventListener("mousedown", () => {
   if (jumpDialog.classList.contains("visible")) closeJumpDialog();
 });
 
-// Global keyboard shortcuts — skip when a text input is focused
+// ── Global keyboard shortcuts (Part 9.3) ─────────────────────────────────────
+
+const MODE_CYCLE = ["notation-tab", "notation", "tab"] as const;
+
+/** Cycle through rendering modes: N+T → Notation → Tab → N+T. */
+function cycleRenderingMode(): void {
+  const current = localStorage.getItem(PREF_MODE) ?? "notation-tab";
+  const idx = MODE_CYCLE.indexOf(current as typeof MODE_CYCLE[number]);
+  const next = MODE_CYCLE[(idx + 1) % MODE_CYCLE.length];
+  const btn = document.querySelector<HTMLButtonElement>(`.mode-btn[data-mode="${next}"]`);
+  btn?.click();
+}
+
+/** Fire a click on the button that owns a given overlay toggle. */
+function toggleRepeatsOverlay(): void { repeatsBtn.click(); }
+function toggleFingeringOverlay(): void { findBtn.click(); }
+
+/** Space/Escape are wired for Part 4 (playback). API calls are guarded so
+ * they no-op cleanly when `enablePlayer` is false. */
+function tryPlayPause(): void {
+  try { (api as unknown as { playPause: () => void }).playPause(); }
+  catch { /* player disabled */ }
+}
+function tryStop(): void {
+  try { (api as unknown as { stop: () => void }).stop(); }
+  catch { /* player disabled */ }
+}
+
+/** Truthy iff any dismissable overlay is currently visible. `Escape` should
+ * dismiss the topmost overlay before falling through to `api.stop()`. */
+function dismissTopOverlay(): boolean {
+  if (jumpDialog.classList.contains("visible")) { closeJumpDialog(); return true; }
+  if (extractDialog.classList.contains("visible")) { closeExtractDialog(); return true; }
+  if (settingsModal.classList.contains("visible")) { closeSettings(); return true; }
+  if (shortcutsModal.classList.contains("visible")) { closeShortcuts(); return true; }
+  if (filesModal.classList.contains("visible")) { closeFilesModal(); return true; }
+  if (saveasPopover.classList.contains("visible")) { closeSaveasPopover(); return true; }
+  return false;
+}
+
 document.addEventListener("keydown", (e) => {
   const tag = (document.activeElement as HTMLElement)?.tagName?.toLowerCase();
   if (tag === "input" || tag === "select" || tag === "textarea") return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-  if (e.key === "g" && api.score) {
-    e.preventDefault();
-    openJumpDialog();
-  } else if (e.key === "[") {
-    e.preventDefault();
-    prevSection();
-  } else if (e.key === "]") {
-    e.preventDefault();
-    nextSection();
+  // Handle keys by e.key (single-source dispatch)
+  switch (e.key) {
+    case " ":
+      // Space toggles playback. Prevent page-scroll default.
+      e.preventDefault();
+      tryPlayPause();
+      return;
+    case "Escape":
+      // Escape first dismisses any open overlay, otherwise stops playback.
+      if (dismissTopOverlay()) { e.preventDefault(); return; }
+      tryStop();
+      return;
+    case "g":
+      if (api.score) { e.preventDefault(); openJumpDialog(); }
+      return;
+    case "[":
+      e.preventDefault();
+      prevSection();
+      return;
+    case "]":
+      e.preventDefault();
+      nextSection();
+      return;
+    case "+":
+    case "=":
+      e.preventDefault();
+      setZoomPct(currentZoomPct() + ZOOM_STEP);
+      return;
+    case "-":
+    case "_":
+      e.preventDefault();
+      setZoomPct(currentZoomPct() - ZOOM_STEP);
+      return;
+    case "t":
+      e.preventDefault();
+      cycleRenderingMode();
+      return;
+    case "f":
+      e.preventDefault();
+      toggleFingeringOverlay();
+      return;
+    case "r":
+      e.preventDefault();
+      toggleRepeatsOverlay();
+      return;
+    case "?":
+      e.preventDefault();
+      openShortcuts();
+      return;
   }
 });
 
@@ -2181,6 +2271,20 @@ settingsZoom.addEventListener("input", () => {
 // Click outside modal closes it
 settingsModal.addEventListener("mousedown", (e) => {
   if (e.target === settingsModal) closeSettings();
+});
+
+// ── Keyboard shortcuts help modal (Part 9.3) ─────────────────────────────────
+const shortcutsBtn   = document.getElementById("shortcuts-btn") as HTMLButtonElement;
+const shortcutsModal = document.getElementById("shortcuts-modal")!;
+const shortcutsClose = document.getElementById("shortcuts-close") as HTMLButtonElement;
+
+function openShortcuts(): void  { shortcutsModal.classList.add("visible"); }
+function closeShortcuts(): void { shortcutsModal.classList.remove("visible"); }
+
+shortcutsBtn.addEventListener("click", openShortcuts);
+shortcutsClose.addEventListener("click", closeShortcuts);
+shortcutsModal.addEventListener("mousedown", (e) => {
+  if (e.target === shortcutsModal) closeShortcuts();
 });
 
 // ── URL ?id= auto-load ────────────────────────────────────────────────────────
