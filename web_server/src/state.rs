@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use guitarpro::Song;
+use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
 use guitarpro::model::optimized::LoadedScore;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -25,7 +27,7 @@ pub struct LoadedFile {
     pub song: Song,
     pub score: LoadedScore,
     pub file_name: String,
-    #[expect(dead_code)] // used in Part 8 (format-aware re-encoding)
+    #[cfg_attr(not(test), allow(dead_code))] // read in tests + Part 8 (format-aware re-encoding)
     pub ext: String,
     /// Interior-mutable so read-only handlers can refresh it under a shared
     /// read lock instead of taking the global write lock for the whole request.
@@ -125,6 +127,49 @@ pub fn parse_song(ext: &str, data: &[u8]) -> Result<Song> {
     Ok(song)
 }
 
+/// Load, validate, parse, and convert a GP file from disk into a [`LoadedFile`].
+///
+/// Used at startup by `main` to pre-load a file passed on the CLI, and mirrors
+/// the pipeline that the `/api/score/upload` and `/api/score/open` handlers run
+/// on their own inputs. Enforces the same extension whitelist and size cap.
+pub fn load_file_from_disk(path: &Path) -> Result<LoadedFile> {
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_lowercase)
+        .unwrap_or_default();
+
+    if !SUPPORTED_EXTENSIONS.contains(&ext.as_str()) {
+        anyhow::bail!(
+            "'{}': unsupported extension '.{ext}'; use gp3, gp4, gp5, gp, or gpx",
+            path.display()
+        );
+    }
+
+    let bytes =
+        std::fs::read(path).with_context(|| format!("Failed to read '{}'", path.display()))?;
+
+    if bytes.len() > MAX_FILE_SIZE {
+        anyhow::bail!(
+            "'{}': {} bytes exceeds the {}-byte limit",
+            path.display(),
+            bytes.len(),
+            MAX_FILE_SIZE
+        );
+    }
+
+    let song = parse_song(&ext, &bytes)
+        .with_context(|| format!("Failed to parse '{}'", path.display()))?;
+    let score = legacy_song_to_loaded_score(&song);
+    let file_name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    Ok(LoadedFile::new(bytes, song, score, file_name, ext))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,6 +185,94 @@ mod tests {
             "dummy.gp5".to_string(),
             "gp5".to_string(),
         )
+    }
+
+    // ── load_file_from_disk (Part 9.4 CLI preload) ────────────────────────────
+
+    /// `LoadedFile` deliberately doesn't implement `Debug` (its `Song` field is
+    /// noisy), so `.unwrap_err()` won't compile. Small helper that panics with
+    /// a readable message when the Result is `Ok`.
+    fn expect_err<T>(r: Result<T>) -> anyhow::Error {
+        match r {
+            Ok(_) => panic!("expected an error, got Ok"),
+            Err(e) => e,
+        }
+    }
+
+    fn workspace_test_dir() -> std::path::PathBuf {
+        // web_server → workspace root → test/
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("test")
+    }
+
+    #[test]
+    fn load_file_from_disk_rejects_unsupported_extension() {
+        let dir = std::env::temp_dir().join(format!("ws_load_{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("song.txt");
+        std::fs::write(&path, b"not a score").unwrap();
+
+        let err = expect_err(load_file_from_disk(&path));
+        assert!(
+            err.to_string().contains("unsupported extension"),
+            "unexpected error: {err}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_file_from_disk_rejects_missing_extension() {
+        let dir = std::env::temp_dir().join(format!("ws_load_{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("no_extension");
+        std::fs::write(&path, b"bytes").unwrap();
+
+        let err = expect_err(load_file_from_disk(&path));
+        assert!(err.to_string().contains("unsupported extension"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_file_from_disk_rejects_oversized() {
+        let dir = std::env::temp_dir().join(format!("ws_load_{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("huge.gp5");
+        // 16 MB + 1 byte of arbitrary content — the size check should reject
+        // before any parser is asked to look at it.
+        std::fs::write(&path, vec![0u8; MAX_FILE_SIZE + 1]).unwrap();
+
+        let err = expect_err(load_file_from_disk(&path));
+        assert!(err.to_string().contains("exceeds"), "unexpected: {err}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_file_from_disk_missing_file_bubbles_up_io_error() {
+        let path = std::env::temp_dir().join(format!("ws_missing_{}.gp5", Uuid::new_v4()));
+        assert!(!path.exists());
+        let err = expect_err(load_file_from_disk(&path));
+        assert!(
+            err.to_string().contains("Failed to read"),
+            "unexpected: {err}"
+        );
+    }
+
+    #[test]
+    fn load_file_from_disk_parses_real_gp5_fixture() {
+        let path = workspace_test_dir().join("001_Funky_Guy.gp5");
+        if !path.is_file() {
+            eprintln!("skipping — fixture missing: {}", path.display());
+            return;
+        }
+        let loaded = load_file_from_disk(&path).expect("real GP5 fixture must load");
+        assert_eq!(loaded.ext, "gp5");
+        assert_eq!(loaded.file_name, "001_Funky_Guy.gp5");
+        assert!(!loaded.bytes.is_empty());
+        assert!(
+            !loaded.song.tracks.is_empty(),
+            "expected at least one track"
+        );
     }
 
     #[tokio::test]

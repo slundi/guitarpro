@@ -305,10 +305,10 @@ and rendered as visual overlays on top of alphaTab output.
 | `r` | Toggle repeats overlay |
 | `?` | Show shortcut help modal |
 
-### 9.4 Build and distribution
+### 9.4 Build and distribution ✅
 
-- [ ] `just build-web` recipe: `vite build` then `cargo build -p web_server --release`
-- [ ] `rust-embed` feature gate: `--features embed` bundles `frontend/dist/` into
+- [x] `just build-web` recipe: `vite build` then `cargo build -p web_server --release`
+- [x] `rust-embed` feature gate: `--features embed` bundles `frontend/dist/` into
   the binary; otherwise reads from disk (dev mode)
-- [ ] Single binary: `score_server --open song.gp5` opens the file directly on launch
+- [x] Single binary: `score_server song.gp5` opens the file directly on launch
 - [ ] Optional: `cargo-bundle` or `cargo-deb` packaging

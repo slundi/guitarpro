@@ -22,8 +22,12 @@ frontend-dev:
     pnpm --dir {{frontend_dir}} install
     pnpm --dir {{frontend_dir}} dev
 
-# Build everything: frontend then backend with embedded assets
+# Build everything for release: frontend then backend with embedded assets
 build-web: frontend-build
+    cargo build -p web_server --release --features embed
+
+# Debug build variant (skips --release for faster incremental compiles)
+build-web-dev: frontend-build
     cargo build -p web_server --features embed
 
 # Watch for changes and run (requires cargo-watch)

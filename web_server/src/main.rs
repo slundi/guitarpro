@@ -12,7 +12,7 @@ mod error;
 mod state;
 
 use config::ServerConfig;
-use state::AppState;
+use state::{AppState, LoadedFile, load_file_from_disk};
 
 const DEFAULT_PORT: u16 = 3000;
 
@@ -34,6 +34,10 @@ struct Args {
     /// path to a score_server.toml config file (default: search cwd + XDG paths)
     #[argh(option, short = 'c')]
     config: Option<std::path::PathBuf>,
+
+    /// optional GP file to load and display on launch
+    #[argh(positional)]
+    file: Option<std::path::PathBuf>,
 }
 
 #[tokio::main]
@@ -72,12 +76,20 @@ async fn main() -> Result<()> {
     let state = AppState::new(root);
     state.spawn_sweep();
 
+    let preloaded_id = match args.file.as_deref() {
+        Some(path) => Some(preload_file(&state, path).await?),
+        None => None,
+    };
+
     let router = build_router(state, port);
     let listener = TcpListener::bind(addr).await?;
     tracing::info!("Listening on http://localhost:{}", port);
 
     if auto_open {
-        let url = format!("http://localhost:{port}");
+        let url = match preloaded_id {
+            Some(id) => format!("http://localhost:{port}/?id={id}"),
+            None => format!("http://localhost:{port}"),
+        };
         if let Err(e) = open::that(&url) {
             tracing::warn!("Failed to open browser: {e}");
         }
@@ -88,6 +100,18 @@ async fn main() -> Result<()> {
         .await?;
 
     Ok(())
+}
+
+/// Load a GP file passed on the CLI and register it as a session so the
+/// frontend can pick it up via `?id=<uuid>`. Errors bubble up as a startup
+/// failure — a bad path or unparsable file is a hard error at launch.
+async fn preload_file(state: &AppState, path: &std::path::Path) -> Result<uuid::Uuid> {
+    let loaded: LoadedFile = load_file_from_disk(path)
+        .with_context(|| format!("Failed to preload '{}'", path.display()))?;
+    let id = uuid::Uuid::new_v4();
+    state.insert_session(id, loaded).await;
+    tracing::info!(?id, path = %path.display(), "preloaded score");
+    Ok(id)
 }
 
 fn default_root() -> std::path::PathBuf {
