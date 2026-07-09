@@ -124,9 +124,15 @@ function makeSidebarSpinner(text: string): HTMLElement {
 }
 
 // ── Persisted preferences ─────────────────────────────────────────────────────
-const PREF_MODE   = "staveProfile";
-const PREF_LAYOUT = "layoutMode";
-const PREF_SCALE  = "scale";
+const PREF_MODE      = "staveProfile";
+const PREF_LAYOUT    = "layoutMode";
+const PREF_SCALE     = "scale";
+const PREF_SOUNDFONT = "soundFontUrl";
+
+const DEFAULT_MODE   = "notation-tab";
+const DEFAULT_LAYOUT = "page";
+const DEFAULT_SCALE  = "1";
+const DEFAULT_SOUNDFONT = "";
 
 const staveProfileMap: Record<string, alphaTab.StaveProfile> = {
   "notation-tab": alphaTab.StaveProfile.ScoreTab,
@@ -2058,6 +2064,123 @@ extractFmtGpx.addEventListener("click", () => {
   extractFormat = "gpx";
   extractFmtGpx.classList.add("active");
   extractFmtGp5.classList.remove("active");
+});
+
+// ── Settings modal (Part 9.2) ────────────────────────────────────────────────
+const settingsBtn      = document.getElementById("settings-btn") as HTMLButtonElement;
+const settingsModal    = document.getElementById("settings-modal")!;
+const settingsClose    = document.getElementById("settings-close") as HTMLButtonElement;
+const settingsMode     = document.getElementById("settings-mode") as HTMLSelectElement;
+const settingsLayout   = document.getElementById("settings-layout") as HTMLSelectElement;
+const settingsZoom     = document.getElementById("settings-zoom") as HTMLInputElement;
+const settingsZoomVal  = document.getElementById("settings-zoom-val")!;
+const settingsSoundfont = document.getElementById("settings-soundfont") as HTMLInputElement;
+const settingsSave     = document.getElementById("settings-save") as HTMLButtonElement;
+const settingsReset    = document.getElementById("settings-reset") as HTMLButtonElement;
+
+function loadSettingsFromStorage(): void {
+  const mode      = localStorage.getItem(PREF_MODE)      ?? DEFAULT_MODE;
+  const layout    = localStorage.getItem(PREF_LAYOUT)    ?? DEFAULT_LAYOUT;
+  const scale     = parseFloat(localStorage.getItem(PREF_SCALE) ?? DEFAULT_SCALE);
+  const soundfont = localStorage.getItem(PREF_SOUNDFONT) ?? DEFAULT_SOUNDFONT;
+  const zoomPct   = Math.round((isNaN(scale) ? 1 : scale) * 100);
+
+  settingsMode.value     = mode in staveProfileMap ? mode : DEFAULT_MODE;
+  settingsLayout.value   = layout in layoutModeMap ? layout : DEFAULT_LAYOUT;
+  settingsZoom.value     = String(zoomPct);
+  settingsZoomVal.textContent = `${zoomPct}%`;
+  settingsSoundfont.value = soundfont;
+}
+
+function openSettings(): void {
+  loadSettingsFromStorage();
+  settingsModal.classList.add("visible");
+}
+
+function closeSettings(): void {
+  settingsModal.classList.remove("visible");
+}
+
+/** Apply a saved rendering mode: toggle toolbar button + push into alphaTab. */
+function applyRenderingMode(mode: string): void {
+  document.querySelectorAll<HTMLButtonElement>(".mode-btn").forEach((btn) =>
+    btn.classList.toggle("active", btn.dataset.mode === mode)
+  );
+  api.settings.display.staveProfile =
+    staveProfileMap[mode] ?? alphaTab.StaveProfile.ScoreTab;
+}
+
+/** Apply a saved layout mode: toggle toolbar button + push into alphaTab. */
+function applyLayoutMode(layout: string): void {
+  document.querySelectorAll<HTMLButtonElement>(".layout-btn").forEach((btn) =>
+    btn.classList.toggle("active", btn.dataset.layout === layout)
+  );
+  api.settings.display.layoutMode =
+    layoutModeMap[layout] ?? alphaTab.LayoutMode.Page;
+}
+
+/** Apply a saved zoom scale: sync slider readout + push into alphaTab. */
+function applyZoomScale(scale: number): void {
+  const pct = Math.round(scale * 100);
+  zoomSlider.value = String(pct);
+  zoomValue.textContent = `${pct}%`;
+  api.settings.display.scale = scale;
+}
+
+function saveSettings(): void {
+  const mode    = settingsMode.value;
+  const layout  = settingsLayout.value;
+  const zoomPct = parseInt(settingsZoom.value, 10);
+  const scale   = (isNaN(zoomPct) ? 100 : zoomPct) / 100;
+  const soundfont = settingsSoundfont.value.trim();
+
+  localStorage.setItem(PREF_MODE, mode);
+  localStorage.setItem(PREF_LAYOUT, layout);
+  localStorage.setItem(PREF_SCALE, String(scale));
+  if (soundfont) {
+    localStorage.setItem(PREF_SOUNDFONT, soundfont);
+  } else {
+    localStorage.removeItem(PREF_SOUNDFONT);
+  }
+
+  applyRenderingMode(mode);
+  applyLayoutMode(layout);
+  applyZoomScale(scale);
+  api.updateSettings();
+  api.render();
+
+  showToast("success", "Settings saved");
+  closeSettings();
+}
+
+function resetSettings(): void {
+  localStorage.removeItem(PREF_MODE);
+  localStorage.removeItem(PREF_LAYOUT);
+  localStorage.removeItem(PREF_SCALE);
+  localStorage.removeItem(PREF_SOUNDFONT);
+  loadSettingsFromStorage();
+
+  applyRenderingMode(DEFAULT_MODE);
+  applyLayoutMode(DEFAULT_LAYOUT);
+  applyZoomScale(parseFloat(DEFAULT_SCALE));
+  api.updateSettings();
+  api.render();
+
+  showToast("info", "Settings reset to defaults");
+}
+
+settingsBtn.addEventListener("click", openSettings);
+settingsClose.addEventListener("click", closeSettings);
+settingsSave.addEventListener("click", saveSettings);
+settingsReset.addEventListener("click", resetSettings);
+
+settingsZoom.addEventListener("input", () => {
+  settingsZoomVal.textContent = `${settingsZoom.value}%`;
+});
+
+// Click outside modal closes it
+settingsModal.addEventListener("mousedown", (e) => {
+  if (e.target === settingsModal) closeSettings();
 });
 
 // ── URL ?id= auto-load ────────────────────────────────────────────────────────

@@ -1371,6 +1371,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml-span"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f22ba417d437b5fa5dcba6c27dbd6c14f38845315b724d89fed73b7a426451b7"
+dependencies = [
+ "smallvec",
+]
+
+[[package]]
 name = "tower"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1608,8 +1617,10 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
  "tokio-stream",
+ "toml-span",
  "tower-http",
  "tracing",
  "tracing-subscriber",

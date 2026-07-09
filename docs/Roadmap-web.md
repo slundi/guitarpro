@@ -279,16 +279,16 @@ and rendered as visual overlays on top of alphaTab output.
 
 ### 9.1 Error handling and feedback ✅
 
-- [x] Toast notification system (top-right corner) for API errors and successes
-- [x] Loading spinners during file parse and analysis fetch
-- [x] Structured error responses `{ error: string, detail: string }` from all
-  API endpoints
+- Toast notification system (top-right corner) for API errors and successes
+- Loading spinners during file parse and analysis fetch
+- Structured error responses `{ error: string, detail: string }` from all
+  endpoints
 
-### 9.2 Settings panel
+### 9.2 Settings panel ✅
 
-- [ ] Configurable defaults: default rendering mode, zoom level, SoundFont path
-- [ ] Persisted in `localStorage`
-- [ ] Server-side: `--root`, `--port`, `--no-open` flags; optionally read from a
+- Configurable defaults: default rendering mode, zoom level, SoundFont path
+- Persisted in `localStorage`
+- Server-side: `--root`, `--port`, `--no-open` flags; optionally read from a
   `score_server.toml` config file
 
 ### 9.3 Keyboard shortcuts reference

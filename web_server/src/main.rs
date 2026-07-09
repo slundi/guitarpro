@@ -7,25 +7,33 @@ use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
 mod api;
+mod config;
 mod error;
 mod state;
 
+use config::ServerConfig;
 use state::AppState;
+
+const DEFAULT_PORT: u16 = 3000;
 
 #[derive(FromArgs)]
 /// Guitar score web viewer and analysis tool
 struct Args {
-    /// port to listen on (default: 3000)
-    #[argh(option, short = 'p', default = "3000")]
-    port: u16,
+    /// port to listen on (default: 3000, overrides score_server.toml)
+    #[argh(option, short = 'p')]
+    port: Option<u16>,
 
-    /// open the browser after binding
-    #[argh(switch, short = 'o')]
-    open: bool,
+    /// suppress auto-opening the browser after binding
+    #[argh(switch)]
+    no_open: bool,
 
     /// root directory allowed for /api/score/open (default: $HOME)
     #[argh(option)]
     root: Option<std::path::PathBuf>,
+
+    /// path to a score_server.toml config file (default: search cwd + XDG paths)
+    #[argh(option, short = 'c')]
+    config: Option<std::path::PathBuf>,
 }
 
 #[tokio::main]
@@ -35,13 +43,28 @@ async fn main() -> Result<()> {
         .init();
 
     let args: Args = argh::from_env();
-    let addr = SocketAddr::from(([127, 0, 0, 1], args.port));
 
-    let root = args.root.unwrap_or_else(default_root);
-    let root = root.canonicalize().with_context(|| {
+    let file_config = match args.config.as_deref() {
+        Some(path) => ServerConfig::load_from(path)
+            .with_context(|| format!("Failed to load config from '{}'", path.display()))?,
+        None => ServerConfig::load_default().context("Failed to load default config file")?,
+    };
+
+    // CLI flag > config file > built-in default.
+    let port = args.port.or(file_config.port).unwrap_or(DEFAULT_PORT);
+    let auto_open = if args.no_open {
+        false
+    } else {
+        file_config.open.unwrap_or(true)
+    };
+    let root_input = args.root.or(file_config.root).unwrap_or_else(default_root);
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+
+    let root = root_input.canonicalize().with_context(|| {
         format!(
             "Root directory '{}' does not exist or is not accessible",
-            root.display()
+            root_input.display()
         )
     })?;
     tracing::info!(root = %root.display(), "file open root");
@@ -49,12 +72,12 @@ async fn main() -> Result<()> {
     let state = AppState::new(root);
     state.spawn_sweep();
 
-    let router = build_router(state, args.port);
+    let router = build_router(state, port);
     let listener = TcpListener::bind(addr).await?;
-    tracing::info!("Listening on http://localhost:{}", args.port);
+    tracing::info!("Listening on http://localhost:{}", port);
 
-    if args.open {
-        let url = format!("http://localhost:{}", args.port);
+    if auto_open {
+        let url = format!("http://localhost:{port}");
         if let Err(e) = open::that(&url) {
             tracing::warn!("Failed to open browser: {e}");
         }

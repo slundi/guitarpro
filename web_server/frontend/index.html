@@ -777,6 +777,64 @@
         padding: 2px 0;
       }
 
+      /* ── Settings modal ─────────────────────────────────────── */
+      .settings-body {
+        padding: 12px 16px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow-y: auto;
+      }
+
+      .settings-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 0.78rem;
+        color: #aaa;
+      }
+
+      .settings-field select,
+      .settings-field input[type="text"] {
+        background: #1a1a1a;
+        color: #ccc;
+        border: 1px solid #444;
+        border-radius: 3px;
+        padding: 4px 6px;
+        font-size: 0.82rem;
+      }
+
+      .settings-field select:focus,
+      .settings-field input[type="text"]:focus {
+        outline: 1px solid #666;
+        border-color: #666;
+      }
+
+      .settings-zoom-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #settings-zoom {
+        flex: 1;
+        accent-color: #888;
+        cursor: pointer;
+      }
+
+      #settings-zoom-val {
+        color: #ccc;
+        font-size: 0.82rem;
+        min-width: 3.2ch;
+      }
+
+      .settings-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
       /* ── Toast notifications ────────────────────────────────── */
       #toast-container {
         position: fixed;
@@ -907,6 +965,7 @@
         .files-modal-overlay { display: none !important; }
         #toast-container   { display: none !important; }
         #global-loading    { display: none !important; }
+        #settings-modal    { display: none !important; }
       }
     </style>
   </head>
@@ -959,6 +1018,8 @@
       <button id="extract-btn" title="Extract selected tracks">Extract</button>
 
       <button id="print-btn" title="Print score">Print</button>
+
+      <button id="settings-btn" title="Settings">⚙</button>
 
       <span id="status-bar"></span>
     </div>
@@ -1088,6 +1149,54 @@
       <label for="jump-input">Go to measure</label>
       <input id="jump-input" type="number" min="1" step="1" placeholder="1">
       <span id="jump-hint">Enter · Esc</span>
+    </div>
+
+    <!-- Settings modal -->
+    <div id="settings-modal" class="files-modal-overlay" role="dialog" aria-label="Settings">
+      <div class="files-modal-box" style="width:min(90vw, 460px)">
+        <div class="files-modal-header">
+          <span class="files-modal-title">Settings</span>
+          <div style="flex:1"></div>
+          <button id="settings-close">✕</button>
+        </div>
+        <div class="settings-body">
+          <label class="settings-field">
+            <span>Default rendering mode</span>
+            <select id="settings-mode">
+              <option value="notation-tab">Notation + Tab</option>
+              <option value="notation">Notation only</option>
+              <option value="tab">Tab only</option>
+            </select>
+          </label>
+
+          <label class="settings-field">
+            <span>Default layout</span>
+            <select id="settings-layout">
+              <option value="page">Page (vertical)</option>
+              <option value="horizontal">Horizontal</option>
+            </select>
+          </label>
+
+          <label class="settings-field">
+            <span>Default zoom</span>
+            <div class="settings-zoom-row">
+              <input type="range" id="settings-zoom" min="50" max="200" step="10">
+              <output id="settings-zoom-val">100%</output>
+            </div>
+          </label>
+
+          <label class="settings-field">
+            <span>SoundFont URL (playback, coming soon)</span>
+            <input type="text" id="settings-soundfont" placeholder="/soundfont/general-user.sf3">
+          </label>
+
+          <div class="settings-actions">
+            <button id="settings-reset" title="Restore defaults">Reset</button>
+            <div style="flex:1"></div>
+            <button id="settings-save">Save</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Global loading overlay -->
