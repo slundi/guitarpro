@@ -777,6 +777,123 @@
         padding: 2px 0;
       }
 
+      /* ── Toast notifications ────────────────────────────────── */
+      #toast-container {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 500;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        pointer-events: none;
+        max-width: min(90vw, 380px);
+      }
+
+      .toast {
+        pointer-events: auto;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 5px;
+        border: 1px solid #444;
+        background: #2a2a2a;
+        color: #e0e0e0;
+        font-size: 0.82rem;
+        line-height: 1.35;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        transform: translateY(-6px);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+      }
+
+      .toast.visible { opacity: 1; transform: translateY(0); }
+
+      .toast.success { border-color: #2a5f3a; }
+      .toast.error   { border-color: #7a2a2a; background: #3a1e1e; }
+      .toast.info    { border-color: #2a4f6f; }
+
+      .toast-icon {
+        flex-shrink: 0;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+      .toast.success .toast-icon { color: #7c7; }
+      .toast.error   .toast-icon { color: #e77; }
+      .toast.info    .toast-icon { color: #7bc; }
+
+      .toast-body {
+        flex: 1;
+        overflow-wrap: anywhere;
+      }
+
+      .toast-title {
+        font-weight: 600;
+        margin-bottom: 1px;
+      }
+
+      .toast-detail {
+        font-size: 0.74rem;
+        color: #aaa;
+      }
+
+      .toast-close {
+        flex-shrink: 0;
+        border: none;
+        background: transparent;
+        color: #888;
+        font-size: 0.9rem;
+        line-height: 1;
+        padding: 0 2px;
+        cursor: pointer;
+      }
+      .toast-close:hover { color: #ddd; background: transparent; }
+
+      /* ── Loading spinners ───────────────────────────────────── */
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      .spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid #444;
+        border-top-color: #aaa;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: -2px;
+      }
+
+      #global-loading {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 400;
+        background: rgba(15, 15, 15, 0.65);
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 12px;
+        color: #ddd;
+        font-size: 0.9rem;
+      }
+      #global-loading.visible { display: flex; }
+
+      #global-loading .spinner {
+        width: 32px;
+        height: 32px;
+        border-width: 3px;
+      }
+
+      .sidebar-loading {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px 6px;
+        font-size: 0.74rem;
+        color: #777;
+      }
+
       /* ── Print ──────────────────────────────────────────────── */
       @media print {
         #toolbar         { display: none !important; }
@@ -788,6 +905,8 @@
         #fingering-overlay { display: none !important; }
         #jump-dialog       { display: none !important; }
         .files-modal-overlay { display: none !important; }
+        #toast-container   { display: none !important; }
+        #global-loading    { display: none !important; }
       }
     </style>
   </head>
@@ -833,7 +952,7 @@
         <button id="next-section-btn" title="Next section (])">›</button>
       </div>
 
-      <button id="fing-btn"    title="Toggle fingering annotations">Fingering</button>
+      <button id="find-btn"    title="Toggle fingering annotations">Fingering</button>
 
       <button id="saveas-btn" title="Save score as a different format">Save as</button>
 
@@ -877,10 +996,10 @@
         <div id="form-info"></div>
         <button id="form-json-btn" class="json-dl-btn" style="display:none" title="Download form analysis as JSON">↓ JSON</button>
 
-        <div class="sidebar-divider" id="fing-divider" style="display:none"></div>
-        <div class="sidebar-label" id="fing-label" style="display:none">Fingering</div>
-        <div id="fing-info"></div>
-        <button id="fing-json-btn" class="json-dl-btn" style="display:none" title="Download fingering analysis as JSON">↓ JSON</button>
+        <div class="sidebar-divider" id="find-divider" style="display:none"></div>
+        <div class="sidebar-label" id="find-label" style="display:none">Fingering</div>
+        <div id="find-info"></div>
+        <button id="find-json-btn" class="json-dl-btn" style="display:none" title="Download fingering analysis as JSON">↓ JSON</button>
 
         <div class="sidebar-divider" id="markers-divider" style="display:none"></div>
         <div class="sidebar-label" id="markers-label" style="display:none">Markers</div>
@@ -970,6 +1089,15 @@
       <input id="jump-input" type="number" min="1" step="1" placeholder="1">
       <span id="jump-hint">Enter · Esc</span>
     </div>
+
+    <!-- Global loading overlay -->
+    <div id="global-loading" role="status" aria-live="polite" aria-label="Loading">
+      <div class="spinner"></div>
+      <div id="global-loading-msg">Loading…</div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" role="status" aria-live="polite"></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

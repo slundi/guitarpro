@@ -25,15 +25,103 @@ const formSidebarLabel  = document.getElementById("form-sidebar-label")!;
 const formTrackWrap     = document.getElementById("form-track-select-wrap")!;
 const formTrackSelect   = document.getElementById("form-track-select") as HTMLSelectElement;
 const formInfo          = document.getElementById("form-info")!;
-const fingDivider       = document.getElementById("fing-divider")!;
-const fingLabel         = document.getElementById("fing-label")!;
-const fingInfo          = document.getElementById("fing-info")!;
-const fingBtn           = document.getElementById("fing-btn") as HTMLButtonElement;
+const findDivider       = document.getElementById("find-divider")!;
+const findLabel         = document.getElementById("find-label")!;
+const findInfo          = document.getElementById("find-info")!;
+const findBtn           = document.getElementById("find-btn") as HTMLButtonElement;
 const markersDivider    = document.getElementById("markers-divider")!;
 const markersLabel      = document.getElementById("markers-label")!;
 const markersSearchWrap = document.getElementById("markers-search-wrap")!;
 const markersSearch     = document.getElementById("markers-search") as HTMLInputElement;
 const markersList       = document.getElementById("markers-list")!;
+
+// ── Toast notifications + loading spinner ────────────────────────────────────
+const toastContainer  = document.getElementById("toast-container")!;
+const globalLoading   = document.getElementById("global-loading")!;
+const globalLoadingMsg = document.getElementById("global-loading-msg")!;
+
+type ToastKind = "success" | "error" | "info";
+
+function showToast(kind: ToastKind, title: string, detail?: string, timeoutMs?: number): void {
+  const toast = document.createElement("div");
+  toast.className = `toast ${kind}`;
+
+  const icon = document.createElement("span");
+  icon.className = "toast-icon";
+  icon.textContent = kind === "success" ? "✓" : kind === "error" ? "✕" : "ℹ";
+
+  const body = document.createElement("div");
+  body.className = "toast-body";
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "toast-title";
+  titleEl.textContent = title;
+  body.appendChild(titleEl);
+
+  if (detail) {
+    const detailEl = document.createElement("div");
+    detailEl.className = "toast-detail";
+    detailEl.textContent = detail;
+    body.appendChild(detailEl);
+  }
+
+  const close = document.createElement("button");
+  close.className = "toast-close";
+  close.setAttribute("aria-label", "Close notification");
+  close.textContent = "✕";
+
+  toast.append(icon, body, close);
+  toastContainer.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("visible"));
+
+  const dismiss = (): void => {
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 200);
+  };
+
+  close.addEventListener("click", dismiss);
+  const timeout = timeoutMs ?? (kind === "error" ? 6000 : 3500);
+  if (timeout > 0) setTimeout(dismiss, timeout);
+}
+
+/**
+ * Parse a fetch response as an `ApiError` payload `{ error, detail }`.
+ * Falls back to the HTTP status text when the body is empty or malformed.
+ */
+async function parseApiError(res: Response): Promise<{ error: string; detail: string }> {
+  try {
+    const body = await res.json() as { error?: string; detail?: string };
+    return {
+      error: body.error ?? res.statusText ?? "Request failed",
+      detail: body.detail ?? "",
+    };
+  } catch {
+    return { error: res.statusText || "Request failed", detail: "" };
+  }
+}
+
+let loadingDepth = 0;
+function showLoading(message: string): void {
+  loadingDepth++;
+  globalLoadingMsg.textContent = message;
+  globalLoading.classList.add("visible");
+}
+function hideLoading(): void {
+  loadingDepth = Math.max(0, loadingDepth - 1);
+  if (loadingDepth === 0) globalLoading.classList.remove("visible");
+}
+
+/** Insert a small spinner+label under a sidebar section while its data loads. */
+function makeSidebarSpinner(text: string): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "sidebar-loading";
+  const sp = document.createElement("span");
+  sp.className = "spinner";
+  const label = document.createElement("span");
+  label.textContent = text;
+  wrap.append(sp, label);
+  return wrap;
+}
 
 // ── Persisted preferences ─────────────────────────────────────────────────────
 const PREF_MODE   = "staveProfile";
@@ -123,14 +211,25 @@ let currentScoreId: string | null = null;
 let sequenceExpanded = false;
 
 async function fetchRepeats(id: string): Promise<void> {
+  repeatsDivider.style.display = "";
+  repeatsLabel.style.display = "";
+  repeatsInfo.innerHTML = "";
+  const spinner = makeSidebarSpinner("Analyzing repeats…");
+  repeatsInfo.appendChild(spinner);
   try {
     const res = await fetch(`/api/score/${id}/analysis/repeats`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const err = await parseApiError(res);
+      showToast("error", `Repeats analysis failed: ${err.error}`, err.detail);
+      spinner.remove();
+      return;
+    }
     repeatsData = await res.json() as RepeatsData;
     renderRepeatsSidebar();
     if (repeatsVisible) drawRepeatsOverlay();
-  } catch {
-    // silently ignore fetch errors
+  } catch (e) {
+    spinner.remove();
+    showToast("error", "Repeats analysis failed", e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -447,9 +546,19 @@ let formVisible = false;
 let activeFormTrackIdx = 0;
 
 async function fetchForm(id: string): Promise<void> {
+  formDivider.style.display = "";
+  formSidebarLabel.style.display = "";
+  formInfo.innerHTML = "";
+  const spinner = makeSidebarSpinner("Analyzing form…");
+  formInfo.appendChild(spinner);
   try {
     const res = await fetch(`/api/score/${id}/analysis/form`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const err = await parseApiError(res);
+      showToast("error", `Form analysis failed: ${err.error}`, err.detail);
+      spinner.remove();
+      return;
+    }
     formData = await res.json() as FormData;
     renderFormSidebar();
     updateSectionNav();
@@ -457,8 +566,9 @@ async function fetchForm(id: string): Promise<void> {
       renderFormLegend();
       drawFormOverlay();
     }
-  } catch {
-    // silently ignore
+  } catch (e) {
+    spinner.remove();
+    showToast("error", "Form analysis failed", e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -703,7 +813,7 @@ function removeFormOverlay(): void {
 
 // ── Fingering analysis state ──────────────────────────────────────────────────
 
-interface FingAssignment {
+interface FindAssignment {
   string: number;
   fret: number;
   finger: number;
@@ -711,32 +821,43 @@ interface FingAssignment {
   position_shift: boolean;
 }
 
-interface FingData {
+interface FindData {
   tracks: Array<{
     name: string;
-    measures: Array<{ measure: number; assignments: FingAssignment[] }>;
+    measures: Array<{ measure: number; assignments: FindAssignment[] }>;
   }>;
 }
 
 // index 0 unused; 1=index(blue), 2=middle(green), 3=ring(orange), 4=pinky(red)
-const FING_COLORS = ["", "#3498db", "#2ecc71", "#e67e22", "#e74c3c"];
-const FING_NAMES  = ["", "Index", "Middle", "Ring", "Pinky"];
+const FIND_COLORS = ["", "#3498db", "#2ecc71", "#e67e22", "#e74c3c"];
+const FIND_NAMES  = ["", "Index", "Middle", "Ring", "Pinky"];
 
-let fingeringData: FingData | null = null;
+let fingeringData: FindData | null = null;
 let fingeringVisible = false;
 // trackIdx → measureNum(1-based) → `string:fret` → assignment
-let fingeringLookup: Map<number, Map<number, Map<string, FingAssignment>>> = new Map();
+let fingeringLookup: Map<number, Map<number, Map<string, FindAssignment>>> = new Map();
 
 async function fetchFingering(id: string): Promise<void> {
+  findDivider.style.display = "";
+  findLabel.style.display = "";
+  findInfo.innerHTML = "";
+  const spinner = makeSidebarSpinner("Analyzing fingering…");
+  findInfo.appendChild(spinner);
   try {
     const res = await fetch(`/api/score/${id}/analysis/fingering`);
-    if (!res.ok) return;
-    fingeringData = await res.json() as FingData;
+    if (!res.ok) {
+      const err = await parseApiError(res);
+      showToast("error", `Fingering analysis failed: ${err.error}`, err.detail);
+      spinner.remove();
+      return;
+    }
+    fingeringData = await res.json() as FindData;
     buildFingeringLookup();
-    renderFingInfo();
+    renderFindInfo();
     if (fingeringVisible) drawFingeringOverlay();
-  } catch {
-    // silently ignore
+  } catch (e) {
+    spinner.remove();
+    showToast("error", "Fingering analysis failed", e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -744,9 +865,9 @@ function buildFingeringLookup(): void {
   fingeringLookup.clear();
   if (!fingeringData) return;
   fingeringData.tracks.forEach((track, trackIdx) => {
-    const measMap = new Map<number, Map<string, FingAssignment>>();
+    const measMap = new Map<number, Map<string, FindAssignment>>();
     for (const m of track.measures) {
-      const noteMap = new Map<string, FingAssignment>();
+      const noteMap = new Map<string, FindAssignment>();
       for (const a of m.assignments) {
         noteMap.set(`${a.string}:${a.fret}`, a);
       }
@@ -756,26 +877,26 @@ function buildFingeringLookup(): void {
   });
 }
 
-function renderFingInfo(): void {
+function renderFindInfo(): void {
   if (!fingeringData) return;
   const hasData = fingeringData.tracks.some(t => t.measures.length > 0);
   if (!hasData) return;
 
-  fingDivider.style.display = "";
-  fingLabel.style.display = "";
-  fingInfo.innerHTML = "";
-  fingJsonBtn.style.display = "";
+  findDivider.style.display = "";
+  findLabel.style.display = "";
+  findInfo.innerHTML = "";
+  findJsonBtn.style.display = "";
 
   for (let f = 1; f <= 4; f++) {
     const item = document.createElement("div");
     item.className = "form-section-item";
     const swatch = document.createElement("span");
     swatch.className = "form-swatch";
-    swatch.style.background = FING_COLORS[f];
+    swatch.style.background = FIND_COLORS[f];
     const lbl = document.createElement("span");
-    lbl.textContent = FING_NAMES[f];
+    lbl.textContent = FIND_NAMES[f];
     item.append(swatch, lbl);
-    fingInfo.appendChild(item);
+    findInfo.appendChild(item);
   }
 }
 
@@ -821,7 +942,7 @@ function drawFingeringOverlay(): void {
             const cx = hb.x + hb.w / 2;
             const cy = hb.y + hb.h / 2;
             const r = 6;
-            const color = FING_COLORS[assignment.finger] ?? "#888";
+            const color = FIND_COLORS[assignment.finger] ?? "#888";
             maxY = Math.max(maxY, cy + r + 2);
             maxX = Math.max(maxX, cx + r + 2);
 
@@ -871,14 +992,22 @@ async function uploadFile(file: File): Promise<void> {
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetch("/api/score/upload", { method: "POST", body: form });
-  if (!res.ok) {
-    const err = await res.json() as { error: string; detail: string };
-    console.error(`Upload failed: ${err.error} — ${err.detail}`);
-    return;
+  showLoading(`Parsing ${file.name}…`);
+  try {
+    const res = await fetch("/api/score/upload", { method: "POST", body: form });
+    if (!res.ok) {
+      const err = await parseApiError(res);
+      showToast("error", `Upload failed: ${err.error}`, err.detail);
+      return;
+    }
+    const { id, name } = await res.json() as { id: string; name: string };
+    showToast("success", "File loaded", name);
+    loadScore(id);
+  } catch (e) {
+    showToast("error", "Upload failed", e instanceof Error ? e.message : String(e));
+  } finally {
+    hideLoading();
   }
-  const { id } = await res.json() as { id: string };
-  loadScore(id);
 }
 
 function loadScore(id: string): void {
@@ -919,10 +1048,10 @@ function loadScore(id: string): void {
   fingeringData = null;
   fingeringLookup.clear();
   removeFingeringOverlay();
-  fingInfo.innerHTML = "";
-  fingDivider.style.display = "none";
-  fingLabel.style.display = "none";
-  fingJsonBtn.style.display = "none";
+  findInfo.innerHTML = "";
+  findDivider.style.display = "none";
+  findLabel.style.display = "none";
+  findJsonBtn.style.display = "none";
   const url = new URL(location.href);
   url.searchParams.set("id", id);
   history.replaceState(null, "", url.toString());
@@ -1152,9 +1281,9 @@ expandSeqBtn.addEventListener("click", () => {
 });
 
 // ── Fingering toggle ──────────────────────────────────────────────────────────
-fingBtn.addEventListener("click", () => {
+findBtn.addEventListener("click", () => {
   fingeringVisible = !fingeringVisible;
-  fingBtn.classList.toggle("active", fingeringVisible);
+  findBtn.classList.toggle("active", fingeringVisible);
   if (fingeringVisible) {
     drawFingeringOverlay();
   } else {
@@ -1174,12 +1303,16 @@ let markersData: MarkerInfo[] = [];
 async function fetchMarkers(id: string): Promise<void> {
   try {
     const res = await fetch(`/api/score/${id}/info`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const err = await parseApiError(res);
+      showToast("error", `Score info failed: ${err.error}`, err.detail);
+      return;
+    }
     const info = await res.json() as { markers?: MarkerInfo[] };
     markersData = info.markers ?? [];
     renderMarkersList("");
-  } catch {
-    // silently ignore
+  } catch (e) {
+    showToast("error", "Score info failed", e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -1404,15 +1537,18 @@ async function browseDir(path: string): Promise<void> {
     const url = path ? `/api/files?path=${encodeURIComponent(path)}` : "/api/files";
     const res = await fetch(url);
     if (!res.ok) {
+      const err = await parseApiError(res);
       fileList.textContent = "Error loading directory";
+      showToast("error", `Directory list failed: ${err.error}`, err.detail);
       return;
     }
     const data = await res.json() as { current: string; entries: FileEntry[] };
     renderBreadcrumbs(data.current);
     renderFileList(data.entries);
     dupDirInput.value = data.current;
-  } catch {
+  } catch (e) {
     fileList.textContent = "Failed to fetch file list";
+    showToast("error", "Directory list failed", e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -1487,6 +1623,7 @@ function renderFileList(entries: FileEntry[]): void {
 }
 
 async function openFilePath(path: string): Promise<void> {
+  showLoading("Opening file…");
   try {
     const res = await fetch("/api/score/open", {
       method: "POST",
@@ -1494,15 +1631,18 @@ async function openFilePath(path: string): Promise<void> {
       body: JSON.stringify({ path }),
     });
     if (!res.ok) {
-      const err = await res.json() as { error: string; detail: string };
-      console.error(`Open failed: ${err.error} — ${err.detail}`);
+      const err = await parseApiError(res);
+      showToast("error", `Open failed: ${err.error}`, err.detail);
       return;
     }
-    const { id } = await res.json() as { id: string };
+    const { id, name } = await res.json() as { id: string; name: string };
+    showToast("success", "File loaded", name);
     loadScore(id);
     closeFilesModal();
-  } catch {
-    console.error("Failed to open file");
+  } catch (e) {
+    showToast("error", "Open failed", e instanceof Error ? e.message : String(e));
+  } finally {
+    hideLoading();
   }
 }
 
@@ -1531,8 +1671,9 @@ async function runDupScan(): Promise<void> {
     });
 
     if (!res.ok) {
-      const err = await res.json() as { error: string; detail: string };
+      const err = await parseApiError(res);
       dupProgress.textContent = `Error: ${err.error}`;
+      showToast("error", `Duplicate scan failed: ${err.error}`, err.detail);
       return;
     }
 
@@ -1643,7 +1784,7 @@ dupScanBtn.addEventListener("click", () => void runDupScan());
 // ── Analysis JSON export (Part 8.3) ──────────────────────────────────────────
 const repeatsJsonBtn = document.getElementById("repeats-json-btn") as HTMLButtonElement;
 const formJsonBtn    = document.getElementById("form-json-btn")    as HTMLButtonElement;
-const fingJsonBtn    = document.getElementById("fing-json-btn")    as HTMLButtonElement;
+const findJsonBtn    = document.getElementById("find-json-btn")    as HTMLButtonElement;
 
 function downloadJson(data: unknown, filename: string): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -1670,7 +1811,7 @@ formJsonBtn.addEventListener("click", () => {
   if (formData) downloadJson(formData, jsonFilename("form"));
 });
 
-fingJsonBtn.addEventListener("click", () => {
+findJsonBtn.addEventListener("click", () => {
   if (fingeringData) downloadJson(fingeringData, jsonFilename("fingering"));
 });
 
@@ -1732,7 +1873,7 @@ function mergeSvgs(svgs: SVGSVGElement[]): string {
 function downloadSvg(): void {
   const svgs = getTopLevelSvgs();
   if (svgs.length === 0) {
-    alert("No SVG content found. Make sure a score is loaded and fully rendered.");
+    showToast("error", "No SVG content", "Make sure a score is loaded and fully rendered.");
     return;
   }
   const svgStr = mergeSvgs(svgs);
@@ -1746,6 +1887,7 @@ function downloadSvg(): void {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  showToast("success", "SVG saved", `${stem}.svg`);
   closeSaveasPopover();
 }
 
@@ -1868,8 +2010,9 @@ async function runExtract(): Promise<void> {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      extractSummary.textContent = `Error: ${err.error ?? res.statusText}`;
+      const err = await parseApiError(res);
+      extractSummary.textContent = `Error: ${err.error}`;
+      showToast("error", `Extract failed: ${err.error}`, err.detail);
       return;
     }
 
@@ -1887,9 +2030,12 @@ async function runExtract(): Promise<void> {
     a.remove();
     URL.revokeObjectURL(url);
 
+    showToast("success", "Extract complete", fileName);
     closeExtractDialog();
   } catch (e) {
-    extractSummary.textContent = `Error: ${e instanceof Error ? e.message : String(e)}`;
+    const msg = e instanceof Error ? e.message : String(e);
+    extractSummary.textContent = `Error: ${msg}`;
+    showToast("error", "Extract failed", msg);
   } finally {
     extractDownload.disabled = false;
     extractDownload.textContent = "Download";

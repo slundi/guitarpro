@@ -277,11 +277,11 @@ and rendered as visual overlays on top of alphaTab output.
 
 ## Part 9 — Polish and Infrastructure
 
-### 9.1 Error handling and feedback
+### 9.1 Error handling and feedback ✅
 
-- [ ] Toast notification system (top-right corner) for API errors and successes
-- [ ] Loading spinners during file parse and analysis fetch
-- [ ] Structured error responses `{ error: string, detail: string }` from all
+- [x] Toast notification system (top-right corner) for API errors and successes
+- [x] Loading spinners during file parse and analysis fetch
+- [x] Structured error responses `{ error: string, detail: string }` from all
   API endpoints
 
 ### 9.2 Settings panel
