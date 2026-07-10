@@ -234,7 +234,7 @@ dependencies = [
  "anyhow",
  "bpaf",
  "guitarpro",
- "quick-xml 0.40.1",
+ "quick-xml",
  "serde",
  "serde_json",
 ]
@@ -460,7 +460,7 @@ version = "0.4.1"
 dependencies = [
  "encoding_rs",
  "fraction",
- "quick-xml 0.41.0",
+ "quick-xml",
  "serde",
  "thiserror",
  "zip",
@@ -931,16 +931,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "quick-xml"
-version = "0.40.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2474bd2e5029e7ccb6abb2ba48cf2383a333851dedf495901544281590c7da7f"
-dependencies = [
- "memchr",
- "serde",
 ]
 
 [[package]]
