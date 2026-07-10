@@ -17,6 +17,10 @@ frontend-build:
     pnpm --dir {{frontend_dir}} install
     pnpm --dir {{frontend_dir}} build
 
+# Build frontend (if needed) then run the score_server. Pass a file path to preload it.
+serve *args: frontend-build
+    cargo run -p web_server -- {{args}}
+
 # Start the frontend dev server with hot-reload (proxies /api/* to axum on :3000)
 frontend-dev:
     pnpm --dir {{frontend_dir}} install
