@@ -11,14 +11,14 @@ pub struct TrackSettings {
     pub tablature: bool,
     pub notation: bool,
     pub diagram_are_below: bool,
-    pub show_rythm: bool,
+    pub show_rhythm: bool,
     pub force_horizontal: bool,
     pub force_channels: bool,
     pub diagram_list: bool,
     pub diagram_in_score: bool,
     pub auto_let_ring: bool,
     pub auto_brush: bool,
-    pub extend_rythmic: bool,
+    pub extend_rhythmic: bool,
 }
 impl Default for TrackSettings {
     fn default() -> Self {
@@ -26,14 +26,14 @@ impl Default for TrackSettings {
             tablature: true,
             notation: true,
             diagram_are_below: false,
-            show_rythm: false,
+            show_rhythm: false,
             force_horizontal: false,
             force_channels: false,
             diagram_list: true,
             diagram_in_score: false,
             auto_let_ring: false,
             auto_brush: false,
-            extend_rythmic: false,
+            extend_rhythmic: false,
         }
     }
 }
@@ -274,7 +274,7 @@ impl SongTrackOps for Song {
         track.settings.tablature = (flags2 & 0x0001) == 0x0001;
         track.settings.notation = (flags2 & 0x0002) == 0x0002;
         track.settings.diagram_are_below = (flags2 & 0x0004) == 0x0004;
-        track.settings.show_rythm = (flags2 & 0x0008) == 0x0008;
+        track.settings.show_rhythm = (flags2 & 0x0008) == 0x0008;
         track.settings.force_horizontal = (flags2 & 0x0010) == 0x0010;
         track.settings.force_channels = (flags2 & 0x0020) == 0x0020;
         track.settings.diagram_list = (flags2 & 0x0040) == 0x0040;
@@ -282,7 +282,7 @@ impl SongTrackOps for Song {
         //0x0100 ???
         track.settings.auto_let_ring = (flags2 & 0x0200) == 0x0200;
         track.settings.auto_brush = (flags2 & 0x0400) == 0x0400;
-        track.settings.extend_rythmic = (flags2 & 0x0800) == 0x0800;
+        track.settings.extend_rhythmic = (flags2 & 0x0800) == 0x0800;
 
         track.rse.auto_accentuation = get_accentuation(read_byte(data, seek)?)?;
         self.channels[number].bank = read_byte(data, seek)?;
@@ -438,7 +438,7 @@ impl SongTrackOps for Song {
         if self.tracks[number].settings.diagram_are_below {
             flags2 |= 0x0004;
         }
-        if self.tracks[number].settings.show_rythm {
+        if self.tracks[number].settings.show_rhythm {
             flags2 |= 0x0008;
         }
         if self.tracks[number].settings.force_horizontal {
@@ -459,7 +459,7 @@ impl SongTrackOps for Song {
         if self.tracks[number].settings.auto_brush {
             flags2 |= 0x0400;
         }
-        if self.tracks[number].settings.extend_rythmic {
+        if self.tracks[number].settings.extend_rhythmic {
             flags2 |= 0x0800;
         }
         write_i16(data, flags2);

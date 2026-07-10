@@ -1225,7 +1225,7 @@ fn track_settings_flags(s: &crate::model::legacy::track::TrackSettings) -> i16 {
     if s.diagram_are_below {
         f |= 0x0004;
     }
-    if s.show_rythm {
+    if s.show_rhythm {
         f |= 0x0008;
     }
     if s.force_horizontal {
@@ -1246,7 +1246,7 @@ fn track_settings_flags(s: &crate::model::legacy::track::TrackSettings) -> i16 {
     if s.auto_brush {
         f |= 0x0400;
     }
-    if s.extend_rythmic {
+    if s.extend_rhythmic {
         f |= 0x0800;
     }
     f

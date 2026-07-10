@@ -82,8 +82,10 @@ pub struct Automation {
     pub value: String,
     #[serde(rename = "Bar", default)]
     pub bar: i32,
+    // GP7 stores this as a fractional position within the bar in `[0.0, 1.0)`
+    // (e.g. `0.75`), not an integer tick offset.
     #[serde(rename = "Position", default)]
-    pub position: i32,
+    pub position: f32,
 }
 
 // ---------------------------------------------------------------------------

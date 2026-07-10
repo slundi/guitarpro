@@ -210,7 +210,10 @@ impl Duration {
 pub(crate) fn read_duration(data: &[u8], seek: &mut usize, flags: u8) -> GpResult<Duration> {
     //println!("read_duration()");
     let b = read_signed_byte(data, seek)?;
-    let shift = b + 2;
+    // Compute in i16 to avoid overflow when `b` is a garbage byte (e.g. 127).
+    // Guitar Pro's valid range is `-2..=3`; anything else is treated as whole
+    // note as a safe fallback.
+    let shift = i16::from(b) + 2;
     let val = if (0..16).contains(&shift) {
         1u16 << shift
     } else {
