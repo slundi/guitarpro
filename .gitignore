@@ -35,3 +35,6 @@ lcov.info
 result
 result-*
 .envrc
+
+node_modules/
+

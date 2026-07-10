@@ -1,11 +1,8 @@
 import { defineConfig } from "vite";
+import { alphaTab } from "@coderline/alphatab-vite";
 
 export default defineConfig({
-  // alphaTab ships its own worker bundle; exclude it from Vite's dep optimiser
-  // so it can load its internal assets (wasm, fonts, workers) correctly.
-  optimizeDeps: {
-    exclude: ["@coderline/alphatab"],
-  },
+  plugins: [alphaTab()],
   build: {
     outDir: "dist",
     emptyOutDir: true,
