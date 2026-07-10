@@ -1,5 +1,3 @@
-use crate::error::{GpError, GpResult};
-
 /// An enumeration of different triplet feels.
 #[repr(u8)]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -8,15 +6,13 @@ pub enum TripletFeel {
     Eighth,
     Sixteenth,
 }
-pub(crate) fn get_triplet_feel(value: i8) -> GpResult<TripletFeel> {
+// Some GP5 exports write non-canonical bytes here; Guitar Pro itself falls back
+// to `None`, so we accept any value instead of erroring.
+pub(crate) fn get_triplet_feel(value: u8) -> TripletFeel {
     match value {
-        0 => Ok(TripletFeel::None),
-        1 => Ok(TripletFeel::Eighth),
-        2 => Ok(TripletFeel::Sixteenth),
-        _ => Err(GpError::InvalidValue {
-            context: "triplet feel",
-            value: value as i64,
-        }),
+        1 => TripletFeel::Eighth,
+        2 => TripletFeel::Sixteenth,
+        _ => TripletFeel::None,
     }
 }
 pub(crate) fn from_triplet_feel(value: &TripletFeel) -> u8 {

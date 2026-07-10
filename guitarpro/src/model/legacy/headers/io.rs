@@ -206,7 +206,10 @@ impl SongHeaderOps for Song {
         if mh.repeat_close > -1 {
             mh.repeat_close -= 1;
         }
-        if (flags & 0x03) == 0x03 {
+        // GP5 stores beams whenever the time signature changes at all (either the
+        // numerator OR the denominator bit is set), not only when both are set.
+        // Matches the Python `guitarpro` reference and TuxGuitar.
+        if (flags & 0x03) != 0 {
             for i in 0..4 {
                 mh.time_signature.beams[i] = read_byte(data, seek)?;
             }
@@ -221,7 +224,7 @@ impl SongHeaderOps for Song {
         if (flags & 0x10) == 0 {
             *seek += 1;
         }
-        mh.triplet_feel = get_triplet_feel(read_byte(data, seek)?.to_i8_gp("triplet feel byte")?)?;
+        mh.triplet_feel = get_triplet_feel(read_byte(data, seek)?);
         Ok((mh, flags))
     }
 
@@ -400,7 +403,7 @@ impl SongHeaderOps for Song {
             );
         }
         if version.0 >= 5 {
-            if (flags & 0x03) == 0x03 {
+            if (flags & 0x03) != 0 {
                 for i in 0..self.measure_headers[header].time_signature.beams.len() {
                     write_byte(data, self.measure_headers[header].time_signature.beams[i]);
                 }

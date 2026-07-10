@@ -45,10 +45,12 @@ impl Default for RseMasterEffect {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RseInstrument {
-    pub instrument: i16,
-    pub unknown: i16,
-    pub sound_bank: i16,
-    pub effect_number: i16,
+    // Persisted as 4-byte ints in the file; some real-world exports store IDs
+    // larger than `i16::MAX`, so keep the raw width.
+    pub instrument: i32,
+    pub unknown: i32,
+    pub sound_bank: i32,
+    pub effect_number: i32,
     pub effect_category: String,
     pub effect: String,
 }
@@ -176,18 +178,17 @@ impl SongRseOps for Song {
     /// - Effect number: `int`. Vestige of Guitar Pro 5.0 format.
     fn read_rse_instrument(&mut self, data: &[u8], seek: &mut usize) -> GpResult<RseInstrument> {
         let mut instrument = RseInstrument {
-            instrument: read_int(data, seek)?.to_i16_gp("rse instrument number")?,
+            instrument: read_int(data, seek)?,
             ..Default::default()
         };
-        instrument.unknown = read_int(data, seek)?.to_i16_gp("rse instrument unknown")?; //??? mostly 1
-        instrument.sound_bank = read_int(data, seek)?.to_i16_gp("rse instrument sound bank")?;
+        instrument.unknown = read_int(data, seek)?; //??? mostly 1
+        instrument.sound_bank = read_int(data, seek)?;
         //println!("read_rse_instrument(), instrument: {} {} {} \t\t seek: {}", instrument.instrument, instrument.unknown, instrument.sound_bank, *seek);
         if self.version.number == (5, 0, 0) {
-            instrument.effect_number = read_short(data, seek)?;
+            instrument.effect_number = i32::from(read_short(data, seek)?);
             *seek += 1;
         } else {
-            instrument.effect_number =
-                read_int(data, seek)?.to_i16_gp("rse instrument effect number")?;
+            instrument.effect_number = read_int(data, seek)?;
         }
         //println!("read_rse_instrument(), instrument.effect_number: {} \t\t seek: {}", instrument.effect_number, *seek);
         Ok(instrument)
@@ -250,14 +251,14 @@ impl SongRseOps for Song {
         instrument: &RseInstrument,
         version: &(u8, u8, u8),
     ) {
-        write_i32(data, instrument.instrument as i32);
-        write_i32(data, instrument.unknown as i32);
-        write_i32(data, instrument.sound_bank as i32);
+        write_i32(data, instrument.instrument);
+        write_i32(data, instrument.unknown);
+        write_i32(data, instrument.sound_bank);
         if version == &(5, 0, 0) {
-            write_i16(data, instrument.effect_number);
+            write_i16(data, instrument.effect_number as i16);
             write_placeholder_default(data, 1);
         } else {
-            write_i32(data, instrument.effect_number as i32);
+            write_i32(data, instrument.effect_number);
         }
     }
     fn write_rse_instrument_effect(&self, data: &mut Vec<u8>, instrument: &RseInstrument) {

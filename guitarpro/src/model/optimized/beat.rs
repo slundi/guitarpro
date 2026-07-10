@@ -150,15 +150,16 @@ pub struct GpMixTableItem {
 pub struct GpMixTableChange {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instrument: Option<GpMixTableItem>,
-    // RSE instrument (GP5 only, often default)
+    // RSE instrument (GP5 only, often default). Stored as 4-byte ints in the
+    // legacy file, so keep 32-bit width — some exports use IDs larger than i16.
     #[serde(default)]
-    pub rse_instrument: i16,
+    pub rse_instrument: i32,
     #[serde(default)]
-    pub rse_unknown: i16,
+    pub rse_unknown: i32,
     #[serde(default)]
-    pub rse_sound_bank: i16,
+    pub rse_sound_bank: i32,
     #[serde(default)]
-    pub rse_effect_number: i16,
+    pub rse_effect_number: i32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub rse_effect_category: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
