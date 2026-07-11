@@ -403,15 +403,28 @@ frontend-focused pass since it doesn't affect the API contract.
 
 ---
 
-## Part 6 — Documentation
+## Part 6 — Documentation ✅
 
-- [ ] `guitarpro/CLAUDE.md` — add an MSCZ section describing the `io::mscz`
-  and `model::mscz` layout (mirrors the existing GPX / MusicXML sections)
-- [ ] Add a `gp-mscz-format` skill under `.claude/skills/` documenting the
-  archive layout, MSCX schema quirks, and misc-store keys (`mscz.*`)
-- [ ] `README.md` — list `.mscz` in the supported-formats section
-- [ ] `docs/Roadmap-web.md` — cross-link this document from Part 2 (File
-  Loading)
+- [`guitarpro/CLAUDE.md`](../guitarpro/CLAUDE.md) — new **MSCZ**
+  section mapping every module path (`io/mscz/`, `model/mscz/`,
+  `convert/mscz/`) with a two-line description of what each file owns
+- [`.claude/skills/gp-mscz-format/SKILL.md`](../.claude/skills/gp-mscz-format/SKILL.md)
+  — full skill covering archive layout, MSCX parser structure, MSCX ↔
+  `LoadedScore` conversion (both directions), gotchas (0-based string
+  numbers, tempo bps↔bpm, ZIP magic vs. `.gp`), and testing conventions
+- Root [`README.md`](../README.md) — supported-formats table now
+  lists `.mscz`, roadmap tick moved to ✅, docs section links to the
+  MSCZ roadmap
+- [`guitarpro/README.md`](../guitarpro/README.md) — quick-start snippet
+  showing `read_mscz` + `mscx_to_loaded_score` and its `LossReport`
+- [`cli/README.md`](../cli/README.md) — sub-command matrix now lists
+  `mscz list / extract / thumbnail` and the extension detection notes
+- [`docs/Roadmap-web.md`](./Roadmap-web.md) Part 2 cross-links back
+  to this document
+- `guitarpro/src/tests/mscz_docs.rs` — 10 tests that assert every
+  documented file/section exists, the skill carries valid frontmatter,
+  and referenced module paths still exist on disk (guards against doc
+  drift when files get renamed)
 
 ---
 

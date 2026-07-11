@@ -74,6 +74,11 @@ fingering suggestions, etc.
 
 ## Part 2 — File Loading ✅
 
+> **Related:** `.mscz` (MuseScore) uploads / downloads are covered in
+> [`Roadmap-mscz.md`](./Roadmap-mscz.md) Part 4. The endpoints listed
+> below accept both Guitar Pro and MSCZ inputs — the extension whitelist
+> in `state::SUPPORTED_EXTENSIONS` was widened to include `mscz`.
+
 ### 2.1 Score session store
 
 - `AppState`: `Arc<Mutex<HashMap<Uuid, LoadedFile>>>` shared across handlers

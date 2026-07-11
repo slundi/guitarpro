@@ -1,6 +1,8 @@
 # score_tool (CLI)
 
-`score_tool` is the command-line interface for `guitarpro`. It allows you to quickly inspect Guitar Pro files, view their metadata, and visualize them as ASCII tablature.
+`score_tool` is the command-line interface for `guitarpro`. It inspects and
+processes Guitar Pro (`.gp3`, `.gp4`, `.gp5`, `.gpx`, `.gp`) and MuseScore
+(`.mscz`) files.
 
 ## Installation
 
@@ -10,32 +12,50 @@ From the root project directory:
 cargo build -p cli
 ```
 
+## Sub-commands
+
+| Command | Purpose |
+|---|---|
+| `info` | Print metadata, tracks, and timeline |
+| `convert` | Convert between formats (gp3/gp4/gp5/gpx/gp/musicxml/mscz/score) |
+| `extract` | Extract selected tracks into a new score |
+| `duplicates` | Find near-duplicate score files in a directory |
+| `repeats` | Analyse repeat structures and simile marks |
+| `form` | Detect musical form (verse/chorus/bridge/…) |
+| `fingering` | Compute left-hand guitar fingering |
+| `mscz list / extract / thumbnail` | Inspect and unpack MSCZ archives |
+
+Run `score_tool <command> --help` for per-command options.
+
 ## Usage
 
 ```bash
-# Basic inspection (metadata only)
-cargo run -p cli -- --input path/to/file.gp5
+# Basic inspection (any supported format)
+cargo run -p cli -- info -i path/to/file.gp5
+cargo run -p cli -- info -i path/to/file.mscz
 
-# Generate ASCII tablature for the first track
-cargo run -p cli -- --input path/to/file.gp5 --tab
+# Convert MSCZ ↔ Guitar Pro / MusicXML
+cargo run -p cli -- convert -i song.mscz -o song.musicxml
+cargo run -p cli -- convert -i song.gp5  -o song.mscz
+
+# Peek inside a MuseScore archive
+cargo run -p cli -- mscz list -i song.mscz
+cargo run -p cli -- mscz thumbnail -i song.mscz --out cover.png
+cargo run -p cli -- mscz extract -i song.mscz -o ./unpacked
 ```
 
-## Options
+## Supported formats
 
-- `--input <FILE>` (or `-i`): **(Required)** Path to the Guitar Pro file (.gp3, .gp4, .gp5, .gp).
-- `--tab` (or `-t`): Display the first track as ASCII tablature in the terminal.
+Inputs are auto-detected by extension. Legacy Guitar Pro files (`.gp3` /
+`.gp4` / `.gp5`) are additionally probed for the `FICHIER GUITAR PRO`
+magic string so files with the wrong extension still parse. MSCZ files
+are recognised either by extension or by the ZIP magic + `META-INF/container.xml`
+manifest.
 
-## Current Infrastructure
-
-The CLI currently supports:
-- **Metadata extraction**: Title, Artist, Album, Author, Version, etc.
-- **ASCII Rendering**: Responsive text-based tablature alignment.
-- **Format Auto-detection**: Based on file extension.
+Per-format size caps: **16 MB** for legacy GP, **32 MB** for MSCZ.
 
 ## Planned Features
 
-- [ ] Batch processing of directories.
 - [ ] Export to JSON/CSV for data analysis.
 - [ ] Search for specific patterns (chords, sequences).
 - [ ] Transposition and tuning adjustment.
-- [ ] Conversion between Guitar Pro versions.
