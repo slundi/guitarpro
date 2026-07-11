@@ -4,6 +4,7 @@ mod command_extract;
 mod command_fingering;
 mod command_form;
 mod command_info;
+mod command_mscz;
 mod command_repeats;
 mod loader;
 
@@ -18,6 +19,7 @@ enum Commands {
     Repeats(command_repeats::RepeatsArgs),
     Form(command_form::FormArgs),
     Fingering(command_fingering::FingeringArgs),
+    Mscz(command_mscz::MsczArgs),
 }
 
 fn parse_command() -> Commands {
@@ -28,12 +30,15 @@ fn parse_command() -> Commands {
     let repeats = command_repeats::repeats_args().map(Commands::Repeats);
     let form = command_form::form_args().map(Commands::Form);
     let fingering = command_fingering::fingering_args().map(Commands::Fingering);
+    let mscz = command_mscz::mscz_args().map(Commands::Mscz);
 
-    construct!([info, convert, extract, duplicates, repeats, form, fingering])
-        .to_options()
-        .descr("Inspect and process Guitar Pro score files")
-        .version(env!("CARGO_PKG_VERSION"))
-        .run()
+    construct!([
+        info, convert, extract, duplicates, repeats, form, fingering, mscz
+    ])
+    .to_options()
+    .descr("Inspect and process Guitar Pro score files")
+    .version(env!("CARGO_PKG_VERSION"))
+    .run()
 }
 
 fn main() {
@@ -45,6 +50,7 @@ fn main() {
         Commands::Repeats(args) => command_repeats::run(&args),
         Commands::Form(args) => command_form::run(&args),
         Commands::Fingering(args) => command_fingering::run(&args),
+        Commands::Mscz(args) => command_mscz::run(&args),
     };
     if let Err(e) = result {
         eprintln!("error: {e:#}");

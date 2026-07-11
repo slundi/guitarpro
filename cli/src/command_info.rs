@@ -101,6 +101,7 @@ pub fn print_text(song: &Song, path: &str, fmt: &str) {
     let fmt_label = match fmt {
         "GPX" => "Guitar Pro 6 (GPX)".to_owned(),
         "GP" => "Guitar Pro 7+ (GP)".to_owned(),
+        "MSCZ" => "MuseScore (MSCZ)".to_owned(),
         _ => format!(
             "Guitar Pro {} ({} v{}.{}.{})",
             ver.0, fmt, ver.0, ver.1, ver.2

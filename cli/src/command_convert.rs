@@ -5,10 +5,13 @@ use bpaf::Bpaf;
 use guitarpro::Song;
 use guitarpro::convert::guitarpro::musicxml_to_legacy_song;
 use guitarpro::convert::legacy::loaded_score_to_legacy_song;
+use guitarpro::convert::mscz::{loaded_score_to_mscx, mscx_to_loaded_score};
 use guitarpro::convert::musicxml::song_to_score_partwise;
 use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
+use guitarpro::io::mscz::{read_mscz_bytes, write_mscz};
 use guitarpro::model::musicxml::ScorePartwise;
 use guitarpro::model::optimized::global::Score;
+use guitarpro::{Mscx, MsczArchive, MsczEntry, MsczFile};
 
 /// Convert a score file between formats (GP3/4/5/GPX/GP, MusicXML, Optimized)
 #[derive(Bpaf, Debug)]
@@ -48,6 +51,7 @@ pub(crate) enum Format {
     Gp,
     MusicXml,
     Score,
+    Mscz,
 }
 
 impl Format {
@@ -60,6 +64,7 @@ impl Format {
             "gp" => Some(Self::Gp),
             "xml" | "musicxml" => Some(Self::MusicXml),
             "score" | "msor" => Some(Self::Score),
+            "mscz" => Some(Self::Mscz),
             _ => None,
         }
     }
@@ -73,6 +78,7 @@ impl Format {
             "gp" | "gp7" => Some(Self::Gp),
             "xml" | "musicxml" => Some(Self::MusicXml),
             "score" | "msor" | "opt" => Some(Self::Score),
+            "mscz" | "musescore" => Some(Self::Mscz),
             _ => None,
         }
     }
@@ -86,6 +92,7 @@ impl Format {
             Self::Gp => "gp",
             Self::MusicXml => "musicxml",
             Self::Score => "score",
+            Self::Mscz => "mscz",
         }
     }
 
@@ -98,6 +105,7 @@ impl Format {
             Self::Gp => "Guitar Pro 7+ (GP)",
             Self::MusicXml => "MusicXML",
             Self::Score => "Optimized Score (JSON)",
+            Self::Mscz => "MuseScore (MSCZ)",
         }
     }
 
@@ -260,6 +268,13 @@ pub(crate) fn load_as_song(path: &str, fmt: Format) -> anyhow::Result<Song> {
             };
             Ok(loaded_score_to_legacy_song(&loaded))
         }
+        Format::Mscz => {
+            let data = read_bytes(path)?;
+            let file = read_mscz_bytes(&data)
+                .map_err(|e| anyhow::anyhow!("cannot read MSCZ '{}': {}", path, e))?;
+            let outcome = mscx_to_loaded_score(&file.mscx);
+            Ok(loaded_score_to_legacy_song(&outcome.score))
+        }
         _ => {
             let (song, _) = crate::loader::load_song(path)?;
             Ok(song)
@@ -290,6 +305,35 @@ pub(crate) fn encode_song(song: &Song, dst: Format) -> anyhow::Result<Vec<u8>> {
             serde_json::to_vec_pretty(&loaded.score)
                 .map_err(|e| anyhow::anyhow!("Score serialize failed: {}", e))
         }
+        Format::Mscz => {
+            let loaded = legacy_song_to_loaded_score(song);
+            let mscx = loaded_score_to_mscx(&loaded);
+            let archive = mscz_archive_for(&mscx);
+            let file = MsczFile { archive, mscx };
+            write_mscz(&file).map_err(|e| anyhow::anyhow!("MSCZ encode failed: {}", e))
+        }
+    }
+}
+
+/// Build a fresh MSCZ archive around a generated MSCX document.
+///
+/// Writes only the `META-INF/container.xml` manifest plus `score.mscx` — no
+/// thumbnail, style, or side JSON. MuseScore reads such minimal archives.
+fn mscz_archive_for(mscx: &Mscx) -> MsczArchive {
+    let manifest = br#"<?xml version="1.0" encoding="UTF-8"?>
+<container><rootfiles><rootfile full-path="score.mscx"/></rootfiles></container>"#;
+    MsczArchive {
+        rootfiles: vec!["score.mscx".to_string()],
+        entries: vec![
+            MsczEntry {
+                path: "META-INF/container.xml".to_string(),
+                data: manifest.to_vec(),
+            },
+            MsczEntry {
+                path: "score.mscx".to_string(),
+                data: mscx.raw_xml.as_bytes().to_vec(),
+            },
+        ],
     }
 }
 
@@ -320,7 +364,7 @@ fn resolve_input_format(flag: Option<&str>, path: &str) -> anyhow::Result<Format
     if let Some(s) = flag {
         return Format::from_name(s).ok_or_else(|| {
             anyhow::anyhow!(
-                "unknown input format '{}'. Valid: gp3, gp4, gp5, gpx, gp, xml, score",
+                "unknown input format '{}'. Valid: gp3, gp4, gp5, gpx, gp, xml, score, mscz",
                 s
             )
         });
@@ -345,7 +389,7 @@ fn resolve_output_format(
     if let Some(s) = flag {
         return Format::from_name(s).ok_or_else(|| {
             anyhow::anyhow!(
-                "unknown output format '{}'. Valid: gp3, gp4, gp5, gpx, gp, xml, score",
+                "unknown output format '{}'. Valid: gp3, gp4, gp5, gpx, gp, xml, score, mscz",
                 s
             )
         });

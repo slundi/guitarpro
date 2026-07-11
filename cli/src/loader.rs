@@ -3,11 +3,26 @@ use std::io::Read;
 use std::path::Path;
 
 use guitarpro::Song;
+use guitarpro::convert::legacy::loaded_score_to_legacy_song;
+use guitarpro::convert::mscz::mscx_to_loaded_score;
+use guitarpro::io::mscz::read_mscz_bytes;
 
-const MAX_FILE_SIZE: usize = 16 * 1024 * 1024; // 16 MB
+/// Maximum accepted size for legacy Guitar Pro binaries and GPX/GP containers.
+const MAX_LEGACY_FILE_SIZE: usize = 16 * 1024 * 1024;
+/// Maximum accepted size for MSCZ archives (larger than GP because MuseScore
+/// bundles thumbnails and soundfont overrides).
+const MAX_MSCZ_FILE_SIZE: usize = 32 * 1024 * 1024;
 
-/// Load a Guitar Pro file from disk and return the parsed `Song` and the
-/// detected format string (e.g. `"GP5"`, `"GPX"`).
+/// ZIP local-file-header magic (`PK\x03\x04`). MSCZ and `.gp` (GP7+) share
+/// this signature — the container manifest disambiguates.
+const ZIP_MAGIC: &[u8; 4] = b"PK\x03\x04";
+
+/// Load a Guitar Pro or MuseScore file from disk and return the parsed
+/// `Song` and the detected format string (e.g. `"GP5"`, `"GPX"`, `"MSCZ"`).
+///
+/// MSCZ archives are converted through `LoadedScore` → `Song` so downstream
+/// CLI commands (info, repeats, form, fingering, extract, duplicates) can
+/// consume them without needing a separate MSCZ code path.
 pub fn load_song(path_str: &str) -> anyhow::Result<(Song, String)> {
     let path = Path::new(path_str);
     if !path.exists() {
@@ -24,7 +39,20 @@ pub fn load_song(path_str: &str) -> anyhow::Result<(Song, String)> {
         .map(|m| m.len() as usize)
         .unwrap_or(0);
 
-    if size > MAX_FILE_SIZE {
+    // MSCZ archives are handled first so their larger size budget applies.
+    let looks_like_mscz = ext == "MSCZ" || (looks_like_zip(path_str) && is_mscz_archive(path_str)?);
+    if looks_like_mscz {
+        if size > MAX_MSCZ_FILE_SIZE {
+            anyhow::bail!("MSCZ file is too large (> 32 MB)");
+        }
+        let data = fs::read(path_str)?;
+        let file = read_mscz_bytes(&data)
+            .map_err(|e| anyhow::anyhow!("cannot read MSCZ '{}': {}", path_str, e))?;
+        let outcome = mscx_to_loaded_score(&file.mscx);
+        return Ok((loaded_score_to_legacy_song(&outcome.score), "MSCZ".into()));
+    }
+
+    if size > MAX_LEGACY_FILE_SIZE {
         anyhow::bail!("File is too large (> 16 MB)");
     }
 
@@ -66,12 +94,36 @@ pub fn load_song(path_str: &str) -> anyhow::Result<(Song, String)> {
             );
         }
         _ => anyhow::bail!(
-            "Unsupported format '{}'. Supported extensions: .gp3, .gp4, .gp5, .gp, .gpx",
+            "Unsupported format '{}'. Supported extensions: .gp3, .gp4, .gp5, .gp, .gpx, .mscz",
             ext
         ),
     };
 
     Ok((song, format_label))
+}
+
+/// Peek the first four bytes to check for the ZIP magic. Returns `false` on
+/// short files or read errors (the caller then falls back to extension).
+fn looks_like_zip(path_str: &str) -> bool {
+    let mut buffer = [0u8; 4];
+    match fs::File::open(path_str).and_then(|mut file| file.read_exact(&mut buffer)) {
+        Ok(_) => &buffer == ZIP_MAGIC,
+        Err(_) => false,
+    }
+}
+
+/// Distinguish MSCZ from `.gp` (both are ZIPs) by checking whether the archive
+/// contains the OPC-style `META-INF/container.xml` manifest that MuseScore
+/// writes but Guitar Pro does not. Short-circuits on IO errors: returns `false`
+/// so the caller can proceed with the legacy path detection.
+fn is_mscz_archive(path_str: &str) -> anyhow::Result<bool> {
+    let data = fs::read(path_str)?;
+    let cursor = std::io::Cursor::new(data);
+    let mut zip = match zip::ZipArchive::new(cursor) {
+        Ok(archive) => archive,
+        Err(_) => return Ok(false),
+    };
+    Ok(zip.by_name("META-INF/container.xml").is_ok())
 }
 
 /// Peek at the header to identify the actual legacy version. Returns the

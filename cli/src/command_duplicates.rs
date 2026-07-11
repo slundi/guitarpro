@@ -9,7 +9,7 @@ use serde::Serialize;
 
 use crate::loader::load_song;
 
-const GP_EXTENSIONS: &[&str] = &["gp3", "gp4", "gp5", "gp", "gpx"];
+const GP_EXTENSIONS: &[&str] = &["gp3", "gp4", "gp5", "gp", "gpx", "mscz"];
 
 // ---------------------------------------------------------------------------
 // CLI args
