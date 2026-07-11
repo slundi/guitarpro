@@ -36,6 +36,21 @@ pub enum GpError {
     /// Write operation error
     #[error("Write error: {0}")]
     WriteError(String),
+
+    /// MSCZ archive (ZIP/container) error
+    #[error("MSCZ archive error: {0}")]
+    MsczArchive(String),
+
+    /// MSCX XML parse error
+    #[error("MSCX XML error: {0}")]
+    MsczXml(String),
+
+    /// MuseScore version outside the supported range
+    #[error("Unsupported MuseScore version {got:?} (supported: {supported})")]
+    MsczUnsupported {
+        got: String,
+        supported: &'static str,
+    },
 }
 
 /// Convenience type alias

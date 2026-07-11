@@ -7,6 +7,7 @@ mod gp345_slides;
 mod gp345_structure;
 mod gp7;
 mod gpx;
+mod mscz;
 mod real_world_regressions;
 mod roundtrip;
 mod roundtrip_musicxml;

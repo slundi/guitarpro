@@ -20,6 +20,10 @@ pub use crate::model::legacy::page::PageSetup;
 pub use crate::model::legacy::song::Song;
 pub use crate::model::legacy::track::Track;
 
+// Re-export MSCZ (MuseScore) entry points
+pub use crate::io::mscz::{read_mscz, read_mscz_bytes, write_mscz, write_mscz_to_path};
+pub use crate::model::mscz::{Mscx, MsczArchive, MsczEntry, MsczFile};
+
 // Re-export traits for easy use
 pub use crate::audio::midi::SongMidiOps;
 pub use crate::io::gpif_export::SongGpifExportOps;
