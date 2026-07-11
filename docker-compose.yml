@@ -1,0 +1,50 @@
+# Docker Compose for guitar-io web_server
+#
+# Build & run:
+#   docker compose up --build
+#
+# Then open http://localhost:3000
+#
+# Scores are read from the ./scores host directory (mounted read-only into the
+# container at /data/scores). Drop your .gp3/.gp4/.gp5/.gp/.gpx/.mscz files
+# there — the server exposes them via /api/score/open.
+
+services:
+  score-server:
+    build:
+      context: .
+      dockerfile: web_server/Dockerfile
+    image: guitar-io/score-server:latest
+    container_name: guitar-io-score-server
+    restart: unless-stopped
+    ports:
+      - "${SCORE_SERVER_PORT:-3000}:3000"
+    environment:
+      RUST_LOG: ${RUST_LOG:-info}
+    volumes:
+      # Mount your local scores dir read-only. Create ./scores next to this
+      # file (or override with `SCORES_DIR=/path/to/scores docker compose up`).
+      - ${SCORES_DIR:-./scores}:/data/scores:ro
+      # Optional: mount a config file to tweak defaults. The container's
+      # WORKDIR is /data, so /data/score_server.toml is picked up by the
+      # config-search path.
+      # - ./score_server.toml:/data/score_server.toml:ro
+    read_only: true
+    tmpfs:
+      # State module keeps uploaded/session files in a temp dir under $TMPDIR
+      # or /tmp — give it a writable tmpfs since the rest of the rootfs is
+      # read-only.
+      - /tmp:size=256m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      # Distroless has no shell, so exec the binary directly with a flag that
+      # exits fast. `--help` returns 0 and doesn't touch the network — good
+      # enough to prove the binary is still runnable.
+      test: ["CMD", "/usr/local/bin/score_server", "--help"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

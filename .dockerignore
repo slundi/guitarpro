@@ -1,0 +1,59 @@
+# Build artefacts
+target/
+**/target/
+**/*.rs.bk
+lcov.info
+
+# Frontend
+**/node_modules/
+web_server/frontend/dist/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.github/
+.forgejo/
+.woodpecker.yml
+
+# IDE / editor
+.vscode/
+.idea/
+.history/
+*.vsix
+
+# Nix
+.direnv/
+result
+result-*
+.envrc
+flake.lock
+flake.nix
+shell.nix
+
+# Docs, meta (not needed to build)
+docs/
+examples/
+test/
+tests/
+benches/
+todo.md
+Ideas.md
+DOCUMENTATION.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+README.md
+LICENSE
+cliff.toml
+deny.toml
+renovate.json
+typos.toml
+bacon.toml
+justfile
+.pre-commit-config.yaml
+
+# Docker itself
+docker-compose.yml
+docker-compose.*.yml
+**/Dockerfile
+.dockerignore
