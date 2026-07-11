@@ -42,6 +42,7 @@ pub enum ConfigError {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ServerConfig {
     pub port: Option<u16>,
+    pub host: Option<String>,
     pub root: Option<PathBuf>,
     pub open: Option<bool>,
 }
@@ -69,6 +70,7 @@ impl ServerConfig {
 
         Ok(Self {
             port: get_typed_integer::<u16>(root_table, "port")?,
+            host: get_str(root_table, "host")?.map(str::to_owned),
             root: get_str(root_table, "root")?.map(PathBuf::from),
             open: get_bool(root_table, "open")?,
         })
@@ -194,11 +196,13 @@ mod tests {
     fn full_config_parses() {
         let toml = r#"
             port = 8080
+            host = "0.0.0.0"
             root = "/srv/scores"
             open = false
         "#;
         let cfg = ServerConfig::parse(toml).unwrap();
         assert_eq!(cfg.port, Some(8080));
+        assert_eq!(cfg.host, Some("0.0.0.0".to_string()));
         assert_eq!(cfg.root, Some(PathBuf::from("/srv/scores")));
         assert_eq!(cfg.open, Some(false));
     }

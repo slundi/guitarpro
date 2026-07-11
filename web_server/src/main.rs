@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use argh::FromArgs;
 use axum::Router;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use tokio::net::TcpListener;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
@@ -11,6 +11,7 @@ use web_server::config::ServerConfig;
 use web_server::state::{AppState, LoadedFile, load_file_from_disk};
 
 const DEFAULT_PORT: u16 = 3000;
+const DEFAULT_HOST: &str = "127.0.0.1";
 
 #[derive(FromArgs)]
 /// Guitar score web viewer and analysis tool
@@ -18,6 +19,10 @@ struct Args {
     /// port to listen on (default: 3000, overrides score_server.toml)
     #[argh(option, short = 'p')]
     port: Option<u16>,
+
+    /// address to bind to (default: 127.0.0.1; use 0.0.0.0 to expose to the network / Docker)
+    #[argh(option)]
+    host: Option<String>,
 
     /// suppress auto-opening the browser after binding
     #[argh(switch)]
@@ -52,6 +57,13 @@ async fn main() -> Result<()> {
 
     // CLI flag > config file > built-in default.
     let port = args.port.or(file_config.port).unwrap_or(DEFAULT_PORT);
+    let host_str = args
+        .host
+        .or(file_config.host)
+        .unwrap_or_else(|| DEFAULT_HOST.to_string());
+    let host: IpAddr = host_str
+        .parse()
+        .with_context(|| format!("Invalid --host value '{host_str}' (expected an IP address)"))?;
     let auto_open = if args.no_open {
         false
     } else {
@@ -59,7 +71,7 @@ async fn main() -> Result<()> {
     };
     let root_input = args.root.or(file_config.root).unwrap_or_else(default_root);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from((host, port));
 
     let root = root_input.canonicalize().with_context(|| {
         format!(
@@ -79,7 +91,7 @@ async fn main() -> Result<()> {
 
     let router = build_router(state, port);
     let listener = TcpListener::bind(addr).await?;
-    tracing::info!("Listening on http://localhost:{}", port);
+    tracing::info!("Listening on http://{}", addr);
 
     if auto_open {
         let url = match preloaded_id {
