@@ -624,7 +624,11 @@ fn convert_note(
             }
             "String" => {
                 if let Some(s) = prop.string {
-                    s_note.string = s as i8;
+                    // GPIF stores string index 0-based; our internal legacy
+                    // `Note::string` is 1-based (matches GP3/4/5 binary readers
+                    // and the MSCZ / MusicXML converters). Shift on read so
+                    // downstream code doesn't need to know the format quirk.
+                    s_note.string = (s as i8).saturating_add(1);
                 }
             }
             "PalmMuted" if prop.enable.is_some() => {

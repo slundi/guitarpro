@@ -223,7 +223,12 @@ async fn info_endpoint_returns_metadata_for_mscz_session() {
 }
 
 #[tokio::test]
-async fn raw_endpoint_returns_source_mscz_bytes() {
+async fn raw_endpoint_transcodes_mscz_to_gpx_for_alphatab() {
+    // The frontend renderer (AlphaTab) can parse GP3–GP7 / GPX / MusicXML
+    // but not MSCZ. When the session was uploaded as MSCZ, `/raw` must hand
+    // back a GPX archive (magic `BCFZ`) under a `.gpx` filename so the
+    // viewer isn't left blank. The verbatim MSCZ bytes stay reachable via
+    // `/download?format=mscz`.
     let dir = tempfile::tempdir().unwrap();
     let app = app_with_root(dir.path());
 
@@ -239,12 +244,104 @@ async fn raw_endpoint_returns_source_mscz_bytes() {
         .unwrap()
         .to_str()
         .unwrap();
-    assert!(cd.contains("fixture.mscz"));
+    assert!(
+        cd.contains("fixture.gpx"),
+        "raw should advertise a .gpx filename for MSCZ sessions, got: {cd}"
+    );
+
+    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(
+        &body[..4],
+        b"BCFZ",
+        "raw should emit a GPX (BCFZ) container for MSCZ sessions"
+    );
+    assert_ne!(
+        body.as_ref(),
+        bytes.as_slice(),
+        "raw must NOT be the source MSCZ — AlphaTab can't parse that"
+    );
+
+    // Round-trip the emitted GPX through our own reader and confirm every
+    // note's string index falls within the track's tuning. This catches the
+    // AlphaTab `_spellingCandidates[NaN]` crash we saw when the writer was
+    // emitting 1-based string values (off-by-one vs. standard GP7 GPIF):
+    // AlphaTab reads `<String>N</String>` as `N+1`, and any note where
+    // `N+1 > tuning.len()` produces `tuning[-1] = undefined` → NaN
+    // note-value → the layout worker throws on `_spellingCandidates[NaN]`.
+    let mut song = guitarpro::Song::default();
+    song.read_gpx(&body)
+        .expect("emitted GPX must be readable by our own reader");
+    for (ti, track) in song.tracks.iter().enumerate() {
+        let strings = track.strings.len() as i8;
+        assert!(strings > 0, "track {ti} must have at least one string");
+        for measure in &track.measures {
+            for voice in &measure.voices {
+                for beat in &voice.beats {
+                    for note in &beat.notes {
+                        // string==0 is our internal rest/tie sentinel and is
+                        // only allowed on Rest/Tie kinds — never on a real
+                        // pitched note that AlphaTab would try to render.
+                        assert!(
+                            (1..=strings).contains(&note.string),
+                            "track {ti}: note.string={} outside 1..={strings} (would crash AlphaTab)",
+                            note.string
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn raw_endpoint_returns_source_bytes_for_non_mscz_session() {
+    // Regression guard: only MSCZ sessions get transcoded. Legacy GP inputs
+    // must still round-trip byte-for-byte through `/raw` so the frontend
+    // hands AlphaTab exactly what the user uploaded.
+    let gp5_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("test")
+        .join("001_Funky_Guy.gp5");
+    if !gp5_path.is_file() {
+        eprintln!("skipping — GP5 fixture missing: {}", gp5_path.display());
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let app = app_with_root(dir.path());
+    let bytes = std::fs::read(&gp5_path).expect("read GP5 fixture");
+
+    let boundary = "----gp5boundary";
+    let body = multipart_body(boundary, "song.gp5", &bytes);
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/api/score/upload")
+        .header(
+            header::CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
+        .body(Body::from(body))
+        .unwrap();
+    let response = app.clone().oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let raw_body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let summary: serde_json::Value = serde_json::from_slice(&raw_body).unwrap();
+    let id = summary["id"].as_str().unwrap();
+
+    let response = get(&app, &format!("/api/score/{id}/raw")).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let cd = response
+        .headers()
+        .get(header::CONTENT_DISPOSITION)
+        .unwrap()
+        .to_str()
+        .unwrap();
+    assert!(cd.contains("song.gp5"), "cd={cd}");
     let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     assert_eq!(
         body.as_ref(),
         bytes.as_slice(),
-        "raw bytes must round-trip verbatim"
+        "non-MSCZ raw bytes must round-trip verbatim"
     );
 }
 

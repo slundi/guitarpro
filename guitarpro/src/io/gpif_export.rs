@@ -119,9 +119,14 @@ fn build_note_xml(note: &Note, note_id: i32) -> String {
         "<Property name=\"Fret\"><Fret>{}</Fret></Property>",
         note.value
     ));
+    // GPIF stores string index 0-based (top/high-pitched string = 0). Our
+    // internal legacy `Note::string` is 1-based to match the model used by
+    // GP3/4/5 binary readers and the MSCZ / MusicXML converters — subtract 1
+    // on write so AlphaTab and other real GP7 tools see the standard values.
+    // `saturating_sub` guards rest/tie sentinel `string == 0` from underflow.
     s.push_str(&format!(
         "<Property name=\"String\"><String>{}</String></Property>",
-        note.string
+        note.string.saturating_sub(1)
     ));
 
     if note.effect.palm_mute {

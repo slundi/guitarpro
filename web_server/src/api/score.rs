@@ -3,6 +3,7 @@ use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
+use guitarpro::Song;
 use guitarpro::convert::mscz::loaded_score_to_mscx;
 use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
 use guitarpro::io::mscz::write_mscz;
@@ -48,21 +49,51 @@ struct TrackInfo {
     tuning: Vec<i16>,
 }
 
+/// What the `raw` endpoint should hand back to the client.
+///
+/// AlphaTab (frontend renderer) parses GP3–GP7 / GPX / MusicXML but does not
+/// understand MSCZ, so serving MSCZ bytes verbatim leaves the viewer blank.
+/// For MSCZ sessions we transcode the parsed `Song` to GPX under the same
+/// filename stem; other sessions still get their original bytes back.
+enum RawPayload {
+    Verbatim(Vec<u8>),
+    TranscodeMsczToGpx(Box<Song>),
+}
+
 pub async fn raw(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Response, ApiError> {
-    let bytes;
-    let file_name;
-    {
+    let (payload, file_name) = {
         let sessions = state.sessions.read().await;
         let loaded = sessions
             .get(&id)
             .ok_or_else(|| ApiError::not_found("Score session not found"))?;
         loaded.touch();
-        bytes = loaded.bytes.clone();
-        file_name = loaded.file_name.clone();
-    }
+        if loaded.ext == "mscz" {
+            let stem = loaded
+                .file_name
+                .rsplit_once('.')
+                .map(|(s, _)| s)
+                .unwrap_or(&loaded.file_name);
+            (
+                RawPayload::TranscodeMsczToGpx(Box::new(loaded.song.clone())),
+                format!("{stem}.gpx"),
+            )
+        } else {
+            (
+                RawPayload::Verbatim(loaded.bytes.clone()),
+                loaded.file_name.clone(),
+            )
+        }
+    };
+
+    let bytes = match payload {
+        RawPayload::Verbatim(b) => b,
+        RawPayload::TranscodeMsczToGpx(song) => song
+            .write_gpx()
+            .map_err(|e| ApiError::internal(format!("MSCZ→GPX transcode failed: {e}")))?,
+    };
 
     attachment(bytes, &file_name)
 }
