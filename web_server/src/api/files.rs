@@ -5,15 +5,19 @@ use std::time::UNIX_EPOCH;
 use std::{fs, io};
 
 use axum::Json;
+use axum::body::Body;
 use axum::extract::{Query, State};
+use axum::http::{StatusCode, header};
+use axum::response::Response;
 use axum::response::sse::{Event, Sse};
+use guitarpro::NoteType;
+use guitarpro::io::mscz::read_container;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::error::ApiError;
 use crate::state::{AppState, SUPPORTED_EXTENSIONS, parse_song};
-use guitarpro::NoteType;
 
 // ── File browser ─────────────────────────────────────────────────────────────
 
@@ -137,6 +141,59 @@ fn is_gp_file(path: &Path) -> bool {
         .and_then(|e| e.to_str())
         .map(|e| SUPPORTED_EXTENSIONS.contains(&e.to_lowercase().as_str()))
         .unwrap_or(false)
+}
+
+// ── Thumbnail preview (MSCZ only) ─────────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct ThumbnailQuery {
+    path: String,
+}
+
+/// Serve the PNG thumbnail embedded in an MSCZ file addressed by absolute
+/// path. The path must live under `--root`; anything else returns 403.
+/// Returns 404 for non-MSCZ paths or MSCZ archives that carry no thumbnail.
+pub async fn thumbnail(
+    State(state): State<AppState>,
+    Query(query): Query<ThumbnailQuery>,
+) -> Result<Response, ApiError> {
+    let canonical = Path::new(&query.path)
+        .canonicalize()
+        .map_err(|_| ApiError::bad_request("Invalid path", "File not found"))?;
+    if !canonical.starts_with(&state.root) {
+        return Err(ApiError::forbidden(
+            "Path is outside the allowed root directory",
+        ));
+    }
+
+    let ext = canonical
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_lowercase)
+        .unwrap_or_default();
+    if ext != "mscz" {
+        return Err(ApiError::not_found(
+            "Thumbnail preview only available for MSCZ files",
+        ));
+    }
+
+    let bytes =
+        fs::read(&canonical).map_err(|e| ApiError::bad_request("Read error", e.to_string()))?;
+    let archive =
+        read_container(&bytes).map_err(|e| ApiError::bad_request("MSCZ error", e.to_string()))?;
+
+    let png = archive
+        .thumbnail_entry()
+        .ok_or_else(|| ApiError::not_found("Archive has no embedded thumbnail"))?
+        .data
+        .clone();
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "image/png")
+        .header(header::CACHE_CONTROL, "private, max-age=3600")
+        .body(Body::from(png))
+        .map_err(|e| ApiError::internal(e.to_string()))
 }
 
 // ── Duplicate scanner ─────────────────────────────────────────────────────────

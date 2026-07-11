@@ -65,6 +65,7 @@ pub fn attachment(bytes: Vec<u8>, filename: &str) -> Result<Response, ApiError> 
 pub fn api_routes() -> Router<AppState> {
     Router::new()
         .route("/api/files", get(files::list))
+        .route("/api/files/thumbnail", get(files::thumbnail))
         .route("/api/duplicates", post(files::duplicates))
         .route("/api/score/upload", post(upload::handler))
         .route("/api/score/open", post(open::handler))
@@ -72,6 +73,7 @@ pub fn api_routes() -> Router<AppState> {
         .route("/api/score/{id}/raw", get(score::raw))
         .route("/api/score/{id}/download", get(score::download))
         .route("/api/score/{id}/info", get(score::info))
+        .route("/api/score/{id}/thumbnail", get(score::thumbnail))
         .route("/api/score/{id}/analysis/repeats", get(analysis::repeats))
         .route("/api/score/{id}/analysis/form", get(analysis::form))
         .route(

@@ -7,6 +7,10 @@ description = "Web-based score viewer and analysis tool"
 repository = "https://gitlab.com/slundi/guitar-io"
 license = "MIT"
 
+[lib]
+name = "web_server"
+path = "src/lib.rs"
+
 [[bin]]
 name = "score_server"
 path = "src/main.rs"
@@ -34,3 +38,8 @@ rust-embed = { version = "8", optional = true }
 mime_guess = { version = "2", optional = true }
 
 [dev-dependencies]
+tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
+mime = "0.3"
+zip = "8.6"
+serde_urlencoded = "0.7"

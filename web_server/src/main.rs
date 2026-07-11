@@ -6,13 +6,9 @@ use tokio::net::TcpListener;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
-mod api;
-mod config;
-mod error;
-mod state;
-
-use config::ServerConfig;
-use state::{AppState, LoadedFile, load_file_from_disk};
+use web_server::api;
+use web_server::config::ServerConfig;
+use web_server::state::{AppState, LoadedFile, load_file_from_disk};
 
 const DEFAULT_PORT: u16 = 3000;
 

@@ -2,13 +2,12 @@ use std::path::Path;
 
 use axum::Json;
 use axum::extract::State;
-use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
 use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::api::ScoreSummary;
 use crate::error::ApiError;
-use crate::state::{AppState, LoadedFile, MAX_FILE_SIZE, SUPPORTED_EXTENSIONS, parse_song};
+use crate::state::{AppState, SUPPORTED_EXTENSIONS, max_size_for, session_from_bytes};
 
 #[derive(Deserialize)]
 pub struct OpenRequest {
@@ -38,41 +37,37 @@ pub async fn handler(
     if !SUPPORTED_EXTENSIONS.contains(&ext.as_str()) {
         return Err(ApiError::bad_request(
             "Unsupported format",
-            format!("'.{ext}' is not supported; use gp3, gp4, gp5, gp, or gpx"),
+            format!("'.{ext}' is not supported; use gp3, gp4, gp5, gp, gpx, or mscz"),
         ));
     }
 
     let bytes = std::fs::read(&canonical)
         .map_err(|e| ApiError::bad_request("Read error", e.to_string()))?;
 
-    if bytes.len() > MAX_FILE_SIZE {
+    let cap = max_size_for(&ext);
+    if bytes.len() > cap {
         return Err(ApiError::bad_request(
             "File too large",
-            "Maximum allowed size is 16 MB",
+            format!("Maximum size for .{ext} is {} bytes", cap),
         ));
     }
-
-    let song = parse_song(&ext, &bytes)
-        .map_err(|e| ApiError::bad_request("Parse error", e.to_string()))?;
 
     let file_name = canonical
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
         .to_string();
-    let track_count = u8::try_from(song.tracks.len())
+
+    let loaded = session_from_bytes(bytes, file_name.clone())
+        .map_err(|e| ApiError::bad_request("Parse error", e.to_string()))?;
+
+    let track_count = u8::try_from(loaded.song.tracks.len())
         .map_err(|_| ApiError::bad_request("Score too large", "Track count exceeds 255"))?;
-    let measure_count = u16::try_from(song.measure_headers.len())
+    let measure_count = u16::try_from(loaded.song.measure_headers.len())
         .map_err(|_| ApiError::bad_request("Score too large", "Measure count exceeds 65535"))?;
-    let score = legacy_song_to_loaded_score(&song);
 
     let id = Uuid::new_v4();
-    state
-        .insert_session(
-            id,
-            LoadedFile::new(bytes, song, score, file_name.clone(), ext),
-        )
-        .await;
+    state.insert_session(id, loaded).await;
 
     Ok(Json(ScoreSummary {
         id,

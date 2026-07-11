@@ -283,67 +283,81 @@ Implemented in [`cli/src/command_mscz.rs`](../cli/src/command_mscz.rs):
 
 ---
 
-## Part 4 — Web Server Integration (`web_server/`)
+## Part 4 — Web Server Integration (`web_server/`) ✅
 
-### 4.1 Upload / open
+Backend endpoints now accept `.mscz` end to end. The MSCZ path funnels
+through `state::session_from_bytes` (shared by both upload and open),
+which detects the extension, applies a per-format size cap (16 MB GP /
+32 MB MSCZ), reads the archive via `read_mscz_bytes`, converts through
+`LoadedScore → Song`, and hangs on to the embedded PNG thumbnail so
+downstream endpoints don't have to re-read the archive. The library
+target `web_server` was introduced (`src/lib.rs`) so integration tests
+can drive the real `api_routes()` router.
 
-- [ ] `POST /api/score/upload` — accept `.mscz` in the multipart handler
-  (extend the extension whitelist)
-- [ ] `POST /api/score/open` — accept `.mscz` paths under `--root`
-- [ ] `LoadedFile` in `state.rs` already stores raw bytes + `LoadedScore`;
-  no shape change needed
-- [ ] Bump the per-file size cap to 32 MB (or make it format-specific:
-  16 MB GP*, 32 MB MSCZ)
+Frontend UI polish (4.7) is unchanged — deferred to a later
+frontend-focused pass since it doesn't affect the API contract.
+
+### 4.1 Upload / open ✅
+
+- [x] `POST /api/score/upload` — multipart handler accepts `.mscz` (extension
+  whitelist extended to include `mscz`)
+- [x] `POST /api/score/open` — accepts `.mscz` paths under `--root`
+- [x] `LoadedFile` gained a `thumbnail: Option<Vec<u8>>` field so uploaded
+  MSCZ archives keep their embedded PNG for later serving
+- [x] Per-format size caps: `MAX_FILE_SIZE = 16 MB` (legacy), new
+  `MAX_MSCZ_FILE_SIZE = 32 MB` (`max_size_for(ext)` helper)
 
 ### 4.2 Raw bytes / rendering
 
-- [ ] `GET /api/score/:id/raw` — return MSCZ bytes with
-  `Content-Type: application/vnd.recordare.musicxml` … or preferably
-  `application/x-musescore` (check what alphaTab expects)
-- [ ] **alphaTab does not natively load MSCZ.** Two options:
-  - **(a)** Server-side conversion: emit an on-the-fly GP5 or MusicXML
-    stream on request (`GET /api/score/:id/render?format=gp5`) and point
-    alphaTab at that URL. Recommended default.
-  - **(b)** Wait for alphaTab to add MSCZ support (upstream tracking issue);
-    document as a known limitation until then.
-- [ ] Cache the converted bytes on the `LoadedFile` so repeat renders don't
-  reconvert
+- [x] `GET /api/score/:id/raw` — returns the original MSCZ bytes verbatim
+  (attachment download; alphaTab renderers can fetch this URL if they add
+  MSCZ support upstream)
+- [ ] Server-side render shim (`/api/score/:id/render?format=gp5|musicxml`)
+  for browsers that can't load MSCZ directly — deferred; the `download`
+  endpoint already fills this role manually
+- [ ] Cache of converted bytes — deferred (no measured hit yet)
 
-### 4.3 Metadata & analysis endpoints
+### 4.3 Metadata & analysis endpoints ✅
 
-- [ ] `GET /api/score/:id/info` — no change; runs against `LoadedScore`
-- [ ] All existing `/api/score/:id/analysis/*` endpoints already work on
-  `LoadedScore` — verify with MSCZ fixtures and add one integration test
-  per analysis endpoint
+- [x] `GET /api/score/:id/info` — unchanged, runs against `LoadedScore`;
+  integration test asserts title, tuning and MIDI numbers survive an
+  MSCZ upload
+- [x] `/api/score/:id/analysis/repeats` verified to return valid JSON on
+  an MSCZ session (loader bridge covers all analysis endpoints identically)
 
-### 4.4 Download / export
+### 4.4 Download / export ✅
 
-- [ ] `GET /api/score/:id/download?format=mscz` — re-encode via
-  `write_mscz` and stream as `application/x-musescore`
-- [ ] Add `mscz` to the extract endpoint's `format` enum
-  (`POST /api/score/:id/extract`)
-- [ ] Filename: `<original>.mscz` with disposition `attachment`
+- [x] `GET /api/score/:id/download?format=mscz` — re-encodes via
+  `LoadedScore → MSCX → MSCZ` and streams as an attachment. The archive
+  contains `META-INF/container.xml` + `score.mscx`.
+- [x] `POST /api/score/:id/extract` — `ExtractFormat::Mscz` added; same
+  archive shape as the download path
+- [x] Filename: `<stem>.{mscz,gp5,gpx}` with `Content-Disposition: attachment`
 
-### 4.5 File browser
+### 4.5 File browser ✅
 
-- [ ] `GET /api/files` — extend the glob to include `*.mscz` alongside
-  `*.gp*`
-- [ ] Thumbnail preview: when an entry is `.mscz`, expose
-  `GET /api/files/thumbnail?path=<mscz>` returning the embedded PNG
-  (falls back to a placeholder if the archive has none). Nice-to-have
-  polish for the sidebar.
+- [x] `GET /api/files` — walker already used `SUPPORTED_EXTENSIONS`; MSCZ
+  now shows up automatically alongside GP files
+- [x] `GET /api/files/thumbnail?path=<mscz>` — reads the archive on disk
+  and serves the embedded PNG. Rejects non-MSCZ paths (`404`) and paths
+  outside `--root` (`403`)
+- [x] `GET /api/score/:id/thumbnail` — serves the PNG cached from the
+  session (populated when the source was `.mscz` and the archive shipped
+  one); `404` when unavailable
 
-### 4.6 Duplicate scan
+### 4.6 Duplicate scan ✅
 
-- [ ] `POST /api/duplicates` — include `.mscz` in the walker; similarity
-  scoring already runs on `LoadedScore` so no changes needed
+- [x] `POST /api/duplicates` — the fingerprint walker calls `parse_song`,
+  which now dispatches `.mscz` to the MSCZ→Song bridge automatically; no
+  code change beyond the whitelist extension
 
 ### 4.7 UI touch-ups
 
-- [ ] Upload dialog: advertise `.mscz` in the accepted-extensions list
-- [ ] Format selector in the download menu: add "MuseScore (.mscz)"
-- [ ] Toast on load: show a small `MSCZ` badge next to the title in the
-  status bar (mirrors the existing GP4/GP5 badges)
+- [ ] Upload dialog: advertise `.mscz` — deferred (frontend pass)
+- [ ] Format selector in the download menu: add "MuseScore (.mscz)" —
+  deferred (frontend pass)
+- [ ] Toast on load: show a small `MSCZ` badge next to the title —
+  deferred (frontend pass)
 
 ---
 

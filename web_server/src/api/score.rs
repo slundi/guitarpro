@@ -1,6 +1,12 @@
 use axum::Json;
+use axum::body::Body;
 use axum::extract::{Path, Query, State};
+use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
+use guitarpro::convert::mscz::loaded_score_to_mscx;
+use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
+use guitarpro::io::mscz::write_mscz;
+use guitarpro::model::mscz::{MsczArchive, MsczEntry, MsczFile};
 use guitarpro::model::optimized::global::InstrumentKind;
 use guitarpro::model::optimized::note::{Pitch, PitchStep};
 use serde::{Deserialize, Serialize};
@@ -71,6 +77,7 @@ pub struct DownloadQuery {
 enum DownloadFormat {
     Gp5,
     Gpx,
+    Mscz,
 }
 
 pub async fn download(
@@ -98,6 +105,11 @@ pub async fn download(
                 .map_err(|e| ApiError::bad_request("Encode failed", e.to_string()))?,
             "gpx",
         ),
+        DownloadFormat::Mscz => (
+            encode_song_as_mscz(&song)
+                .map_err(|e| ApiError::bad_request("Encode failed", e.to_string()))?,
+            "mscz",
+        ),
     };
 
     let stem = file_name
@@ -107,6 +119,59 @@ pub async fn download(
     let download_name = format!("{stem}.{ext}");
 
     attachment(encoded, &download_name)
+}
+
+/// Convert a legacy `Song` into MSCZ bytes for the `/download?format=mscz`
+/// path. The generated archive contains only `META-INF/container.xml` and
+/// `score.mscx` — no thumbnail or style file — because the source Song may
+/// have been produced from GP or MusicXML input that never carried those.
+fn encode_song_as_mscz(song: &guitarpro::Song) -> anyhow::Result<Vec<u8>> {
+    let loaded = legacy_song_to_loaded_score(song);
+    let mscx = loaded_score_to_mscx(&loaded);
+    let manifest =
+        b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<container><rootfiles><rootfile full-path=\"score.mscx\"/></rootfiles></container>\n";
+    let archive = MsczArchive {
+        rootfiles: vec!["score.mscx".to_string()],
+        entries: vec![
+            MsczEntry {
+                path: "META-INF/container.xml".to_string(),
+                data: manifest.to_vec(),
+            },
+            MsczEntry {
+                path: "score.mscx".to_string(),
+                data: mscx.raw_xml.as_bytes().to_vec(),
+            },
+        ],
+    };
+    let file = MsczFile { archive, mscx };
+    write_mscz(&file).map_err(|e| anyhow::anyhow!("MSCZ write failed: {e}"))
+}
+
+/// Serve the PNG thumbnail embedded in the source MSCZ archive.
+/// Returns 404 if the session was not created from an MSCZ (or the archive
+/// carried no thumbnail).
+pub async fn thumbnail(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Response, ApiError> {
+    let png = {
+        let sessions = state.sessions.read().await;
+        let loaded = sessions
+            .get(&id)
+            .ok_or_else(|| ApiError::not_found("Score session not found"))?;
+        loaded.touch();
+        loaded
+            .thumbnail
+            .clone()
+            .ok_or_else(|| ApiError::not_found("No thumbnail available for this session"))?
+    };
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "image/png")
+        .header(header::CACHE_CONTROL, "private, max-age=3600")
+        .body(Body::from(png))
+        .map_err(|e| ApiError::internal(e.to_string()))
 }
 
 pub async fn info(

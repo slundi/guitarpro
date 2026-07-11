@@ -3,6 +3,10 @@ use std::collections::HashSet;
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::response::Response;
+use guitarpro::convert::mscz::loaded_score_to_mscx;
+use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
+use guitarpro::io::mscz::write_mscz;
+use guitarpro::model::mscz::{MsczArchive, MsczEntry, MsczFile};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -24,6 +28,7 @@ pub struct ExtractRequest {
 enum ExtractFormat {
     Gp5,
     Gpx,
+    Mscz,
 }
 
 pub async fn handler(
@@ -106,6 +111,11 @@ pub async fn handler(
                 .map_err(|e| ApiError::bad_request("Encode failed", e.to_string()))?,
             "gpx",
         ),
+        ExtractFormat::Mscz => (
+            encode_song_as_mscz(&song)
+                .map_err(|e| ApiError::bad_request("Encode failed", e.to_string()))?,
+            "mscz",
+        ),
     };
 
     let stem = file_name
@@ -115,4 +125,30 @@ pub async fn handler(
     let download_name = format!("{stem}_extracted.{ext}");
 
     attachment(encoded, &download_name)
+}
+
+/// Repackage a legacy `Song` as an MSCZ archive with a minimal
+/// `META-INF/container.xml` + `score.mscx`. Mirrors the helper used by the
+/// `/download?format=mscz` endpoint so both paths produce identical output
+/// shape.
+fn encode_song_as_mscz(song: &guitarpro::Song) -> anyhow::Result<Vec<u8>> {
+    let loaded = legacy_song_to_loaded_score(song);
+    let mscx = loaded_score_to_mscx(&loaded);
+    let manifest =
+        b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<container><rootfiles><rootfile full-path=\"score.mscx\"/></rootfiles></container>\n";
+    let archive = MsczArchive {
+        rootfiles: vec!["score.mscx".to_string()],
+        entries: vec![
+            MsczEntry {
+                path: "META-INF/container.xml".to_string(),
+                data: manifest.to_vec(),
+            },
+            MsczEntry {
+                path: "score.mscx".to_string(),
+                data: mscx.raw_xml.as_bytes().to_vec(),
+            },
+        ],
+    };
+    let file = MsczFile { archive, mscx };
+    write_mscz(&file).map_err(|e| anyhow::anyhow!("MSCZ write failed: {e}"))
 }

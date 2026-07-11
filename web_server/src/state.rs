@@ -5,13 +5,30 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use guitarpro::Song;
+use guitarpro::convert::legacy::loaded_score_to_legacy_song;
+use guitarpro::convert::mscz::mscx_to_loaded_score;
 use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
+use guitarpro::io::mscz::read_mscz_bytes;
 use guitarpro::model::optimized::LoadedScore;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+/// Legacy per-file cap for GP3/GP4/GP5/GP/GPX inputs.
 pub const MAX_FILE_SIZE: usize = 16 * 1024 * 1024; // 16 MB
-pub const SUPPORTED_EXTENSIONS: &[&str] = &["gp3", "gp4", "gp5", "gp", "gpx"];
+/// MSCZ archives bundle thumbnails and (optionally) soundfont overrides, so
+/// they need a larger cap than GP inputs.
+pub const MAX_MSCZ_FILE_SIZE: usize = 32 * 1024 * 1024; // 32 MB
+pub const SUPPORTED_EXTENSIONS: &[&str] = &["gp3", "gp4", "gp5", "gp", "gpx", "mscz"];
+
+/// Return the byte cap for a given lowercase extension. Unknown extensions
+/// fall back to the smaller [`MAX_FILE_SIZE`] to stay conservative.
+pub fn max_size_for(ext: &str) -> usize {
+    if ext.eq_ignore_ascii_case("mscz") {
+        MAX_MSCZ_FILE_SIZE
+    } else {
+        MAX_FILE_SIZE
+    }
+}
 
 /// Upper bound on concurrently retained sessions. Each session holds the raw
 /// bytes (≤16 MB) plus the parsed model, so an unbounded map lets a client
@@ -29,6 +46,10 @@ pub struct LoadedFile {
     pub file_name: String,
     #[cfg_attr(not(test), allow(dead_code))] // read in tests + Part 8 (format-aware re-encoding)
     pub ext: String,
+    /// Preserved MSCZ thumbnail (embedded PNG), if the source was `.mscz`
+    /// and the archive contained one. Enables `GET /api/score/:id/thumbnail`
+    /// without re-reading the archive.
+    pub thumbnail: Option<Vec<u8>>,
     /// Interior-mutable so read-only handlers can refresh it under a shared
     /// read lock instead of taking the global write lock for the whole request.
     last_accessed: Mutex<Instant>,
@@ -48,8 +69,15 @@ impl LoadedFile {
             score,
             file_name,
             ext,
+            thumbnail: None,
             last_accessed: Mutex::new(Instant::now()),
         }
+    }
+
+    /// Construct a session with an embedded thumbnail (MSCZ path).
+    pub fn with_thumbnail(mut self, thumbnail: Option<Vec<u8>>) -> Self {
+        self.thumbnail = thumbnail;
+        self
     }
 
     /// Mark the session as accessed now. Callable through a shared reference.
@@ -122,9 +150,76 @@ pub fn parse_song(ext: &str, data: &[u8]) -> Result<Song> {
         "GP5" => song.read_gp5(data)?,
         "GP" => song.read_gp(data)?,
         "GPX" => song.read_gpx(data)?,
+        "MSCZ" => {
+            song = parse_mscz(data)?.song;
+        }
         other => anyhow::bail!("unsupported extension: .{other}"),
     }
     Ok(song)
+}
+
+/// Bundle produced by [`parse_mscz`].
+pub struct MsczSession {
+    pub song: Song,
+    pub score: LoadedScore,
+    pub thumbnail: Option<Vec<u8>>,
+}
+
+/// Parse MSCZ bytes into a `Song` + `LoadedScore` + optional embedded PNG
+/// thumbnail. Bridges MSCX → LoadedScore (via the guitarpro converter) and
+/// LoadedScore → Song so downstream handlers keep working on the legacy
+/// model.
+pub fn parse_mscz(data: &[u8]) -> Result<MsczSession> {
+    let file = read_mscz_bytes(data).map_err(|e| anyhow::anyhow!("MSCZ parse: {e}"))?;
+    let thumbnail = file
+        .archive
+        .thumbnail_entry()
+        .map(|entry| entry.data.clone());
+    let outcome = mscx_to_loaded_score(&file.mscx);
+    let song = loaded_score_to_legacy_song(&outcome.score);
+    Ok(MsczSession {
+        song,
+        score: outcome.score,
+        thumbnail,
+    })
+}
+
+/// Turn raw bytes + a source filename into a session-ready [`LoadedFile`].
+///
+/// Centralises the parsing pipeline shared by the upload and open handlers:
+/// picks the correct parser from the extension, enforces the per-format size
+/// cap, and — for MSCZ inputs — hangs on to the embedded thumbnail so the
+/// `/api/score/:id/thumbnail` endpoint can serve it without re-reading the
+/// archive.
+pub fn session_from_bytes(bytes: Vec<u8>, file_name: String) -> Result<LoadedFile> {
+    let ext = Path::new(&file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_lowercase)
+        .unwrap_or_default();
+
+    if !SUPPORTED_EXTENSIONS.contains(&ext.as_str()) {
+        anyhow::bail!("unsupported extension '.{ext}'; use gp3, gp4, gp5, gp, gpx, or mscz");
+    }
+    if bytes.len() > max_size_for(&ext) {
+        anyhow::bail!(
+            "file size {} exceeds cap {} for .{ext}",
+            bytes.len(),
+            max_size_for(&ext)
+        );
+    }
+
+    if ext == "mscz" {
+        let session = parse_mscz(&bytes)?;
+        return Ok(
+            LoadedFile::new(bytes, session.song, session.score, file_name, ext)
+                .with_thumbnail(session.thumbnail),
+        );
+    }
+
+    let song = parse_song(&ext, &bytes)?;
+    let score = legacy_song_to_loaded_score(&song);
+    Ok(LoadedFile::new(bytes, song, score, file_name, ext))
 }
 
 /// Load, validate, parse, and convert a GP file from disk into a [`LoadedFile`].
@@ -141,7 +236,7 @@ pub fn load_file_from_disk(path: &Path) -> Result<LoadedFile> {
 
     if !SUPPORTED_EXTENSIONS.contains(&ext.as_str()) {
         anyhow::bail!(
-            "'{}': unsupported extension '.{ext}'; use gp3, gp4, gp5, gp, or gpx",
+            "'{}': unsupported extension '.{ext}'; use gp3, gp4, gp5, gp, gpx, or mscz",
             path.display()
         );
     }
@@ -149,25 +244,22 @@ pub fn load_file_from_disk(path: &Path) -> Result<LoadedFile> {
     let bytes =
         std::fs::read(path).with_context(|| format!("Failed to read '{}'", path.display()))?;
 
-    if bytes.len() > MAX_FILE_SIZE {
+    let cap = max_size_for(&ext);
+    if bytes.len() > cap {
         anyhow::bail!(
-            "'{}': {} bytes exceeds the {}-byte limit",
+            "'{}': {} bytes exceeds the {cap}-byte limit for .{ext}",
             path.display(),
             bytes.len(),
-            MAX_FILE_SIZE
         );
     }
 
-    let song = parse_song(&ext, &bytes)
-        .with_context(|| format!("Failed to parse '{}'", path.display()))?;
-    let score = legacy_song_to_loaded_score(&song);
     let file_name = path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
         .to_string();
-
-    Ok(LoadedFile::new(bytes, song, score, file_name, ext))
+    session_from_bytes(bytes, file_name)
+        .with_context(|| format!("Failed to parse '{}'", path.display()))
 }
 
 #[cfg(test)]
