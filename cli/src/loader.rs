@@ -41,12 +41,15 @@ pub fn load_song(path_str: &str) -> anyhow::Result<(Song, String)> {
     let format_label: String = match (detected, ext.as_str()) {
         (Some(v), _) => {
             match v {
-                (3, _, _) => song.read_gp3(&data)?,
+                // Guitar Pro 1/2 share enough of the GP3 layout that the
+                // GP3 reader loads them (best-effort — some features are
+                // silently dropped).
+                (1 | 2, _, _) | (3, _, _) => song.read_gp3(&data)?,
                 (4, _, _) => song.read_gp4(&data)?,
                 (5, _, _) => song.read_gp5(&data)?,
                 _ => anyhow::bail!("Unsupported Guitar Pro version v{}.{}.{}", v.0, v.1, v.2),
             };
-            format!("GP{}", v.0)
+            format!("GP{}", v.0.max(3))
         }
         (None, "GP") => {
             song.read_gp(&data)?;

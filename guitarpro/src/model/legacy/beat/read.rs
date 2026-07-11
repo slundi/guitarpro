@@ -237,17 +237,22 @@ pub(super) fn read_tremolo_bar(
         kind: BendType::Dip,
         ..Default::default()
     };
-    be.value = read_int(data, seek)?.to_i16_gp("tremolo bar value")?;
+    // Tremolo bar value is display-only; some editors write junk in the field
+    // when the effect is unused. Truncate to `i16` instead of erroring.
+    be.value = read_int(data, seek)? as i16;
     be.points.push(BendPoint {
         position: 0,
         value: 0,
         ..Default::default()
     });
+    // Derived from `be.value`, which we now accept as-is; clamp to `i8` here
+    // so a garbage tremolo value does not fail the whole load.
+    let midpoint_value = (-f32::from(be.value) / GP_BEND_SEMITONE)
+        .round()
+        .clamp(i8::MIN as f32, i8::MAX as f32) as i8;
     be.points.push(BendPoint {
         position: BEND_EFFECT_MAX_POSITION / 2,
-        value: (-f32::from(be.value) / GP_BEND_SEMITONE)
-            .round()
-            .to_i8_gp("bend point value")?,
+        value: midpoint_value,
         ..Default::default()
     });
     be.points.push(BendPoint {

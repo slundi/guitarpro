@@ -119,12 +119,21 @@ impl Song {
             TripletFeel::None
         };
         //println!("Triplet feel: {}", self.triplet_feel);
-        self.tempo = read_int(data, &mut seek)?.to_i16_gp("tempo")?;
-        self.key.key = read_int(data, &mut seek)?.to_i8_gp("key")?;
+        // Tempo is written as `int` but semantically fits `i16` (real BPM).
+        // Garbage in this slot (e.g. GP2 files loaded via the GP3 reader) is
+        // truncated rather than rejected.
+        self.tempo =
+            read_int(data, &mut seek)?.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+        // Key signature is `-7..=7`; garbage values mean the file was written
+        // with an unusual editor. Truncate rather than fail.
+        self.key.key = read_int(data, &mut seek)? as i8;
         //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
         self.read_midi_channels(data, &mut seek)?;
-        let measure_count = read_int(data, &mut seek)?.to_usize_gp("measure count")?;
-        let track_count = read_int(data, &mut seek)?.to_usize_gp("track count")?;
+        // Guard against negative counts in malformed files. Cap at a very
+        // generous ceiling (100k) so we don't try to allocate absurd amounts
+        // for a garbage-in-garbage-out header.
+        let measure_count = read_int(data, &mut seek)?.clamp(0, 100_000) as usize;
+        let track_count = read_int(data, &mut seek)?.clamp(0, 100_000) as usize;
         //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
         self.read_measure_headers(data, &mut seek, measure_count)?;
@@ -159,13 +168,22 @@ impl Song {
         };
         //println!("Triplet feel: {}", self.triplet_feel);
         self.lyrics = self.read_lyrics(data, &mut seek)?; //read lyrics
-        self.tempo = read_int(data, &mut seek)?.to_i16_gp("tempo")?;
-        self.key.key = read_int(data, &mut seek)?.to_i8_gp("key")?;
+        // Tempo is written as `int` but semantically fits `i16` (real BPM).
+        // Garbage in this slot (e.g. GP2 files loaded via the GP3 reader) is
+        // truncated rather than rejected.
+        self.tempo =
+            read_int(data, &mut seek)?.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
+        // Key signature is `-7..=7`; garbage values mean the file was written
+        // with an unusual editor. Truncate rather than fail.
+        self.key.key = read_int(data, &mut seek)? as i8;
         //println!("Tempo: {} bpm\t\tKey: {}", self.tempo, self.key.to_string());
         read_signed_byte(data, &mut seek)?; //octave
         self.read_midi_channels(data, &mut seek)?;
-        let measure_count = read_int(data, &mut seek)?.to_usize_gp("measure count")?;
-        let track_count = read_int(data, &mut seek)?.to_usize_gp("track count")?;
+        // Guard against negative counts in malformed files. Cap at a very
+        // generous ceiling (100k) so we don't try to allocate absurd amounts
+        // for a garbage-in-garbage-out header.
+        let measure_count = read_int(data, &mut seek)?.clamp(0, 100_000) as usize;
+        let track_count = read_int(data, &mut seek)?.clamp(0, 100_000) as usize;
         //println!("Measures count: {}\tTrack count: {}", measure_count, track_count);
         // Read measure headers. The *measures* are written one after another, their number have been specified previously.
         self.read_measure_headers(data, &mut seek, measure_count)?;
@@ -183,7 +201,11 @@ impl Song {
         self.master_effect = self.read_rse_master_effect(data, &mut seek)?;
         self.read_page_setup(data, &mut seek)?;
         self.tempo_name = read_int_size_string(data, &mut seek)?;
-        self.tempo = read_int(data, &mut seek)?.to_i16_gp("tempo")?;
+        // Tempo is written as `int` but semantically fits `i16` (real BPM).
+        // Garbage in this slot (e.g. GP2 files loaded via the GP3 reader) is
+        // truncated rather than rejected.
+        self.tempo =
+            read_int(data, &mut seek)?.clamp(i32::from(i16::MIN), i32::from(i16::MAX)) as i16;
         self.hide_tempo = if self.version.number > (5, 0, 0) {
             read_bool(data, &mut seek)?
         } else {
@@ -194,8 +216,11 @@ impl Song {
         self.read_midi_channels(data, &mut seek)?;
         let directions = self.read_directions(data, &mut seek)?;
         self.master_effect.reverb = read_int(data, &mut seek)?.to_f32_gp("reverb")?;
-        let measure_count = read_int(data, &mut seek)?.to_usize_gp("measure count")?;
-        let track_count = read_int(data, &mut seek)?.to_usize_gp("track count")?;
+        // Guard against negative counts in malformed files. Cap at a very
+        // generous ceiling (100k) so we don't try to allocate absurd amounts
+        // for a garbage-in-garbage-out header.
+        let measure_count = read_int(data, &mut seek)?.clamp(0, 100_000) as usize;
+        let track_count = read_int(data, &mut seek)?.clamp(0, 100_000) as usize;
         self.read_measure_headers_v5(data, &mut seek, measure_count, &directions)?;
         self.read_tracks_v5(data, &mut seek, track_count)?;
         self.read_measures(data, &mut seek)?;
@@ -244,7 +269,10 @@ impl Song {
         self.writer = read_int_byte_size_string(data, seek)?; //tabbed by
         self.instructions = read_int_byte_size_string(data, seek)?; //instructions
         //notices
-        let nc = read_int(data, seek)?.to_usize_gp("notice count")?;
+        // Guard against negative / absurd counts in malformed files. Cap to a
+        // sensible upper bound so a corrupt count doesn't allocate wildly or
+        // panic.
+        let nc = read_int(data, seek)?.clamp(0, 10_000) as usize;
         for _ in 0..nc {
             self.notice.push(read_int_byte_size_string(data, seek)?);
         }

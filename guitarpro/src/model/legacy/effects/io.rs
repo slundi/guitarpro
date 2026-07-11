@@ -85,7 +85,14 @@ impl SongEffectOps for Song {
             ..Default::default()
         };
         g.velocity = unpack_velocity(read_byte(data, seek)? as i16);
-        g.duration = 1 << (7 - read_byte(data, seek)?);
+        // Duration byte is expected in `0..=7`; garbage above that used to
+        // underflow `u8` in `7 - byte`. Clamp instead.
+        let dur_byte = read_byte(data, seek)?;
+        g.duration = if dur_byte <= 7 {
+            1 << (7 - dur_byte)
+        } else {
+            1
+        };
         g.is_dead = g.fret == -1;
         g.transition = get_grace_effect_transition(read_signed_byte(data, seek)?)?;
         Ok(g)

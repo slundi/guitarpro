@@ -229,17 +229,21 @@ impl SongHeaderOps for Song {
     }
 
     fn read_repeat_alternative(&mut self, data: &[u8], seek: &mut usize) -> GpResult<u8> {
-        let value = read_byte(data, seek)?.to_u16_gp("repeat alternative value")?;
+        // Guitar Pro encodes repeat alternatives as a bitmask in a single byte,
+        // so `value` should stay in `1..=8`. Some exports emit larger numbers
+        // (spec says "1st/2nd/…" but the file may carry a raw ordinal). Clamp
+        // to 8 so `(1 << value) - 1` doesn't overflow a u16 and so the result
+        // still fits `u8`.
+        let raw = read_byte(data, seek)?;
+        let value = u16::from(raw).min(8);
         let mut existing_alternative = 0u16;
         for i in (0..self.measure_headers.len()).rev() {
             if self.measure_headers[i].repeat_open {
                 break;
             }
-            existing_alternative |= self.measure_headers[i]
-                .repeat_alternative
-                .to_u16_gp("repeat_alternative")?;
+            existing_alternative |= u16::from(self.measure_headers[i].repeat_alternative);
         }
-        (((1 << value) - 1) ^ existing_alternative).to_u8_gp("repeat alternative result")
+        Ok((((1u16 << value) - 1) ^ existing_alternative) as u8)
     }
 
     fn read_repeat_alternative_v5(&mut self, data: &[u8], seek: &mut usize) -> GpResult<u8> {

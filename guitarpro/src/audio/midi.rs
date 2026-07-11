@@ -255,10 +255,17 @@ impl SongMidiOps for Song {
                 self.channels[idx].instrument = 0;
             }
             if !self.channels[idx].is_percussion_channel() {
-                self.channels[idx].effect_channel = effect_channel.to_u8_gp("effect channel")?;
+                // Some legacy files store junk in the second int of the
+                // channel pair (GP2 upgraded to GP3, byte-mis-alignment). Cap
+                // to u8 rather than fail.
+                self.channels[idx].effect_channel = effect_channel.clamp(0, 255) as u8;
             }
+            return Ok(idx);
         }
-        index.to_usize_gp("channel index")
+        // Malformed file: raw index is out of range. Clamp to a safe slot so
+        // callers indexing `self.channels[…]` don't panic. `channels` is
+        // always initialised with at least one entry before this is called.
+        Ok(0)
     }
 
     fn write_midi_channels(&self, data: &mut Vec<u8>) {

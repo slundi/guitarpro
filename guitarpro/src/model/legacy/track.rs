@@ -173,21 +173,25 @@ impl SongTrackOps for Song {
         track.banjo_track = (flags & 0x04) == 0x04; //Banjo track
 
         track.name = read_byte_size_string(data, seek, 40)?;
-        let string_count = read_int(data, seek)?.to_u8_gp("string count")?;
+        // Clamp string_count: valid range is 0..=7 (Guitar Pro caps at 7),
+        // but malformed files may store larger ints.
+        let string_count = (read_int(data, seek)?.clamp(0, 7)) as u8;
         track.strings.clear();
         for i in 0..7i8 {
-            let i_tuning = read_int(data, seek)?.to_i8_gp("string tuning")?;
-            if string_count.to_i8_gp("string count")? > i {
+            // Truncate rather than fail: MIDI note pitches fit in i8; garbage
+            // slots (0x00_00_7F_00, etc.) just mean an unused string.
+            let i_tuning = read_int(data, seek)? as i8;
+            if string_count as i8 > i {
                 track.strings.push((i + 1, i_tuning));
             }
         }
         //println!("tuning: {:?}", track.strings);
-        track.port = read_int(data, seek)?.to_u8_gp("port")?;
+        track.port = read_int(data, seek)?.clamp(0, 255) as u8;
         let index = self.read_channel(data, seek)?;
         if self.channels[index].channel == 9 {
             track.percussion_track = true;
         }
-        track.fret_count = read_int(data, seek)?.to_u8_gp("fret count")?;
+        track.fret_count = read_int(data, seek)?.clamp(0, 255) as u8;
         track.offset = read_int(data, seek)?;
         track.color = read_color(data, seek)?;
         //println!("\tInstrument: {} \t Strings: {}/{} ({:?})", self.channels[index].get_instrument_name(), string_count, track.strings.len(), track.strings);
@@ -260,12 +264,12 @@ impl SongTrackOps for Song {
                 track.strings.push((i + 1, i_tuning));
             }
         }
-        track.port = read_int(data, seek)?.to_u8_gp("port")?;
+        track.port = read_int(data, seek)?.clamp(0, 255) as u8;
         self.read_channel(data, seek)?;
         if self.channels[number].channel == 9 {
             track.percussion_track = true;
         }
-        track.fret_count = read_int(data, seek)?.to_u8_gp("fret count")?;
+        track.fret_count = read_int(data, seek)?.clamp(0, 255) as u8;
         track.offset = read_int(data, seek)?;
         track.color = read_color(data, seek)?;
 

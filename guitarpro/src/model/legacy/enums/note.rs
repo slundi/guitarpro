@@ -13,19 +13,18 @@ pub enum SlideType {
     OutUpWards,
 }
 pub(crate) fn get_slide_type(value: i8) -> GpResult<SlideType> {
-    match value {
-        -2 => Ok(SlideType::IntoFromAbove),
-        -1 => Ok(SlideType::IntoFromBelow),
-        0 => Ok(SlideType::None),
-        1 => Ok(SlideType::ShiftSlideTo),
-        2 => Ok(SlideType::LegatoSlideTo),
-        3 => Ok(SlideType::OutDownwards),
-        4 => Ok(SlideType::OutUpWards),
-        _ => Err(GpError::InvalidValue {
-            context: "slide type",
-            value: value as i64,
-        }),
-    }
+    // Some legacy exports write junk here when no slide is active. Guitar Pro
+    // itself treats unknown values as "no slide", so we do the same rather
+    // than rejecting the file.
+    Ok(match value {
+        -2 => SlideType::IntoFromAbove,
+        -1 => SlideType::IntoFromBelow,
+        1 => SlideType::ShiftSlideTo,
+        2 => SlideType::LegatoSlideTo,
+        3 => SlideType::OutDownwards,
+        4 => SlideType::OutUpWards,
+        _ => SlideType::None,
+    })
 }
 pub(crate) fn from_slide_type(value: &SlideType) -> i8 {
     match value {
