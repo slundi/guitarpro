@@ -462,3 +462,149 @@ fn duplicates_walker_picks_up_mscz_files() {
         "expected scan to include both mscz files. stdout: {stdout}, stderr: {stderr}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Shipped-fixture walker (Part 5.3)
+// ---------------------------------------------------------------------------
+//
+// The `guitarpro/samples/mscz/` directory holds pre-generated MSCZ fixtures
+// (see `guitarpro/src/tests/mscz_fixtures.rs`). Every fixture must load
+// through the CLI without error — this catches regressions in the loader
+// bridge that only show up on non-synthetic archive layouts.
+
+/// The 7 committed fixtures from Part 5. Kept in sync with
+/// `guitarpro/src/tests/mscz_fixtures.rs::FIXTURES`.
+const SHIPPED_FIXTURES: &[&str] = &[
+    "simple_monophonic",
+    "multi_track_band",
+    "alternate_tuning",
+    "repeats_and_voltas",
+    "empty_score",
+    "single_measure",
+    "four_voices",
+];
+
+fn samples_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("cli has a workspace parent")
+        .join("guitarpro")
+        .join("samples")
+        .join("mscz")
+}
+
+#[test]
+fn info_runs_on_every_shipped_fixture() {
+    let dir = samples_dir();
+    let mut missing = Vec::new();
+    let mut failures = Vec::new();
+
+    for name in SHIPPED_FIXTURES {
+        let path = dir.join(format!("{name}.mscz"));
+        if !path.exists() {
+            missing.push(name.to_string());
+            continue;
+        }
+        let out = score_tool()
+            .arg("info")
+            .arg("-i")
+            .arg(&path)
+            .output()
+            .expect("score_tool info");
+        if !out.status.success() {
+            failures.push(format!("{name}: {}", String::from_utf8_lossy(&out.stderr)));
+            continue;
+        }
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            stdout.contains("MuseScore (MSCZ)"),
+            "{name}: expected MSCZ format label"
+        );
+    }
+
+    assert!(
+        missing.is_empty(),
+        "committed fixtures missing: {missing:?} — run \
+         `cargo test -p guitarpro write_mscz_samples_to_disk -- --ignored --exact`"
+    );
+    assert!(failures.is_empty(), "fixture failures: {failures:#?}");
+}
+
+#[test]
+fn repeats_runs_on_every_shipped_fixture() {
+    let dir = samples_dir();
+    for name in SHIPPED_FIXTURES {
+        let path = dir.join(format!("{name}.mscz"));
+        if !path.exists() {
+            continue;
+        }
+        let out = score_tool()
+            .arg("repeats")
+            .arg("-i")
+            .arg(&path)
+            .output()
+            .expect("score_tool repeats");
+        assert!(
+            out.status.success(),
+            "{name}: repeats failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+}
+
+#[test]
+fn mscz_list_succeeds_on_every_shipped_fixture() {
+    let dir = samples_dir();
+    for name in SHIPPED_FIXTURES {
+        let path = dir.join(format!("{name}.mscz"));
+        if !path.exists() {
+            continue;
+        }
+        let out = score_tool()
+            .args(["mscz", "list", "-i"])
+            .arg(&path)
+            .output()
+            .expect("mscz list");
+        assert!(
+            out.status.success(),
+            "{name}: mscz list failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(
+            stdout.contains("score.mscx"),
+            "{name}: expected score.mscx in listing"
+        );
+    }
+}
+
+#[test]
+fn convert_mscz_to_musicxml_on_every_shipped_fixture() {
+    let dir = samples_dir();
+    for name in SHIPPED_FIXTURES {
+        let src = dir.join(format!("{name}.mscz"));
+        if !src.exists() {
+            continue;
+        }
+        let out_dir = tempdir();
+        let dst = out_dir.path().join(format!("{name}.musicxml"));
+        let out = score_tool()
+            .arg("convert")
+            .arg("-i")
+            .arg(&src)
+            .arg("-o")
+            .arg(&dst)
+            .output()
+            .expect("score_tool convert");
+        assert!(
+            out.status.success(),
+            "{name}: convert to musicxml failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let contents = std::fs::read_to_string(&dst).expect("read output");
+        assert!(
+            contents.starts_with("<?xml"),
+            "{name}: expected XML output, got {contents:.80}"
+        );
+    }
+}

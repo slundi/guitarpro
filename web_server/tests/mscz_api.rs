@@ -436,6 +436,103 @@ async fn files_list_includes_mscz_entries() {
 }
 
 // ---------------------------------------------------------------------------
+// Shipped-fixture walker (Part 5.4)
+// ---------------------------------------------------------------------------
+//
+// Cross-check: the 7 pre-generated fixtures under `guitarpro/samples/mscz/`
+// must all upload cleanly, expose valid info, and reach the analysis
+// endpoints. Kept in sync with `guitarpro/src/tests/mscz_fixtures.rs`.
+
+/// The committed fixture names in `guitarpro/samples/mscz/`.
+const SHIPPED_FIXTURES: &[&str] = &[
+    "simple_monophonic",
+    "multi_track_band",
+    "alternate_tuning",
+    "repeats_and_voltas",
+    "empty_score",
+    "single_measure",
+    "four_voices",
+];
+
+fn samples_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("web_server has a workspace parent")
+        .join("guitarpro")
+        .join("samples")
+        .join("mscz")
+}
+
+#[tokio::test]
+async fn shipped_fixtures_upload_and_expose_info() {
+    let dir = tempfile::tempdir().unwrap();
+    let app = app_with_root(dir.path());
+    let samples = samples_dir();
+    let mut missing: Vec<&str> = Vec::new();
+
+    for name in SHIPPED_FIXTURES {
+        let path = samples.join(format!("{name}.mscz"));
+        if !path.exists() {
+            missing.push(name);
+            continue;
+        }
+        let bytes = std::fs::read(&path).expect("read committed fixture");
+        let summary = upload_mscz(&app, &format!("{name}.mscz"), &bytes).await;
+        let id = summary["id"].as_str().unwrap();
+
+        let response = get(&app, &format!("/api/score/{id}/info")).await;
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "{name}: /info must succeed"
+        );
+
+        let response = get(&app, &format!("/api/score/{id}/analysis/repeats")).await;
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "{name}: /analysis/repeats must succeed"
+        );
+    }
+
+    assert!(
+        missing.is_empty(),
+        "committed fixtures missing: {missing:?} — run \
+         `cargo test -p guitarpro write_mscz_samples_to_disk -- --ignored --exact`"
+    );
+}
+
+#[tokio::test]
+async fn shipped_fixtures_can_be_downloaded_as_mscz() {
+    let dir = tempfile::tempdir().unwrap();
+    let app = app_with_root(dir.path());
+    let samples = samples_dir();
+
+    for name in SHIPPED_FIXTURES {
+        let path = samples.join(format!("{name}.mscz"));
+        if !path.exists() {
+            continue;
+        }
+        let bytes = std::fs::read(&path).expect("read committed fixture");
+        let summary = upload_mscz(&app, &format!("{name}.mscz"), &bytes).await;
+        let id = summary["id"].as_str().unwrap();
+
+        let response = get(&app, &format!("/api/score/{id}/download?format=mscz")).await;
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "{name}: /download?format=mscz must succeed"
+        );
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(
+            &body[..4],
+            b"PK\x03\x04",
+            "{name}: download must produce a valid ZIP archive"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
