@@ -1,0 +1,4 @@
+[default.extend-words]
+ratatui = "ratatui"
+tuplet = "tuplet"
+tuplets = "tuplets"

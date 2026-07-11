@@ -10,7 +10,11 @@ use quick_xml::escape::unescape;
 use quick_xml::events::{BytesStart, Event as XmlEvent};
 
 use crate::error::{GpError, GpResult};
-use crate::model::mscz::{Instrument, MetaTag, Mscx, Part, Staff, StaffMeasureCount, StringData};
+use crate::model::mscz::{
+    Instrument, MetaTag, Mscx, MscxBeat, MscxBeatKind, MscxDuration, MscxDurationKind, MscxKeySig,
+    MscxMeasure, MscxNote, MscxStaff, MscxTimeSig, MscxVoice, Part, Staff, StaffMeasureCount,
+    StringData,
+};
 
 const SUPPORTED_MAJOR_MIN: u32 = 4;
 const SUPPORTED_MAJOR_MAX: u32 = 4;
@@ -34,15 +38,12 @@ pub fn parse_mscx(xml: &str) -> GpResult<Mscx> {
     let mut division: Option<u32> = None;
     let mut meta_tags: Vec<MetaTag> = Vec::new();
     let mut parts: Vec<Part> = Vec::new();
-    let mut measure_counts: Vec<StaffMeasureCount> = Vec::new();
+    let mut score_staves: Vec<MscxStaff> = Vec::new();
 
     // A tiny state machine tracks whether we're inside `<Score>` (top-level
     // matters — the file has a nested `<Score>` shape). `depth_in_score`
     // counts open `<Score>` tags; anything > 0 means "inside the score".
     let mut depth_in_score = 0u32;
-    // When inside `<Score>`, track the currently-open top-level `<Staff>`
-    // (the "master" staff that owns measures).
-    let mut score_staff: Option<StaffMeasureCount> = None;
     // Nested `<Part>` context (only populated while parsing one).
     let mut current_part: Option<Part> = None;
 
@@ -62,11 +63,6 @@ pub fn parse_mscx(xml: &str) -> GpResult<Mscx> {
             }
             XmlEvent::End(element) if element.name().as_ref() == b"Score" => {
                 depth_in_score = depth_in_score.saturating_sub(1);
-                if depth_in_score == 0
-                    && let Some(staff) = score_staff.take()
-                {
-                    measure_counts.push(staff);
-                }
             }
 
             XmlEvent::Start(element)
@@ -75,30 +71,10 @@ pub fn parse_mscx(xml: &str) -> GpResult<Mscx> {
                     // Only the top-level Staff (Score > Staff) — not Part > Staff
                     && current_part.is_none() =>
             {
-                if let Some(previous) = score_staff.take() {
-                    measure_counts.push(previous);
-                }
                 let staff_id = attribute_value(&element, b"id")?.unwrap_or_default();
-                score_staff = Some(StaffMeasureCount {
-                    staff_id,
-                    measure_count: 0,
-                });
-            }
-            XmlEvent::End(element)
-                if depth_in_score > 0
-                    && element.name().as_ref() == b"Staff"
-                    && current_part.is_none() =>
-            {
-                if let Some(staff) = score_staff.take() {
-                    measure_counts.push(staff);
-                }
-            }
-            XmlEvent::Empty(element) | XmlEvent::Start(element)
-                if depth_in_score > 0 && element.name().as_ref() == b"Measure" =>
-            {
-                if let Some(staff) = score_staff.as_mut() {
-                    staff.measure_count += 1;
-                }
+                drop(element);
+                let staff = parse_score_staff(&mut reader, &mut buffer, staff_id)?;
+                score_staves.push(staff);
             }
 
             XmlEvent::Start(element) if element.name().as_ref() == b"programVersion" => {
@@ -182,6 +158,14 @@ pub fn parse_mscx(xml: &str) -> GpResult<Mscx> {
         ));
     }
 
+    let measure_counts: Vec<StaffMeasureCount> = score_staves
+        .iter()
+        .map(|staff| StaffMeasureCount {
+            staff_id: staff.staff_id.clone(),
+            measure_count: staff.measures.len() as u32,
+        })
+        .collect();
+
     Ok(Mscx {
         raw_xml: xml.to_string(),
         version,
@@ -191,6 +175,7 @@ pub fn parse_mscx(xml: &str) -> GpResult<Mscx> {
         meta_tags,
         parts,
         measure_counts,
+        score_staves,
     })
 }
 
@@ -204,7 +189,7 @@ pub fn write_mscx(mscx: &Mscx) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Part-level sub-parsers (unchanged from Part 1)
 // ---------------------------------------------------------------------------
 
 fn parse_part_staff(
@@ -330,6 +315,389 @@ fn parse_string_data(reader: &mut XmlReader<&[u8]>, buffer: &mut Vec<u8>) -> GpR
     }
     Ok(data)
 }
+
+// ---------------------------------------------------------------------------
+// Score body sub-parsers (Part 2)
+// ---------------------------------------------------------------------------
+
+fn parse_score_staff(
+    reader: &mut XmlReader<&[u8]>,
+    buffer: &mut Vec<u8>,
+    staff_id: String,
+) -> GpResult<MscxStaff> {
+    let mut staff = MscxStaff {
+        staff_id,
+        measures: Vec::new(),
+    };
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("Score/Staff read: {error}")))?;
+        match event {
+            XmlEvent::Empty(element) if element.name().as_ref() == b"Measure" => {
+                let len = attribute_value(&element, b"len")?;
+                staff.measures.push(MscxMeasure {
+                    len,
+                    ..MscxMeasure::default()
+                });
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"Measure" => {
+                let len = attribute_value(&element, b"len")?;
+                drop(element);
+                let measure = parse_measure(reader, buffer, len)?;
+                staff.measures.push(measure);
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"Staff" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(staff)
+}
+
+fn parse_measure(
+    reader: &mut XmlReader<&[u8]>,
+    buffer: &mut Vec<u8>,
+    len: Option<String>,
+) -> GpResult<MscxMeasure> {
+    let mut measure = MscxMeasure {
+        len,
+        ..MscxMeasure::default()
+    };
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("Measure read: {error}")))?;
+        match event {
+            XmlEvent::Empty(element) if element.name().as_ref() == b"startRepeat" => {
+                measure.start_repeat = true;
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"endRepeat" => {
+                let text = read_text(reader, buffer, "endRepeat")?;
+                measure.end_repeat = text.trim().parse::<u8>().ok().or(Some(2));
+            }
+            XmlEvent::Empty(element) if element.name().as_ref() == b"endRepeat" => {
+                measure.end_repeat = Some(2);
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"voice" => {
+                let voice = parse_voice(reader, buffer, &mut measure)?;
+                measure.voices.push(voice);
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"Measure" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(measure)
+}
+
+fn parse_voice(
+    reader: &mut XmlReader<&[u8]>,
+    buffer: &mut Vec<u8>,
+    measure: &mut MscxMeasure,
+) -> GpResult<MscxVoice> {
+    let mut voice = MscxVoice::default();
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("voice read: {error}")))?;
+        match event {
+            XmlEvent::Start(element) if element.name().as_ref() == b"TimeSig" => {
+                let sig = parse_time_sig(reader, buffer)?;
+                if measure.time_sig.is_none() {
+                    measure.time_sig = Some(sig);
+                }
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"KeySig" => {
+                let sig = parse_key_sig(reader, buffer)?;
+                if measure.key_sig.is_none() {
+                    measure.key_sig = Some(sig);
+                }
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"Tempo" => {
+                let tempo = parse_tempo(reader, buffer)?;
+                if measure.tempo_bps.is_none() {
+                    measure.tempo_bps = tempo;
+                }
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"Chord" => {
+                let beat = parse_chord(reader, buffer)?;
+                voice.beats.push(beat);
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"Rest" => {
+                let beat = parse_rest(reader, buffer)?;
+                voice.beats.push(beat);
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"voice" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(voice)
+}
+
+fn parse_time_sig(reader: &mut XmlReader<&[u8]>, buffer: &mut Vec<u8>) -> GpResult<MscxTimeSig> {
+    let mut numerator = 4u8;
+    let mut denominator = 4u8;
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("TimeSig read: {error}")))?;
+        match event {
+            XmlEvent::Start(element) if element.name().as_ref() == b"sigN" => {
+                let text = read_text(reader, buffer, "sigN")?;
+                if let Ok(value) = text.trim().parse::<u8>() {
+                    numerator = value;
+                }
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"sigD" => {
+                let text = read_text(reader, buffer, "sigD")?;
+                if let Ok(value) = text.trim().parse::<u8>() {
+                    denominator = value;
+                }
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"TimeSig" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(MscxTimeSig {
+        numerator,
+        denominator,
+    })
+}
+
+fn parse_key_sig(reader: &mut XmlReader<&[u8]>, buffer: &mut Vec<u8>) -> GpResult<MscxKeySig> {
+    let mut fifths: i8 = 0;
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("KeySig read: {error}")))?;
+        match event {
+            XmlEvent::Start(element)
+                if matches!(element.name().as_ref(), b"accidental" | b"concertKey") =>
+            {
+                let name_owned = element.name().as_ref().to_vec();
+                let context = if name_owned == b"accidental" {
+                    "KeySig/accidental"
+                } else {
+                    "KeySig/concertKey"
+                };
+                let text = read_text(reader, buffer, context)?;
+                if let Ok(value) = text.trim().parse::<i8>() {
+                    fifths = value;
+                }
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"KeySig" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(MscxKeySig { fifths })
+}
+
+fn parse_tempo(reader: &mut XmlReader<&[u8]>, buffer: &mut Vec<u8>) -> GpResult<Option<f32>> {
+    let mut bps: Option<f32> = None;
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("Tempo read: {error}")))?;
+        match event {
+            XmlEvent::Start(element) if element.name().as_ref() == b"tempo" => {
+                let text = read_text(reader, buffer, "tempo")?;
+                bps = text.trim().parse::<f32>().ok();
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"Tempo" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(bps)
+}
+
+fn parse_chord(reader: &mut XmlReader<&[u8]>, buffer: &mut Vec<u8>) -> GpResult<MscxBeat> {
+    let mut duration = MscxDuration {
+        kind: MscxDurationKind::Quarter,
+        dots: 0,
+    };
+    let mut notes: Vec<MscxNote> = Vec::new();
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("Chord read: {error}")))?;
+        match event {
+            XmlEvent::Start(element) if element.name().as_ref() == b"durationType" => {
+                let text = read_text(reader, buffer, "Chord/durationType")?;
+                duration.kind = parse_duration_kind(text.trim());
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"dots" => {
+                let text = read_text(reader, buffer, "Chord/dots")?;
+                if let Ok(value) = text.trim().parse::<u8>() {
+                    duration.dots = value;
+                }
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"Note" => {
+                notes.push(parse_note(reader, buffer)?);
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"Chord" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(MscxBeat {
+        duration,
+        kind: MscxBeatKind::Chord(notes),
+    })
+}
+
+fn parse_rest(reader: &mut XmlReader<&[u8]>, buffer: &mut Vec<u8>) -> GpResult<MscxBeat> {
+    let mut duration = MscxDuration {
+        kind: MscxDurationKind::Measure,
+        dots: 0,
+    };
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("Rest read: {error}")))?;
+        match event {
+            XmlEvent::Start(element) if element.name().as_ref() == b"durationType" => {
+                let text = read_text(reader, buffer, "Rest/durationType")?;
+                duration.kind = parse_duration_kind(text.trim());
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"dots" => {
+                let text = read_text(reader, buffer, "Rest/dots")?;
+                if let Ok(value) = text.trim().parse::<u8>() {
+                    duration.dots = value;
+                }
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"Rest" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(MscxBeat {
+        duration,
+        kind: MscxBeatKind::Rest,
+    })
+}
+
+fn parse_note(reader: &mut XmlReader<&[u8]>, buffer: &mut Vec<u8>) -> GpResult<MscxNote> {
+    let mut note = MscxNote {
+        pitch: None,
+        tpc: None,
+        string: None,
+        fret: None,
+        tie_start: false,
+        tie_end: false,
+    };
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("Note read: {error}")))?;
+        match event {
+            XmlEvent::Start(element) if element.name().as_ref() == b"pitch" => {
+                let text = read_text(reader, buffer, "Note/pitch")?;
+                note.pitch = text.trim().parse::<u8>().ok();
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"tpc" => {
+                let text = read_text(reader, buffer, "Note/tpc")?;
+                note.tpc = text.trim().parse::<i8>().ok();
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"string" => {
+                let text = read_text(reader, buffer, "Note/string")?;
+                note.string = text.trim().parse::<u8>().ok();
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"fret" => {
+                let text = read_text(reader, buffer, "Note/fret")?;
+                note.fret = text.trim().parse::<u8>().ok();
+            }
+            XmlEvent::Start(element) if element.name().as_ref() == b"Spanner" => {
+                // `<Spanner type="Tie">` markers appear as siblings of the note's
+                // pitch data. We only care about detecting Tie start/end here;
+                // the actual span target is not required for the LoadedScore
+                // representation.
+                let spanner_type = attribute_value(&element, b"type")?.unwrap_or_default();
+                drop(element);
+                let (has_prev, _has_next) = scan_spanner(reader, buffer)?;
+                if spanner_type == "Tie" {
+                    if has_prev {
+                        note.tie_end = true;
+                    } else {
+                        note.tie_start = true;
+                    }
+                }
+            }
+            XmlEvent::End(element) if element.name().as_ref() == b"Note" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok(note)
+}
+
+/// Consume a `<Spanner>` block, detecting `<prev>` / `<next>` siblings and
+/// returning `(has_prev, has_next)`. The presence of `<prev>` means the tie
+/// terminates on the current note (this is an End); `<next>` means the tie
+/// begins here (Start).
+fn scan_spanner(reader: &mut XmlReader<&[u8]>, buffer: &mut Vec<u8>) -> GpResult<(bool, bool)> {
+    let mut has_prev = false;
+    let mut has_next = false;
+
+    loop {
+        let event = reader
+            .read_event_into(buffer)
+            .map_err(|error| GpError::MsczXml(format!("Spanner read: {error}")))?;
+        match event {
+            XmlEvent::Empty(element) | XmlEvent::Start(element) => match element.name().as_ref() {
+                b"prev" => has_prev = true,
+                b"next" => has_next = true,
+                _ => {}
+            },
+            XmlEvent::End(element) if element.name().as_ref() == b"Spanner" => break,
+            XmlEvent::Eof => break,
+            _ => {}
+        }
+        buffer.clear();
+    }
+    Ok((has_prev, has_next))
+}
+
+fn parse_duration_kind(text: &str) -> MscxDurationKind {
+    match text {
+        "whole" => MscxDurationKind::Whole,
+        "half" => MscxDurationKind::Half,
+        "quarter" => MscxDurationKind::Quarter,
+        "eighth" => MscxDurationKind::Eighth,
+        "16th" => MscxDurationKind::Sixteenth,
+        "32nd" => MscxDurationKind::ThirtySecond,
+        "64th" => MscxDurationKind::SixtyFourth,
+        "128th" => MscxDurationKind::HundredTwentyEighth,
+        "measure" => MscxDurationKind::Measure,
+        _ => MscxDurationKind::Quarter,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
 
 fn attribute_value(element: &BytesStart<'_>, key: &[u8]) -> GpResult<Option<String>> {
     for attribute in element.attributes() {

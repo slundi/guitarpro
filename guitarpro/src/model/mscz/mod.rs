@@ -15,7 +15,11 @@
 
 pub mod mscx;
 
-pub use mscx::{Instrument, MetaTag, Mscx, Part, Staff, StaffMeasureCount, StringData};
+pub use mscx::{
+    Instrument, MetaTag, Mscx, MscxBeat, MscxBeatKind, MscxDuration, MscxDurationKind, MscxKeySig,
+    MscxMeasure, MscxNote, MscxStaff, MscxTimeSig, MscxVoice, Part, Staff, StaffMeasureCount,
+    StringData,
+};
 
 /// A single entry inside an MSCZ archive.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -88,7 +92,9 @@ impl MsczArchive {
 }
 
 /// A complete MSCZ document: the raw archive plus the parsed [`Mscx`] view.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `PartialEq` only — the parsed [`Mscx`] carries an `f32` tempo.
+#[derive(Debug, Clone, PartialEq)]
 pub struct MsczFile {
     /// Preserved archive (every entry retained verbatim).
     pub archive: MsczArchive,

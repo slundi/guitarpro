@@ -8,6 +8,7 @@ mod gp345_structure;
 mod gp7;
 mod gpx;
 mod mscz;
+mod mscz_convert;
 mod real_world_regressions;
 mod roundtrip;
 mod roundtrip_musicxml;
