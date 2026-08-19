@@ -2,6 +2,7 @@
   "name": "guitar-score-viewer",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "rm -rf dist && tsc && vite build",
@@ -13,6 +14,6 @@
   "devDependencies": {
     "@coderline/alphatab-vite": "^1.8.4",
     "typescript": "^5.4.0",
-    "vite": "^6.0.0"
+    "vite": "^7.0.0"
   }
 }
