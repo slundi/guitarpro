@@ -1,5 +1,6 @@
 use axum::Router;
 use axum::body::Body;
+use axum::extract::DefaultBodyLimit;
 use axum::http::{StatusCode, header};
 use axum::response::Response;
 use axum::routing::{get, post};
@@ -7,7 +8,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::error::ApiError;
-use crate::state::AppState;
+use crate::state::{AppState, MAX_MSCZ_FILE_SIZE};
 
 mod analysis;
 mod extract;
@@ -67,12 +68,20 @@ pub fn api_routes() -> Router<AppState> {
         .route("/api/files", get(files::list))
         .route("/api/files/thumbnail", get(files::thumbnail))
         .route("/api/duplicates", post(files::duplicates))
-        .route("/api/score/upload", post(upload::handler))
+        // axum's `Multipart` extractor caps the request body at 2 MB by
+        // default; GP files routinely exceed that (MAX_MSCZ_FILE_SIZE covers
+        // the largest supported input, .mscz). Per-extension caps are still
+        // enforced inside the handler via `max_size_for`.
+        .route(
+            "/api/score/upload",
+            post(upload::handler).layer(DefaultBodyLimit::max(MAX_MSCZ_FILE_SIZE)),
+        )
         .route("/api/score/open", post(open::handler))
         .route("/api/score/{id}/extract", post(extract::handler))
         .route("/api/score/{id}/raw", get(score::raw))
         .route("/api/score/{id}/download", get(score::download))
         .route("/api/score/{id}/info", get(score::info))
+        .route("/api/score/{id}/audio", get(score::audio))
         .route("/api/score/{id}/thumbnail", get(score::thumbnail))
         .route("/api/score/{id}/analysis/repeats", get(analysis::repeats))
         .route("/api/score/{id}/analysis/form", get(analysis::form))

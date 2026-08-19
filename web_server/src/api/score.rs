@@ -26,6 +26,19 @@ struct ScoreInfo {
     time_signature: TimeSigInfo,
     tracks: Vec<TrackInfo>,
     markers: Vec<MarkerInfo>,
+    /// Whether the score bundles a backing-track audio file (GP8 feature).
+    has_audio: bool,
+    /// SyncPoint anchors (bar → audio frame offset), when present.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    sync_points: Vec<SyncPointInfo>,
+}
+
+#[derive(Serialize)]
+struct SyncPointInfo {
+    bar: i32,
+    bar_occurrence: i32,
+    frame_offset: Option<i64>,
+    modified_tempo: Option<f64>,
 }
 
 #[derive(Serialize)]
@@ -265,7 +278,47 @@ pub async fn info(
         },
         tracks,
         markers,
+        has_audio: loaded.song.backing_track_audio.is_some(),
+        sync_points: loaded
+            .song
+            .sync_points
+            .iter()
+            .map(|sp| SyncPointInfo {
+                bar: sp.bar_index,
+                bar_occurrence: sp.bar_occurrence,
+                frame_offset: sp.frame_offset,
+                modified_tempo: sp.modified_tempo,
+            })
+            .collect(),
     }))
+}
+
+/// Serve the embedded backing-track audio (MP3) for a GP7/GP8 session.
+/// Returns 404 when the score carries no audio.
+pub async fn audio(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Response, ApiError> {
+    let mp3 = {
+        let sessions = state.sessions.read().await;
+        let loaded = sessions
+            .get(&id)
+            .ok_or_else(|| ApiError::not_found("Score session not found"))?;
+        loaded.touch();
+        loaded
+            .song
+            .backing_track_audio
+            .clone()
+            .ok_or_else(|| ApiError::not_found("No embedded audio for this session"))?
+    };
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "audio/mpeg")
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CACHE_CONTROL, "private, max-age=3600")
+        .body(Body::from(mp3))
+        .map_err(|e| ApiError::internal(e.to_string()))
 }
 
 fn pitch_to_midi(p: &Pitch) -> i16 {
