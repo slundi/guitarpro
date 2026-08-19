@@ -12,6 +12,19 @@ use crate::model::legacy::rse::*;
 use crate::model::legacy::track::*;
 
 // Struct utility to read file: https://stackoverflow.com/questions/55555538/what-is-the-correct-way-to-read-a-binary-file-in-chunks-of-a-fixed-size-and-stor
+/// A musical-position → audio-time anchor used to synchronize the score with an
+/// embedded backing track (**GP8** feature). Derived from `<Automation
+/// Type="SyncPoint">` in the GPIF; `frame_offset` is an absolute audio-frame
+/// offset, so `frame_offset / sample_rate` yields a playback timestamp.
+#[derive(Debug, Clone, Default)]
+pub struct SyncPoint {
+    pub bar_index: i32,
+    pub bar_occurrence: i32,
+    pub modified_tempo: Option<f64>,
+    pub original_tempo: Option<f64>,
+    pub frame_offset: Option<i64>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Song {
     pub version: Version,
@@ -40,6 +53,12 @@ pub struct Song {
     pub hide_tempo: bool,
     pub tempo_name: String,
     pub key: KeySignature,
+
+    /// SyncPoint anchors (GP8), in file order.
+    pub sync_points: Vec<SyncPoint>,
+    /// Embedded backing-track audio (e.g. `Content/Assets/*.mp3`), raw bytes
+    /// (GP8 feature).
+    pub backing_track_audio: Option<Vec<u8>>,
 
     pub triplet_feel: TripletFeel,
     pub master_effect: RseMasterEffect,
@@ -83,6 +102,8 @@ impl Default for Song {
             hide_tempo: false,
             tempo_name: String::from("Moderate"),
             key: KeySignature::default(),
+            sync_points: Vec::new(),
+            backing_track_audio: None,
 
             triplet_feel: TripletFeel::None,
             current_measure_number: None,
@@ -96,6 +117,16 @@ impl Default for Song {
         }
     }
 }
+
+/// Parse a GPIF `<GPVersion>` string like `"8.1.3"` into a `(major, minor,
+/// patch)` tuple. Falls back to `(7, 0, 0)` for unparseable values (the `.gp`
+/// container format starts at GP7).
+fn parse_gpif_version(s: &str) -> (u8, u8, u8) {
+    let parts: Vec<&str> = s.split('.').collect();
+    let num = |i: usize| parts.get(i).and_then(|p| p.parse().ok()).unwrap_or(0);
+    (num(0).max(7), num(1), num(2))
+}
+
 impl Song {
     /// Read the song. A song consists of score information, triplet feel, tempo, song key, MIDI channels, measure and track count, measure headers, tracks, measures.
     /// - Version: `byte-size-string` of size 30.
@@ -228,9 +259,23 @@ impl Song {
     }
     /// Read Guitar Pro 7+ file (.gp)
     pub fn read_gp(&mut self, data: &[u8]) -> GpResult<()> {
-        use crate::io::gpx::read_gp;
-        let gpif = read_gp(data)?;
-        self.version.number = (7, 0, 0); // Todo parse from gpif.version
+        use crate::io::gpx::read_gp_with_audio;
+        let (gpif, audio) = read_gp_with_audio(data)?;
+        self.backing_track_audio = audio;
+        // The ZIP `VERSION` marker stays "7.0" for both GP7 and GP8; the GPIF
+        // declares the true format version (e.g. "8.1.3" for GP8).
+        self.version = match gpif.version.as_deref().map(parse_gpif_version) {
+            Some(n) => Version {
+                data: gpif.version.clone().unwrap_or_default(),
+                number: n,
+                clipboard: false,
+            },
+            None => Version {
+                data: String::from("7.0"),
+                number: (7, 0, 0),
+                clipboard: false,
+            },
+        };
         self.read_gpif(&gpif);
         Ok(())
     }

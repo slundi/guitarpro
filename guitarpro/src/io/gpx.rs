@@ -1,7 +1,7 @@
 use crate::error::GpResult;
 use crate::io::gpif::Gpif;
 use quick_xml::de::from_str;
-use std::io::{Cursor, Read};
+use std::io::Cursor;
 use zip::ZipArchive;
 
 // ---------------------------------------------------------------------------
@@ -164,6 +164,20 @@ pub fn write_gp_bytes(song: &crate::model::legacy::song::Song) -> GpResult<Vec<u
 
 /// Reads a .gp (GP7+) file which is a ZIP archive containing 'Content/score.gpif'.
 pub fn read_gp(data: &[u8]) -> GpResult<Gpif> {
+    Ok(read_gp_with_audio(data)?.0)
+}
+
+/// Reads a .gp (GP7+) file, returning the parsed GPIF plus any embedded
+/// backing-track audio found under `Content/Assets/` (e.g. `*.mp3`).
+///
+/// GP8 files (declared via `<GPVersion>8.x</GPVersion>` in the GPIF; the ZIP
+/// `VERSION` marker stays `7.0`) may bundle the original recording so the
+/// score can be synchronized against it via `SyncPoint` automations. The audio
+/// bytes are surfaced so the web server can serve them directly
+/// (`/api/score/:id/audio`) and the CLI can extract them.
+pub fn read_gp_with_audio(data: &[u8]) -> GpResult<(Gpif, Option<Vec<u8>>)> {
+    use std::io::Read as _;
+
     let cursor = Cursor::new(data);
     let mut zip = ZipArchive::new(cursor).map_err(|e| format!("Zip error: {}", e))?;
 
@@ -177,7 +191,27 @@ pub fn read_gp(data: &[u8]) -> GpResult<Gpif> {
         .map_err(|e| format!("Read error: {}", e))?;
 
     let gpif: Gpif = from_str(&contents).map_err(|e| format!("XML Parse error: {}", e))?;
-    Ok(gpif)
+
+    // Embedded backing track: first audio asset under Content/Assets/.
+    // (zip entries can only be read once, so re-open the archive.)
+    let mut audio: Option<Vec<u8>> = None;
+    if let Ok(mut zip) = ZipArchive::new(Cursor::new(data)) {
+        for i in 0..zip.len() {
+            let Ok(mut entry) = zip.by_index(i) else { continue };
+            let name = entry.name().to_string();
+            if name.starts_with("Content/Assets/")
+                && name.ends_with(".mp3")
+            {
+                let mut buf = Vec::new();
+                if entry.read_to_end(&mut buf).is_ok() {
+                    audio = Some(buf);
+                }
+                break;
+            }
+        }
+    }
+
+    Ok((gpif, audio))
 }
 
 // ---------------------------------------------------------------------------
