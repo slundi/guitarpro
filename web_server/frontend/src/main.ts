@@ -10,6 +10,7 @@ const scoreTitle        = document.getElementById("score-title")!;
 const fileInput         = document.getElementById("file-input") as HTMLInputElement;
 const zoomSlider        = document.getElementById("zoom-slider") as HTMLInputElement;
 const zoomValue         = document.getElementById("zoom-value")!;
+const playBtn           = document.getElementById("play-btn") as HTMLButtonElement;
 const statusBar         = document.getElementById("status-bar")!;
 const scoreContainer    = document.getElementById("score-container")!;
 const repeatsDivider    = document.getElementById("repeats-divider")!;
@@ -132,7 +133,7 @@ const PREF_SOUNDFONT = "soundFontUrl";
 const DEFAULT_MODE   = "notation-tab";
 const DEFAULT_LAYOUT = "page";
 const DEFAULT_SCALE  = "1";
-const DEFAULT_SOUNDFONT = "";
+const DEFAULT_SOUNDFONT = "https://alphatab.net/soundfont/sonivox.sf2";
 
 const staveProfileMap: Record<string, alphaTab.StaveProfile> = {
   "notation-tab": alphaTab.StaveProfile.ScoreTab,
@@ -152,13 +153,19 @@ const initScale        = parseFloat(localStorage.getItem(PREF_SCALE) ?? "1");
 // ── alphaTab initialisation ───────────────────────────────────────────────────
 const api = new alphaTab.AlphaTabApi(atContainer, {
   core: { includeNoteBounds: true },
-  player: { enablePlayer: false },
+  // Player in automatic mode: scores with an embedded backing track (GP8)
+  // play the original audio; others fall back to the SoundFont synthesizer.
+  player: {
+    enablePlayer: true,
+    soundFont: DEFAULT_SOUNDFONT,
+  },
   display: {
     scale:        initScale,
     staveProfile: initStaveProfile,
     layoutMode:   initLayoutMode,
   },
 });
+(window as unknown as Record<string, unknown>).__api = api; // debug hook
 
 // ── Sync toolbar state from localStorage ──────────────────────────────────────
 const savedMode   = localStorage.getItem(PREF_MODE)   ?? "notation-tab";
@@ -1082,6 +1089,33 @@ api.scoreLoaded.on((score) => {
 
   buildTrackList(score.tracks as Array<{ name: string }>);
 
+  // Audio-sync diagnostics: which player mode alphaTab picked and whether the
+  // GP file carried an embedded backing track + sync points.
+  const flat = (score as unknown as { exportFlatSyncPoints?: () => unknown[] })
+    .exportFlatSyncPoints?.() ?? [];
+  const backing = (score as unknown as { backingTrack?: { rawAudioFile?: unknown } })
+    .backingTrack?.rawAudioFile;
+  const diag = {
+    playerMode: (api as unknown as { playerMode?: unknown }).playerMode,
+    backingTrack: backing ? (backing as Uint8Array).length : 0,
+    syncPoints: flat.length,
+  };
+  console.info("[score]", diag);
+  (window as unknown as Record<string, unknown>).__scoreDiag = diag;
+  playBtn.disabled = false;
+  playBtn.title = diag.backingTrack > 0
+    ? "Play original audio (embedded backing track)"
+    : "Play (SoundFont synthesizer)";
+
+  // Reflect play/pause state on the button. `playerStateChanged` is late-init
+  // and only becomes available once a score is loaded. `state` is a numeric
+  // PlayerState (Paused = 0, Playing = 1).
+  (api as unknown as {
+    playerStateChanged?: { on: (fn: (e: { state: number }) => void) => void };
+  }).playerStateChanged?.on((e) => {
+    playBtn.textContent = e.state === 1 ? "⏸ Pause" : "▶ Play";
+  });
+
   if (currentScoreId) {
     void fetchRepeats(currentScoreId);
     void fetchForm(currentScoreId);
@@ -1511,7 +1545,7 @@ function toggleRepeatsOverlay(): void { repeatsBtn.click(); }
 function toggleFingeringOverlay(): void { findBtn.click(); }
 
 /** Space/Escape are wired for Part 4 (playback). API calls are guarded so
- * they no-op cleanly when `enablePlayer` is false. */
+ * they no-op cleanly when the player is unavailable. */
 function tryPlayPause(): void {
   try { (api as unknown as { playPause: () => void }).playPause(); }
   catch { /* player disabled */ }
@@ -1520,6 +1554,9 @@ function tryStop(): void {
   try { (api as unknown as { stop: () => void }).stop(); }
   catch { /* player disabled */ }
 }
+
+// ── Play button ──────────────────────────────────────────────────────────────
+playBtn.addEventListener("click", tryPlayPause);
 
 /** Truthy iff any dismissable overlay is currently visible. `Escape` should
  * dismiss the topmost overlay before falling through to `api.stop()`. */

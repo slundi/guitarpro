@@ -100,7 +100,12 @@ pub fn print_text(song: &Song, path: &str, fmt: &str) {
     println!("{:<16} {}", "File:", path);
     let fmt_label = match fmt {
         "GPX" => "Guitar Pro 6 (GPX)".to_owned(),
-        "GP" => "Guitar Pro 7+ (GP)".to_owned(),
+        "GP" => {
+            // The `.gp` container starts at GP7; the GPIF `GPVersion` declares
+            // the true format (e.g. "8.1.3" for GP8 — where SyncPoint + audio
+            // live).
+            format!("Guitar Pro {} (GP, GPIF v{}.{}.{})", ver.0, ver.0, ver.1, ver.2)
+        }
         "MSCZ" => "MuseScore (MSCZ)".to_owned(),
         _ => format!(
             "Guitar Pro {} ({} v{}.{}.{})",
@@ -133,6 +138,33 @@ pub fn print_text(song: &Song, path: &str, fmt: &str) {
     println!("{:<16} {}", "Key:", song.key);
     println!("{:<16} {}", "Measures:", song.measure_headers.len());
     println!("{:<16} {}", "Tracks:", song.tracks.len());
+
+    // ---- Audio sync (GP7/GP8) ---------------------------------------------
+    if let Some(audio) = &song.backing_track_audio {
+        println!("{:<16} {} ({} bytes)", "Audio:", "embedded MP3", audio.len());
+    }
+    if !song.sync_points.is_empty() {
+        let shown = song
+            .sync_points
+            .iter()
+            .take(6)
+            .map(|sp| {
+                format!(
+                    "bar {} (occ {}) @ frame {}",
+                    sp.bar_index,
+                    sp.bar_occurrence,
+                    sp.frame_offset.unwrap_or(0)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let suffix = if song.sync_points.len() > 6 {
+            format!(" (+{} more)", song.sync_points.len() - 6)
+        } else {
+            String::new()
+        };
+        println!("{:<16} {}{}", "SyncPoints:", shown, suffix);
+    }
 
     // ---- Tracks ------------------------------------------------------------
     println!();

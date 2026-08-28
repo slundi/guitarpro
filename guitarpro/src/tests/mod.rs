@@ -6,6 +6,7 @@ mod gp345_note_effects;
 mod gp345_slides;
 mod gp345_structure;
 mod gp7;
+mod gp8_audio_sync;
 mod gpx;
 mod mscz;
 mod mscz_convert;

@@ -21,6 +21,17 @@ pub trait SongGpifOps {
 // Helper functions
 // ---------------------------------------------------------------------------
 
+/// Extract the tempo number from a Tempo automation's `<Value>`, e.g. the
+/// `125` in `<Value>125 2</Value>`. The value may be plain text (`Tempo`) or a
+/// structured element (`SyncPoint` wraps `<BarIndex>`, `<ModifiedTempo>`, …);
+/// [`AutomationValue`] collects both shapes into a list of text items.
+fn automation_tempo(auto: &Automation) -> Option<&str> {
+    auto.value
+        .as_ref()
+        .and_then(|v| v.items.first())
+        .and_then(|s| s.split_whitespace().next())
+}
+
 /// Convert GPIF note value string to Duration.value.
 /// Falls back to Quarter (4) for unknown values.
 fn note_value_to_duration(s: &str) -> u16 {
@@ -228,7 +239,7 @@ impl SongGpifOps for Song {
             for auto in &automations.automations {
                 if auto.automation_type == "Tempo"
                     && auto.bar == 0
-                    && let Some(tempo_str) = auto.value.split_whitespace().next()
+                    && let Some(tempo_str) = automation_tempo(auto)
                 {
                     self.tempo = match tempo_str.parse::<f64>() {
                         Ok(v) => v as i16,
@@ -241,6 +252,26 @@ impl SongGpifOps for Song {
                         }
                     };
                 }
+            }
+        }
+
+        // 2b. SyncPoint anchors (GP8 audio sync): musical position → audio
+        // frame offset into the embedded backing track.
+        self.sync_points.clear();
+        if let Some(automations) = &gpif.master_track.automations {
+            for auto in &automations.automations {
+                if auto.automation_type != "SyncPoint" {
+                    continue;
+                }
+                let Some(value) = &auto.value else { continue };
+                let Some(bar_index) = value.bar_index else { continue };
+                self.sync_points.push(SyncPoint {
+                    bar_index,
+                    bar_occurrence: value.bar_occurrence.unwrap_or(0),
+                    modified_tempo: value.modified_tempo,
+                    original_tempo: value.original_tempo,
+                    frame_offset: value.frame_offset,
+                });
             }
         }
 
@@ -282,7 +313,7 @@ impl SongGpifOps for Song {
                 for auto in &automations.automations {
                     if auto.automation_type == "Tempo"
                         && auto.bar == mh_idx as i32
-                        && let Some(tempo_str) = auto.value.split_whitespace().next()
+                        && let Some(tempo_str) = automation_tempo(auto)
                     {
                         mh.tempo = tempo_str.parse::<f64>().unwrap_or(0.0) as i32;
                     }

@@ -74,18 +74,50 @@ pub struct AutomationsWrapper {
     pub automations: Vec<Automation>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Automation {
     #[serde(rename = "Type", default)]
     pub automation_type: String,
     #[serde(rename = "Value", default)]
-    pub value: String,
+    pub value: Option<AutomationValue>,
     #[serde(rename = "Bar", default)]
     pub bar: i32,
     // GP7 stores this as a fractional position within the bar in `[0.0, 1.0)`
     // (e.g. `0.75`), not an integer tick offset.
     #[serde(rename = "Position", default)]
     pub position: f32,
+}
+
+/// `<Value>` content of an automation. Most automation types (Tempo, …) use
+/// plain text (`<Value>125 2</Value>`); **GP8** `SyncPoint` automations use a
+/// structured element instead:
+///   `<Value><BarIndex>0</BarIndex><BarOccurrence>0</BarOccurrence>…</Value>`
+///
+/// quick-xml maps named child elements onto matching fields (consuming the
+/// element), while any *unmatched* element or bare text lands in `items`
+/// (the `$value` catch-all). Verified experimentally with quick-xml 0.41:
+/// both channels fill independently, so future GP versions that add more
+/// children stay parseable and their data is preserved in `items`.
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct AutomationValue {
+    /// Unmatched child elements / bare text, in document order.
+    #[serde(rename = "$value", default)]
+    pub items: Vec<String>,
+    /// SyncPoint: the master bar this anchor belongs to.
+    #[serde(rename = "BarIndex", default)]
+    pub bar_index: Option<i32>,
+    /// SyncPoint: which repeat occurrence of the bar (0 = first pass).
+    #[serde(rename = "BarOccurrence", default)]
+    pub bar_occurrence: Option<i32>,
+    /// SyncPoint: tempo the *score* uses at this anchor (after this point).
+    #[serde(rename = "ModifiedTempo", default)]
+    pub modified_tempo: Option<f64>,
+    /// SyncPoint: original song tempo.
+    #[serde(rename = "OriginalTempo", default)]
+    pub original_tempo: Option<f64>,
+    /// SyncPoint: absolute audio-frame offset into the backing track.
+    #[serde(rename = "FrameOffset", default)]
+    pub frame_offset: Option<i64>,
 }
 
 // ---------------------------------------------------------------------------
