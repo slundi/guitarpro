@@ -1,5 +1,4 @@
 # --- Variables ---
-binary_name := "MY_PROJECT" # Change this to your project name
 frontend_dir := "web_server/frontend"
 
 # --- Development ---

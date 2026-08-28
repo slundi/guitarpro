@@ -140,15 +140,11 @@ fn parse_container_manifest(data: &[u8]) -> GpResult<Vec<String>> {
     loop {
         match reader.read_event_into(&mut buffer) {
             Ok(XmlEvent::Empty(element)) | Ok(XmlEvent::Start(element))
-                if element.name().as_ref() == b"rootfile" =>
+                if element.name().as_ref() == "rootfile" =>
             {
                 for attribute in element.attributes().flatten() {
-                    if attribute.key.as_ref() == b"full-path" {
-                        let raw =
-                            std::str::from_utf8(attribute.value.as_ref()).map_err(|error| {
-                                GpError::MsczArchive(format!("container.xml attr utf-8: {error}"))
-                            })?;
-                        let value = unescape(raw).map_err(|error| {
+                    if attribute.key.as_ref() == "full-path" {
+                        let value = unescape(attribute.value.as_ref()).map_err(|error| {
                             GpError::MsczArchive(format!("container.xml attr: {error}"))
                         })?;
                         rootfiles.push(value.into_owned());
