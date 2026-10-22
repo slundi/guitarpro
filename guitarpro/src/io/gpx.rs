@@ -197,11 +197,13 @@ pub fn read_gp_with_audio(data: &[u8]) -> GpResult<(Gpif, Option<Vec<u8>>)> {
     let mut audio: Option<Vec<u8>> = None;
     if let Ok(mut zip) = ZipArchive::new(Cursor::new(data)) {
         for i in 0..zip.len() {
-            let Ok(mut entry) = zip.by_index(i) else { continue };
-            let name = entry.name().to_string();
-            if name.starts_with("Content/Assets/")
-                && name.ends_with(".mp3")
-            {
+            let Ok(mut entry) = zip.by_index(i) else {
+                continue;
+            };
+            let Ok(name) = entry.name().map(|name| name.into_owned()) else {
+                continue;
+            };
+            if name.starts_with("Content/Assets/") && name.ends_with(".mp3") {
                 let mut buf = Vec::new();
                 if entry.read_to_end(&mut buf).is_ok() {
                     audio = Some(buf);

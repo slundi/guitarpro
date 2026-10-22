@@ -41,5 +41,5 @@ mime_guess = { version = "2", optional = true }
 tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
 mime = "0.3"
-zip = "8.6"
+zip = "9.0.5"
 serde_urlencoded = "0.7"

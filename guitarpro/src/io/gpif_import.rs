@@ -264,7 +264,9 @@ impl SongGpifOps for Song {
                     continue;
                 }
                 let Some(value) = &auto.value else { continue };
-                let Some(bar_index) = value.bar_index else { continue };
+                let Some(bar_index) = value.bar_index else {
+                    continue;
+                };
                 self.sync_points.push(SyncPoint {
                     bar_index,
                     bar_occurrence: value.bar_occurrence.unwrap_or(0),

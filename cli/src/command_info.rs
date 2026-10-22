@@ -104,7 +104,10 @@ pub fn print_text(song: &Song, path: &str, fmt: &str) {
             // The `.gp` container starts at GP7; the GPIF `GPVersion` declares
             // the true format (e.g. "8.1.3" for GP8 — where SyncPoint + audio
             // live).
-            format!("Guitar Pro {} (GP, GPIF v{}.{}.{})", ver.0, ver.0, ver.1, ver.2)
+            format!(
+                "Guitar Pro {} (GP, GPIF v{}.{}.{})",
+                ver.0, ver.0, ver.1, ver.2
+            )
         }
         "MSCZ" => "MuseScore (MSCZ)".to_owned(),
         _ => format!(
@@ -141,7 +144,7 @@ pub fn print_text(song: &Song, path: &str, fmt: &str) {
 
     // ---- Audio sync (GP7/GP8) ---------------------------------------------
     if let Some(audio) = &song.backing_track_audio {
-        println!("{:<16} {} ({} bytes)", "Audio:", "embedded MP3", audio.len());
+        println!("{:<16} embedded MP3 ({} bytes)", "Audio:", audio.len());
     }
     if !song.sync_points.is_empty() {
         let shown = song

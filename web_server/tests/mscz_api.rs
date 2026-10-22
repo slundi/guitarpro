@@ -401,7 +401,14 @@ async fn download_format_mscz_returns_a_valid_archive() {
     let cursor = std::io::Cursor::new(body.to_vec());
     let mut archive = zip::ZipArchive::new(cursor).expect("valid ZIP");
     let mut names: Vec<String> = (0..archive.len())
-        .map(|i| archive.by_index(i).unwrap().name().to_string())
+        .map(|i| {
+            archive
+                .by_index(i)
+                .expect("zip entry")
+                .name()
+                .expect("entry name")
+                .into_owned()
+        })
         .collect();
     names.sort();
     assert!(names.iter().any(|n| n == "META-INF/container.xml"));

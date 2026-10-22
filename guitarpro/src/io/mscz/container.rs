@@ -64,7 +64,10 @@ pub fn read_container(data: &[u8]) -> GpResult<MsczArchive> {
         if file.is_dir() {
             continue;
         }
-        let path = file.name().to_string();
+        let path = file
+            .name()
+            .map_err(|error| GpError::MsczArchive(format!("entry {index} name: {error}")))?
+            .into_owned();
         let mut buffer = Vec::with_capacity(file.size() as usize);
         file.read_to_end(&mut buffer)
             .map_err(|error| GpError::MsczArchive(format!("read entry {path}: {error}")))?;

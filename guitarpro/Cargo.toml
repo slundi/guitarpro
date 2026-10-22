@@ -1,6 +1,6 @@
 [package]
 name = "guitarpro"
-version = "0.4.3"
+version = "0.4.4"
 authors = ["slundi"]
 edition = "2024"
 description = "Rust library and command line interface (CLI) for guitar tab files."
@@ -16,9 +16,9 @@ path = "src/lib.rs"
 
 [dependencies]
 fraction = "0.17.0"
-encoding_rs = "0.8.35"
+encoding_rs = "0.8.42"
 thiserror = "2.0.18"
-zip = "8.6.0"
+zip = "9.0.5"
 quick-xml = { version = "0.42", features = ["serialize"] }
 serde = { version = "1.0.228", features = ["derive"] }
 
