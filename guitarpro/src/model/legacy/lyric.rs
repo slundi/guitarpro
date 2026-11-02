@@ -6,7 +6,7 @@ pub const _MAX_LYRICS_LINE_COUNT: u8 = 5;
 /// Struct to keep lyrics
 /// On guitar pro files (gp4 or later), you can have 5 lines of lyrics.
 /// It is store on a BTreeMap:
-/// * the key is the mesure number. The start mesure is 1
+/// * the key is the measure number. The start measure is 1
 /// * the value is the text. Syntax:
 ///   * " " (spaces or carry returns): separates the syllables of a word
 ///   * "+": merge two syllables for the same beat
@@ -59,12 +59,18 @@ impl SongLyricOps for Song {
             data,
             self.lyrics.track_choice.to_i32_gp("lyrics track_choice")?,
         );
-        for i in 0..5 {
-            write_i32(
-                data,
-                self.lyrics.lines[i].1.to_i32_gp("lyrics line measure")?,
-            );
-            write_int_size_string(data, &self.lyrics.lines[i].2);
+        // The format reserves exactly five lyric slots. `read_lyrics` always
+        // fills all five, but a `Song` produced by a converter (MusicXML,
+        // MSCZ, the optimized model) carries `Lyrics::default()` with an
+        // empty `lines`, so pad the missing slots with the empty line Guitar
+        // Pro itself writes for an unused one.
+        for index in 0.._MAX_LYRICS_LINE_COUNT as usize {
+            let (measure, text) = match self.lyrics.lines.get(index) {
+                Some((_, measure, text)) => (*measure, text.as_str()),
+                None => (0, ""),
+            };
+            write_i32(data, measure.to_i32_gp("lyrics line measure")?);
+            write_int_size_string(data, text);
         }
         Ok(())
     }

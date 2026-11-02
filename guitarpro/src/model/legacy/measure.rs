@@ -241,7 +241,9 @@ impl SongMeasureOps for Song {
         if version.0 < 5 {
             self.write_voice(data, track, measure, 0, version)?;
         } else {
-            for v in 0..self.tracks[track].measures[measure].voices.len() {
+            // Always emit the fixed voice count the GP5 reader consumes, not
+            // however many the in-memory measure happens to hold.
+            for v in 0..MAX_VOICES {
                 self.write_voice(data, track, measure, v, version)?;
             } //self.current_voice_number = Some(v+1);
             if version.0 == 5 {
@@ -262,32 +264,24 @@ impl SongMeasureOps for Song {
         voice: usize,
         version: &(u8, u8, u8),
     ) -> GpResult<()> {
-        write_i32(
-            data,
-            self.tracks[track].measures[measure].voices[voice]
-                .beats
-                .len()
-                .to_i32_gp("beats count")?,
-        );
-        for b in 0..self.tracks[track].measures[measure].voices[voice]
-            .beats
-            .len()
-        {
-            //self.current_beat_number = Some(b+1);
+        // A `Song` built by a converter may carry fewer voices than the
+        // format reserves (the MusicXML importer emits one voice per XML
+        // `<voice>`, often just one). `read_measure_v5` always consumes
+        // `MAX_VOICES`, so an absent voice is written as an empty one rather
+        // than skipped — otherwise the stream ends early and reading the file
+        // back fails with an unexpected EOF.
+        let Some(voice_data) = self.tracks[track].measures[measure].voices.get(voice) else {
+            write_i32(data, 0);
+            return Ok(());
+        };
+
+        write_i32(data, voice_data.beats.len().to_i32_gp("beats count")?);
+        for beat in &voice_data.beats {
             if version.0 == 3 {
-                self.write_beat_v3(
-                    data,
-                    &self.tracks[track].measures[measure].voices[voice].beats[b],
-                )?;
+                self.write_beat_v3(data, beat)?;
             } else {
-                self.write_beat(
-                    data,
-                    &self.tracks[track].measures[measure].voices[voice].beats[b],
-                    &self.tracks[track].strings,
-                    version,
-                )?;
+                self.write_beat(data, beat, &self.tracks[track].strings, version)?;
             }
-            //self.current_beat_number = None;
         }
         Ok(())
     }

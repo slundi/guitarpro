@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// The `type` attribute specifies the role, e.g. `"composer"`, `"lyricist"`, `"arranger"`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Creator {
-    #[serde(rename = "@type")]
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
     pub creator_type: Option<String>,
     #[serde(rename = "$text")]
     pub value: String,
@@ -14,7 +14,7 @@ pub struct Creator {
 /// A rights statement for the score.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rights {
-    #[serde(rename = "@type")]
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
     pub rights_type: Option<String>,
     #[serde(rename = "$text")]
     pub value: String,
@@ -23,7 +23,7 @@ pub struct Rights {
 /// Records software and date information about how the file was encoded.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Encoding {
-    #[serde(rename = "encoding-date")]
+    #[serde(rename = "encoding-date", skip_serializing_if = "Option::is_none")]
     pub encoding_date: Option<String>,
     #[serde(rename = "encoder", default)]
     pub encoders: Vec<TypedText>,
@@ -38,7 +38,7 @@ pub struct Encoding {
 /// A text element that carries an optional `type` attribute.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TypedText {
-    #[serde(rename = "@type")]
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
     pub text_type: Option<String>,
     #[serde(rename = "$text")]
     pub value: String,
@@ -54,9 +54,9 @@ pub struct Supports {
     pub supports_type: String,
     #[serde(rename = "@element")]
     pub element: String,
-    #[serde(rename = "@attribute")]
+    #[serde(rename = "@attribute", skip_serializing_if = "Option::is_none")]
     pub attribute: Option<String>,
-    #[serde(rename = "@value")]
+    #[serde(rename = "@value", skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
 }
 
@@ -85,9 +85,12 @@ pub struct Identification {
     pub creators: Vec<Creator>,
     #[serde(rename = "rights", default)]
     pub rights: Vec<Rights>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub encoding: Option<Encoding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
     #[serde(rename = "relation", default)]
     pub relations: Vec<TypedText>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub miscellaneous: Option<Miscellaneous>,
 }

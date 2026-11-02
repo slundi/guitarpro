@@ -138,6 +138,8 @@ pub const CHANNEL_DEFAULT_NAMES: [&str; 128] = [
 ];
 
 pub const DEFAULT_PERCUSSION_CHANNEL: u8 = 9;
+/// Guitar Pro always stores 64 MIDI channels: 4 ports of 16 channels each.
+pub const MIDI_CHANNEL_COUNT: u8 = 64;
 /// A MIDI channel describes playing data for a track.
 #[derive(Debug, Copy, Clone)]
 pub struct MidiChannel {
@@ -200,7 +202,7 @@ pub trait SongMidiOps {
 impl SongMidiOps for Song {
     /// Read all the MIDI channels
     fn read_midi_channels(&mut self, data: &[u8], seek: &mut usize) -> GpResult<()> {
-        for i in 0u8..64u8 {
+        for i in 0u8..MIDI_CHANNEL_COUNT {
             self.channels.push(self.read_midi_channel(data, seek, i)?);
         }
         Ok(())
@@ -269,18 +271,29 @@ impl SongMidiOps for Song {
     }
 
     fn write_midi_channels(&self, data: &mut Vec<u8>) {
-        for i in 0..self.channels.len() {
-            if self.channels[i].is_percussion_channel() && self.channels[i].instrument == 0 {
+        // The format always stores `MIDI_CHANNEL_COUNT` channels, and
+        // `read_midi_channels` always consumes that many. A `Song` built by a
+        // converter rather than read from a GP file carries only the channels
+        // it actually uses, so pad the rest with defaults — writing fewer
+        // truncates the stream and every later section is misread.
+        for index in 0..MIDI_CHANNEL_COUNT as usize {
+            let fallback = MidiChannel {
+                channel: index as u8,
+                ..Default::default()
+            };
+            let channel = self.channels.get(index).unwrap_or(&fallback);
+
+            if channel.is_percussion_channel() && channel.instrument == 0 {
                 write_i32(data, -1);
             } else {
-                write_i32(data, self.channels[i].instrument);
+                write_i32(data, channel.instrument);
             }
-            write_signed_byte(data, self.channels[i].volume);
-            write_signed_byte(data, self.channels[i].balance);
-            write_signed_byte(data, self.channels[i].chorus);
-            write_signed_byte(data, self.channels[i].reverb);
-            write_signed_byte(data, self.channels[i].phaser);
-            write_signed_byte(data, self.channels[i].tremolo);
+            write_signed_byte(data, channel.volume);
+            write_signed_byte(data, channel.balance);
+            write_signed_byte(data, channel.chorus);
+            write_signed_byte(data, channel.reverb);
+            write_signed_byte(data, channel.phaser);
+            write_signed_byte(data, channel.tremolo);
             write_placeholder_default(data, 2); //Backward compatibility with version 3.0
         }
     }

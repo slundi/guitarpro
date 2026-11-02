@@ -4,11 +4,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TraditionalKey {
     /// Semitone alteration of the cancel key (-7 to 7).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cancel: Option<Cancel>,
     /// Number of sharps or flats: positive = sharps, negative = flats.
     pub fifths: i8,
     /// `"major"`, `"minor"`, `"dorian"`, `"phrygian"`, `"lydian"`,
     /// `"mixolydian"`, `"aeolian"`, `"ionian"`, `"locrian"`, `"none"`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
 }
 
@@ -16,7 +18,7 @@ pub struct TraditionalKey {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cancel {
     /// `"left"`, `"right"`, or `"before-barline"`.
-    #[serde(rename = "@location")]
+    #[serde(rename = "@location", skip_serializing_if = "Option::is_none")]
     pub location: Option<String>,
     #[serde(rename = "$text")]
     pub fifths: i8,
@@ -29,7 +31,7 @@ pub struct KeyAccidental {
     pub key_step: String,
     #[serde(rename = "key-alter")]
     pub key_alter: f64,
-    #[serde(rename = "key-accidental")]
+    #[serde(rename = "key-accidental", skip_serializing_if = "Option::is_none")]
     pub key_accidental: Option<String>,
 }
 
@@ -39,13 +41,16 @@ pub struct KeyAccidental {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Key {
     /// Staff number this key applies to (multi-staff parts only).
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<u8>,
-    #[serde(rename = "@print-object")]
+    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
     pub print_object: Option<String>,
     // Traditional key fields (present for traditional key signatures)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cancel: Option<Cancel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fifths: Option<i8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     // Non-traditional key fields
     #[serde(rename = "key-step", default)]
@@ -64,7 +69,7 @@ pub struct KeyOctave {
     /// Index into the list of key-step/key-alter pairs (1-based).
     #[serde(rename = "@number")]
     pub number: u8,
-    #[serde(rename = "@cancel")]
+    #[serde(rename = "@cancel", skip_serializing_if = "Option::is_none")]
     pub cancel: Option<String>,
     #[serde(rename = "$text")]
     pub octave: i8,
@@ -82,62 +87,64 @@ pub struct BeatUnit {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Time {
     /// Staff number this time signature applies to.
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<u8>,
     /// `"common"`, `"cut"`, `"single-number"`, `"note"`, `"dotted-note"`, `"normal"`.
-    #[serde(rename = "@symbol")]
+    #[serde(rename = "@symbol", skip_serializing_if = "Option::is_none")]
     pub symbol: Option<String>,
-    #[serde(rename = "@separator")]
+    #[serde(rename = "@separator", skip_serializing_if = "Option::is_none")]
     pub separator: Option<String>,
-    #[serde(rename = "@print-object")]
+    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
     pub print_object: Option<String>,
     /// Number of beats per measure. For compound time: comma-separated (e.g. `"3+2"`).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub beats: Option<String>,
     /// Note value of one beat (e.g. `"4"` for quarter note).
-    #[serde(rename = "beat-type")]
+    #[serde(rename = "beat-type", skip_serializing_if = "Option::is_none")]
     pub beat_type: Option<String>,
     /// Present for senza-misura (unmeasured) passages.
-    #[serde(rename = "senza-misura")]
+    #[serde(rename = "senza-misura", skip_serializing_if = "Option::is_none")]
     pub senza_misura: Option<String>,
     /// Additional beat groups for interchangeable time signatures.
-    #[serde(rename = "interchangeable")]
+    #[serde(rename = "interchangeable", skip_serializing_if = "Option::is_none")]
     pub interchangeable: Option<Interchangeable>,
 }
 
 /// Alternate time-signature display for interchangeable meters.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Interchangeable {
-    #[serde(rename = "@symbol")]
+    #[serde(rename = "@symbol", skip_serializing_if = "Option::is_none")]
     pub symbol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub beats: Option<String>,
-    #[serde(rename = "beat-type")]
+    #[serde(rename = "beat-type", skip_serializing_if = "Option::is_none")]
     pub beat_type: Option<String>,
 }
 
 /// Staff type override (e.g. for a TAB staff or a percussion staff).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StaffDetails {
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<u8>,
-    #[serde(rename = "@show-frets")]
+    #[serde(rename = "@show-frets", skip_serializing_if = "Option::is_none")]
     pub show_frets: Option<String>,
-    #[serde(rename = "@print-object")]
+    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
     pub print_object: Option<String>,
-    #[serde(rename = "@print-spacing")]
+    #[serde(rename = "@print-spacing", skip_serializing_if = "Option::is_none")]
     pub print_spacing: Option<String>,
     /// `"ossia"`, `"cue"`, `"editorial"`, `"regular"`, `"alternate"`.
-    #[serde(rename = "staff-type")]
+    #[serde(rename = "staff-type", skip_serializing_if = "Option::is_none")]
     pub staff_type: Option<String>,
     /// Number of lines on this staff (default 5).
-    #[serde(rename = "staff-lines")]
+    #[serde(rename = "staff-lines", skip_serializing_if = "Option::is_none")]
     pub staff_lines: Option<u8>,
     #[serde(rename = "line-detail", default)]
     pub line_details: Vec<LineDetail>,
     #[serde(rename = "staff-tuning", default)]
     pub staff_tunings: Vec<StaffTuning>,
-    #[serde(rename = "capo")]
+    #[serde(rename = "capo", skip_serializing_if = "Option::is_none")]
     pub capo: Option<u8>,
-    #[serde(rename = "staff-size")]
+    #[serde(rename = "staff-size", skip_serializing_if = "Option::is_none")]
     pub staff_size: Option<f64>,
 }
 
@@ -146,13 +153,13 @@ pub struct StaffDetails {
 pub struct LineDetail {
     #[serde(rename = "@line")]
     pub line: u8,
-    #[serde(rename = "@width")]
+    #[serde(rename = "@width", skip_serializing_if = "Option::is_none")]
     pub width: Option<f64>,
-    #[serde(rename = "@color")]
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
-    #[serde(rename = "@line-type")]
+    #[serde(rename = "@line-type", skip_serializing_if = "Option::is_none")]
     pub line_type: Option<String>,
-    #[serde(rename = "@print-object")]
+    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
     pub print_object: Option<String>,
 }
 
@@ -164,7 +171,7 @@ pub struct StaffTuning {
     pub line: u8,
     #[serde(rename = "tuning-step")]
     pub tuning_step: String,
-    #[serde(rename = "tuning-alter")]
+    #[serde(rename = "tuning-alter", skip_serializing_if = "Option::is_none")]
     pub tuning_alter: Option<f64>,
     #[serde(rename = "tuning-octave")]
     pub tuning_octave: i8,
@@ -174,45 +181,48 @@ pub struct StaffTuning {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Clef {
     /// Staff number (multi-staff parts only).
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<u8>,
-    #[serde(rename = "@additional")]
+    #[serde(rename = "@additional", skip_serializing_if = "Option::is_none")]
     pub additional: Option<String>,
-    #[serde(rename = "@size")]
+    #[serde(rename = "@size", skip_serializing_if = "Option::is_none")]
     pub size: Option<String>,
-    #[serde(rename = "@after-barline")]
+    #[serde(rename = "@after-barline", skip_serializing_if = "Option::is_none")]
     pub after_barline: Option<String>,
-    #[serde(rename = "@print-object")]
+    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
     pub print_object: Option<String>,
     /// `"G"`, `"F"`, `"C"`, `"percussion"`, `"TAB"`, `"jianpu"`, `"none"`.
     pub sign: String,
     /// Staff line the clef sign sits on (counting from the bottom, 1-based).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub line: Option<u8>,
     /// Octave transposition: `-2`, `-1`, `0`, `1`, `2`.
-    #[serde(rename = "clef-octave-change")]
+    #[serde(rename = "clef-octave-change", skip_serializing_if = "Option::is_none")]
     pub clef_octave_change: Option<i8>,
 }
 
 /// Chromatic transposition interval for a transposing instrument.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Transpose {
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<u8>,
     /// Number of diatonic steps to transpose (e.g. `5` for a 5th).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub diatonic: Option<i16>,
     /// Exact chromatic semitones to transpose.
     pub chromatic: i16,
     /// Octave adjustment on top of the chromatic interval.
-    #[serde(rename = "octave-change")]
+    #[serde(rename = "octave-change", skip_serializing_if = "Option::is_none")]
     pub octave_change: Option<i8>,
     /// Present when written pitch is enharmonically equivalent (e.g. B# = C).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub double: Option<()>,
 }
 
 /// Directive text (e.g. "Allegro") at the start of a movement.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Directive {
-    #[serde(rename = "@xml:lang")]
+    #[serde(rename = "@xml:lang", skip_serializing_if = "Option::is_none")]
     pub lang: Option<String>,
     #[serde(rename = "$text")]
     pub value: String,
@@ -228,17 +238,20 @@ pub struct Attributes {
     ///
     /// All `<duration>` values in the part are expressed as multiples of `1/divisions`
     /// of a quarter note.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub divisions: Option<u32>,
     #[serde(rename = "key", default)]
     pub keys: Vec<Key>,
     #[serde(rename = "time", default)]
     pub times: Vec<Time>,
     /// Number of staves in the part (defaults to 1).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub staves: Option<u8>,
     /// `"open"`, `"rhythm"`, or a number.
-    #[serde(rename = "part-symbol")]
+    #[serde(rename = "part-symbol", skip_serializing_if = "Option::is_none")]
     pub part_symbol: Option<PartSymbol>,
     /// Number of instruments (for multi-instrument parts).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub instruments: Option<u8>,
     #[serde(rename = "clef", default)]
     pub clefs: Vec<Clef>,
@@ -257,9 +270,9 @@ pub struct Attributes {
 /// Bracket or brace drawn to the left of a multi-staff part.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PartSymbol {
-    #[serde(rename = "@top-staff")]
+    #[serde(rename = "@top-staff", skip_serializing_if = "Option::is_none")]
     pub top_staff: Option<u8>,
-    #[serde(rename = "@bottom-staff")]
+    #[serde(rename = "@bottom-staff", skip_serializing_if = "Option::is_none")]
     pub bottom_staff: Option<u8>,
     #[serde(rename = "$text")]
     pub value: String,
@@ -268,24 +281,24 @@ pub struct PartSymbol {
 /// Transposition information scoped to a specific part in a multi-part measure.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ForPart {
-    #[serde(rename = "@id")]
+    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<u8>,
-    #[serde(rename = "part-clef")]
+    #[serde(rename = "part-clef", skip_serializing_if = "Option::is_none")]
     pub part_clef: Option<Clef>,
-    #[serde(rename = "part-transpose")]
+    #[serde(rename = "part-transpose", skip_serializing_if = "Option::is_none")]
     pub part_transpose: Option<Transpose>,
 }
 
 /// Measure-style overrides: multiple rests, measure repeats, beat repeats, slash notation.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MeasureStyle {
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<u8>,
-    #[serde(rename = "@font-size")]
+    #[serde(rename = "@font-size", skip_serializing_if = "Option::is_none")]
     pub font_size: Option<String>,
-    #[serde(rename = "@color")]
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
     #[serde(rename = "$value")]
     pub style: MeasureStyleContent,
@@ -304,7 +317,7 @@ pub enum MeasureStyleContent {
 /// A multi-measure rest.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MultipleRest {
-    #[serde(rename = "@use-symbols")]
+    #[serde(rename = "@use-symbols", skip_serializing_if = "Option::is_none")]
     pub use_symbols: Option<String>,
     #[serde(rename = "$text")]
     pub count: u16,
@@ -316,9 +329,9 @@ pub struct MeasureRepeat {
     /// `"start"` or `"stop"`.
     #[serde(rename = "@type")]
     pub repeat_type: String,
-    #[serde(rename = "@slashes")]
+    #[serde(rename = "@slashes", skip_serializing_if = "Option::is_none")]
     pub slashes: Option<u8>,
-    #[serde(rename = "$text")]
+    #[serde(rename = "$text", skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
 }
 
@@ -327,11 +340,11 @@ pub struct MeasureRepeat {
 pub struct BeatRepeat {
     #[serde(rename = "@type")]
     pub repeat_type: String,
-    #[serde(rename = "@slashes")]
+    #[serde(rename = "@slashes", skip_serializing_if = "Option::is_none")]
     pub slashes: Option<u8>,
-    #[serde(rename = "@use-dots")]
+    #[serde(rename = "@use-dots", skip_serializing_if = "Option::is_none")]
     pub use_dots: Option<String>,
-    #[serde(rename = "slash-type")]
+    #[serde(rename = "slash-type", skip_serializing_if = "Option::is_none")]
     pub slash_type: Option<String>,
     #[serde(rename = "slash-dot", default)]
     pub slash_dots: Vec<()>,
@@ -344,11 +357,11 @@ pub struct BeatRepeat {
 pub struct Slash {
     #[serde(rename = "@type")]
     pub slash_type: String,
-    #[serde(rename = "@use-dots")]
+    #[serde(rename = "@use-dots", skip_serializing_if = "Option::is_none")]
     pub use_dots: Option<String>,
-    #[serde(rename = "@use-stems")]
+    #[serde(rename = "@use-stems", skip_serializing_if = "Option::is_none")]
     pub use_stems: Option<String>,
-    #[serde(rename = "slash-type")]
+    #[serde(rename = "slash-type", skip_serializing_if = "Option::is_none")]
     pub slash_note_type: Option<String>,
     #[serde(rename = "slash-dot", default)]
     pub slash_dots: Vec<()>,

@@ -5,10 +5,23 @@ use crate::{
 };
 // use crate::gp::*;
 
+/// Number of equalizer bytes in the GP5 master effect: 10 bands plus the
+/// gain ("PRE") fader. The reader stores all of them in
+/// [`RseEqualizer::knobs`], so this is also the expected `knobs` length.
+pub const MASTER_EQUALIZER_KNOBS: u8 = 11;
+/// Number of equalizer bytes in a GP5 track RSE: 3 bands plus the gain
+/// ("PRE") fader.
+pub const TRACK_EQUALIZER_KNOBS: u8 = 4;
+
 /// Equalizer found in master effect and track effect.
 ///
 /// Attribute :attr:`RSEEqualizer.knobs` is a list of values in range from -6.0 to 5.9. Master effect has 10 knobs, track effect has 3
 /// knobs. Gain is a value in range from -6.0 to 5.9 which can be found in both master and track effects and is named as "PRE" in Guitar Pro 5.
+///
+/// Note that the reader appends the gain byte to `knobs` rather than
+/// splitting it into `gain`, so a master `knobs` holds
+/// [`MASTER_EQUALIZER_KNOBS`] entries and a track one holds
+/// [`TRACK_EQUALIZER_KNOBS`].
 #[derive(Debug, Clone)]
 pub struct RseEqualizer {
     pub knobs: Vec<f32>,
@@ -17,7 +30,7 @@ pub struct RseEqualizer {
 impl Default for RseEqualizer {
     fn default() -> Self {
         RseEqualizer {
-            knobs: Vec::with_capacity(10),
+            knobs: Vec::with_capacity(MASTER_EQUALIZER_KNOBS as usize),
             gain: 0.0,
         }
     }
@@ -36,7 +49,7 @@ impl Default for RseMasterEffect {
             volume: 0.0,
             reverb: 0.0,
             equalizer: RseEqualizer {
-                knobs: vec![0.0; 10],
+                knobs: vec![0.0; MASTER_EQUALIZER_KNOBS as usize],
                 ..Default::default()
             },
         }
@@ -81,7 +94,7 @@ impl Default for TrackRse {
             humanize: 0,
             auto_accentuation: Accentuation::None,
             equalizer: RseEqualizer {
-                knobs: vec![0.0; 3],
+                knobs: vec![0.0; TRACK_EQUALIZER_KNOBS as usize],
                 ..Default::default()
             },
         }
@@ -106,7 +119,7 @@ pub trait SongRseOps {
         instrument: &mut RseInstrument,
     ) -> GpResult<()>;
     fn write_rse_master_effect(&self, data: &mut Vec<u8>);
-    fn write_equalizer(&self, data: &mut Vec<u8>, equalizer: &RseEqualizer);
+    fn write_equalizer(&self, data: &mut Vec<u8>, equalizer: &RseEqualizer, knobs: u8);
     fn pack_volume_value(&self, value: f32) -> i8;
     fn write_master_reverb(&self, data: &mut Vec<u8>);
     fn write_track_rse(&self, data: &mut Vec<u8>, rse: &TrackRse, version: &(u8, u8, u8));
@@ -128,7 +141,7 @@ impl SongRseOps for Song {
         if self.version.number > (5, 0, 0) {
             me.volume = read_int(data, seek)?.to_f32_gp("rse master effect volume")?;
             read_int(data, seek)?; //???
-            me.equalizer = self.read_rse_equalizer(data, seek, 11)?;
+            me.equalizer = self.read_rse_equalizer(data, seek, MASTER_EQUALIZER_KNOBS)?;
             //println!("read_rse_master_effect(): {:?}", me);
         }
         Ok(me)
@@ -166,7 +179,7 @@ impl SongRseOps for Song {
         *seek += 12; //???
         track.rse.instrument = self.read_rse_instrument(data, seek)?;
         if self.version.number > (5, 0, 0) {
-            track.rse.equalizer = self.read_rse_equalizer(data, seek, 4)?;
+            track.rse.equalizer = self.read_rse_equalizer(data, seek, TRACK_EQUALIZER_KNOBS)?;
             self.read_rse_instrument_effect(data, seek, &mut track.rse.instrument)?;
         }
         Ok(())
@@ -219,11 +232,20 @@ impl SongRseOps for Song {
             },
         );
         write_i32(data, 0); //reverb?
-        self.write_equalizer(data, &self.master_effect.equalizer);
+        self.write_equalizer(data, &self.master_effect.equalizer, MASTER_EQUALIZER_KNOBS);
     }
-    fn write_equalizer(&self, data: &mut Vec<u8>, equalizer: &RseEqualizer) {
-        for i in 0..equalizer.knobs.len() {
-            write_signed_byte(data, self.pack_volume_value(equalizer.knobs[i]));
+    /// Write exactly `knobs` equalizer bytes.
+    ///
+    /// The count is fixed by the format, not by the in-memory vector: a
+    /// `Song` built by a converter rather than read from a GP5 file carries a
+    /// defaulted equalizer, and writing fewer (or more) bytes than the reader
+    /// consumes desynchronizes everything downstream — the symptom being a
+    /// nonsense "page width" when the file is read back. Missing entries are
+    /// written as 0.0 and extras are ignored.
+    fn write_equalizer(&self, data: &mut Vec<u8>, equalizer: &RseEqualizer, knobs: u8) {
+        for index in 0..knobs as usize {
+            let value = equalizer.knobs.get(index).copied().unwrap_or(0.0);
+            write_signed_byte(data, self.pack_volume_value(value));
         }
     }
     fn pack_volume_value(&self, value: f32) -> i8 {
@@ -241,7 +263,7 @@ impl SongRseOps for Song {
         write_placeholder_default(data, 12);
         self.write_rse_instrument(data, &rse.instrument, version);
         if version > &(5, 0, 0) {
-            self.write_equalizer(data, &rse.equalizer);
+            self.write_equalizer(data, &rse.equalizer, TRACK_EQUALIZER_KNOBS);
             self.write_rse_instrument_effect(data, &rse.instrument);
         }
     }

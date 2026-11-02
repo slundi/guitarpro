@@ -553,19 +553,13 @@ mod tests {
         let (song, _) = decode(&sample("test/Chords.gp5"), GpioFormat::Gp5)
             .unwrap_or_else(|error| panic!("decode failed: {error}"));
 
-        // MusicXML is absent on purpose: `song_to_score_partwise` currently
-        // emits every absent optional attribute as `attr=""`, which its own
-        // importer rejects ("invalid type: string \"\", expected u16"). That
-        // is a pre-existing defect in the guitarpro MusicXML model — it
-        // reproduces through `score_tool convert` with no FFI involved — so
-        // this crate records the gap rather than asserting a property the
-        // library does not yet hold. Re-add the variant once it is fixed.
         for target in [
             GpioFormat::Gp3,
             GpioFormat::Gp4,
             GpioFormat::Gp5,
             GpioFormat::Gpx,
             GpioFormat::Gp,
+            GpioFormat::MusicXml,
             GpioFormat::Score,
             GpioFormat::Mscz,
         ] {

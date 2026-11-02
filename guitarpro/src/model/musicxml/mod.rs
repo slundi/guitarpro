@@ -16,21 +16,22 @@ use serde::{Deserialize, Serialize};
 /// Maps to the `<work>` element.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Work {
-    #[serde(rename = "work-number")]
+    #[serde(rename = "work-number", skip_serializing_if = "Option::is_none")]
     pub work_number: Option<String>,
-    #[serde(rename = "work-title")]
+    #[serde(rename = "work-title", skip_serializing_if = "Option::is_none")]
     pub work_title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub opus: Option<Opus>,
 }
 
 /// A reference to an external MusicXML opus file.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Opus {
-    #[serde(rename = "@xlink:href")]
+    #[serde(rename = "@xlink:href", skip_serializing_if = "Option::is_none")]
     pub href: Option<String>,
-    #[serde(rename = "@xlink:type")]
+    #[serde(rename = "@xlink:type", skip_serializing_if = "Option::is_none")]
     pub link_type: Option<String>,
-    #[serde(rename = "@xlink:title")]
+    #[serde(rename = "@xlink:title", skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 }
 
@@ -65,15 +66,15 @@ pub struct TimewisePart {
 pub struct TimewiseMeasure {
     #[serde(rename = "@number")]
     pub number: String,
-    #[serde(rename = "@implicit")]
+    #[serde(rename = "@implicit", skip_serializing_if = "Option::is_none")]
     pub implicit: Option<String>,
-    #[serde(rename = "@non-controlling")]
+    #[serde(rename = "@non-controlling", skip_serializing_if = "Option::is_none")]
     pub non_controlling: Option<String>,
-    #[serde(rename = "@width")]
+    #[serde(rename = "@width", skip_serializing_if = "Option::is_none")]
     pub width: Option<f64>,
-    #[serde(rename = "@text")]
+    #[serde(rename = "@text", skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
-    #[serde(rename = "@id")]
+    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     #[serde(rename = "part", default)]
     pub parts: Vec<TimewisePart>,
@@ -101,16 +102,19 @@ pub struct TimewiseMeasure {
 #[serde(rename = "score-timewise")]
 pub struct ScoreTimewise {
     /// MusicXML version string, e.g. `"4.0"`, `"3.1"`, `"3.0"`.
-    #[serde(rename = "@version")]
+    #[serde(rename = "@version", skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
 
     // --- header (identical to score-partwise) ---
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub work: Option<Work>,
-    #[serde(rename = "movement-number")]
+    #[serde(rename = "movement-number", skip_serializing_if = "Option::is_none")]
     pub movement_number: Option<String>,
-    #[serde(rename = "movement-title")]
+    #[serde(rename = "movement-title", skip_serializing_if = "Option::is_none")]
     pub movement_title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub identification: Option<identification::Identification>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub defaults: Option<defaults::Defaults>,
     #[serde(rename = "credit", default)]
     pub credits: Vec<credit::Credit>,
@@ -236,16 +240,19 @@ impl ScoreTimewise {
 #[serde(rename = "score-partwise")]
 pub struct ScorePartwise {
     /// MusicXML version string, e.g. `"4.0"`, `"3.1"`, `"3.0"`.
-    #[serde(rename = "@version")]
+    #[serde(rename = "@version", skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
 
     // --- header ---
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub work: Option<Work>,
-    #[serde(rename = "movement-number")]
+    #[serde(rename = "movement-number", skip_serializing_if = "Option::is_none")]
     pub movement_number: Option<String>,
-    #[serde(rename = "movement-title")]
+    #[serde(rename = "movement-title", skip_serializing_if = "Option::is_none")]
     pub movement_title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub identification: Option<identification::Identification>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub defaults: Option<defaults::Defaults>,
     #[serde(rename = "credit", default)]
     pub credits: Vec<credit::Credit>,

@@ -7,24 +7,29 @@ pub struct ScoreInstrument {
     pub id: String,
     #[serde(rename = "instrument-name")]
     pub instrument_name: String,
-    #[serde(rename = "instrument-abbreviation")]
+    #[serde(
+        rename = "instrument-abbreviation",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub instrument_abbreviation: Option<String>,
-    #[serde(rename = "instrument-sound")]
+    #[serde(rename = "instrument-sound", skip_serializing_if = "Option::is_none")]
     pub instrument_sound: Option<String>,
     /// `"yes"` if this is a solo instrument.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub solo: Option<()>,
     /// `"yes"` if this is an ensemble instrument.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ensemble: Option<String>,
 }
 
 /// MIDI device assignment for a score instrument.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MidiDevice {
-    #[serde(rename = "@id")]
+    #[serde(rename = "@id", skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    #[serde(rename = "@port")]
+    #[serde(rename = "@port", skip_serializing_if = "Option::is_none")]
     pub port: Option<u8>,
-    #[serde(rename = "$text")]
+    #[serde(rename = "$text", skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
 }
 
@@ -33,18 +38,21 @@ pub struct MidiDevice {
 pub struct MidiInstrument {
     #[serde(rename = "@id")]
     pub id: String,
-    #[serde(rename = "midi-channel")]
+    #[serde(rename = "midi-channel", skip_serializing_if = "Option::is_none")]
     pub midi_channel: Option<u8>,
-    #[serde(rename = "midi-name")]
+    #[serde(rename = "midi-name", skip_serializing_if = "Option::is_none")]
     pub midi_name: Option<String>,
-    #[serde(rename = "midi-bank")]
+    #[serde(rename = "midi-bank", skip_serializing_if = "Option::is_none")]
     pub midi_bank: Option<u16>,
-    #[serde(rename = "midi-program")]
+    #[serde(rename = "midi-program", skip_serializing_if = "Option::is_none")]
     pub midi_program: Option<u8>,
-    #[serde(rename = "midi-unpitched")]
+    #[serde(rename = "midi-unpitched", skip_serializing_if = "Option::is_none")]
     pub midi_unpitched: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pan: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub elevation: Option<f64>,
 }
 
@@ -55,14 +63,18 @@ pub struct MidiInstrument {
 pub struct ScorePart {
     #[serde(rename = "@id")]
     pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub identification: Option<super::identification::Identification>,
-    #[serde(rename = "part-name")]
+    #[serde(rename = "part-name", skip_serializing_if = "Option::is_none")]
     pub part_name: Option<PartName>,
-    #[serde(rename = "part-name-display")]
+    #[serde(rename = "part-name-display", skip_serializing_if = "Option::is_none")]
     pub part_name_display: Option<NameDisplay>,
-    #[serde(rename = "part-abbreviation")]
+    #[serde(rename = "part-abbreviation", skip_serializing_if = "Option::is_none")]
     pub part_abbreviation: Option<PartName>,
-    #[serde(rename = "part-abbreviation-display")]
+    #[serde(
+        rename = "part-abbreviation-display",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub part_abbreviation_display: Option<NameDisplay>,
     #[serde(rename = "group", default)]
     pub groups: Vec<String>,
@@ -79,18 +91,18 @@ pub struct ScorePart {
 /// The display name of a part.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PartName {
-    #[serde(rename = "@print-object")]
+    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
     pub print_object: Option<String>,
-    #[serde(rename = "@justify")]
+    #[serde(rename = "@justify", skip_serializing_if = "Option::is_none")]
     pub justify: Option<String>,
-    #[serde(rename = "$text")]
+    #[serde(rename = "$text", skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
 }
 
 /// Controls how a name is displayed (overrides the plain text name).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NameDisplay {
-    #[serde(rename = "@print-object")]
+    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
     pub print_object: Option<String>,
     #[serde(rename = "$value", default)]
     pub content: Vec<NameDisplayContent>,
@@ -107,13 +119,13 @@ pub enum NameDisplayContent {
 /// A text run with optional formatting.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FormattedText {
-    #[serde(rename = "@font-family")]
+    #[serde(rename = "@font-family", skip_serializing_if = "Option::is_none")]
     pub font_family: Option<String>,
-    #[serde(rename = "@font-size")]
+    #[serde(rename = "@font-size", skip_serializing_if = "Option::is_none")]
     pub font_size: Option<String>,
-    #[serde(rename = "@font-weight")]
+    #[serde(rename = "@font-weight", skip_serializing_if = "Option::is_none")]
     pub font_weight: Option<String>,
-    #[serde(rename = "@font-style")]
+    #[serde(rename = "@font-style", skip_serializing_if = "Option::is_none")]
     pub font_style: Option<String>,
     #[serde(rename = "$text")]
     pub value: String,
@@ -122,7 +134,7 @@ pub struct FormattedText {
 /// An accidental glyph used inside a formatted name.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AccidentalText {
-    #[serde(rename = "@smufl")]
+    #[serde(rename = "@smufl", skip_serializing_if = "Option::is_none")]
     pub smufl: Option<String>,
     #[serde(rename = "$text")]
     pub value: String,
@@ -145,31 +157,34 @@ pub struct PartGroup {
     /// `"start"` or `"stop"`.
     #[serde(rename = "@type")]
     pub group_type: String,
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<String>,
-    #[serde(rename = "group-name")]
+    #[serde(rename = "group-name", skip_serializing_if = "Option::is_none")]
     pub group_name: Option<PartName>,
-    #[serde(rename = "group-name-display")]
+    #[serde(rename = "group-name-display", skip_serializing_if = "Option::is_none")]
     pub group_name_display: Option<NameDisplay>,
-    #[serde(rename = "group-abbreviation")]
+    #[serde(rename = "group-abbreviation", skip_serializing_if = "Option::is_none")]
     pub group_abbreviation: Option<PartName>,
-    #[serde(rename = "group-abbreviation-display")]
+    #[serde(
+        rename = "group-abbreviation-display",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub group_abbreviation_display: Option<NameDisplay>,
     /// `"none"`, `"brace"`, `"line"`, `"bracket"`, `"square"`.
-    #[serde(rename = "group-symbol")]
+    #[serde(rename = "group-symbol", skip_serializing_if = "Option::is_none")]
     pub group_symbol: Option<GroupSymbol>,
-    #[serde(rename = "group-barline")]
+    #[serde(rename = "group-barline", skip_serializing_if = "Option::is_none")]
     pub group_barline: Option<GroupBarline>,
-    #[serde(rename = "group-time")]
+    #[serde(rename = "group-time", skip_serializing_if = "Option::is_none")]
     pub group_time: Option<()>,
 }
 
 /// Symbol drawn to the left of a part group.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GroupSymbol {
-    #[serde(rename = "@default-x")]
+    #[serde(rename = "@default-x", skip_serializing_if = "Option::is_none")]
     pub default_x: Option<f64>,
-    #[serde(rename = "@default-y")]
+    #[serde(rename = "@default-y", skip_serializing_if = "Option::is_none")]
     pub default_y: Option<f64>,
     #[serde(rename = "$text")]
     pub value: String,
@@ -178,7 +193,7 @@ pub struct GroupSymbol {
 /// Whether barlines are shared across a part group.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GroupBarline {
-    #[serde(rename = "@color")]
+    #[serde(rename = "@color", skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
     /// `"yes"`, `"no"`, or `"Mensurstrich"`.
     #[serde(rename = "$text")]

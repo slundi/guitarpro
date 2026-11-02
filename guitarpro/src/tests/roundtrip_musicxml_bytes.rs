@@ -13,9 +13,12 @@
 //! target for the Guitar Pro binary formats: it does not model every GP-specific
 //! detail (the mandatory five lyric lines, exact MIDI channel/port layout, page
 //! setup, flag encodings, …). `musicxml_to_legacy_song` therefore produces a
-//! `Song` that does not write back to identical bytes — and in some cases is not
-//! yet writable at all (e.g. an empty `lyrics.lines` panics the GP writer, which
-//! expects five lines).
+//! `Song` that does not write back to identical bytes.
+//!
+//! Such a `Song` is nonetheless *writable and re-readable*: the writers pad
+//! every fixed-width section the format mandates rather than emitting only
+//! what the model holds. That weaker — and achievable — invariant is pinned
+//! by `tests::writer_fixed_width`; only byte-identity remains outstanding here.
 //!
 //! These tests encode the *target* behaviour and are run on demand with
 //! `cargo test -- --ignored` to track progress. Remove the `#[ignore]` once the

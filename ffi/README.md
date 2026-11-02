@@ -107,14 +107,14 @@ drives the entry points through raw pointers the way a C caller would. The
 allocation paths have also been exercised under AddressSanitizer via the C
 demo, which reports no leaks or invalid frees.
 
-## Known gaps
+## Round-trip coverage
 
-Two pre-existing limitations in the underlying library bound what survives a
-round trip. Both reproduce through `score_tool convert` with no FFI involved:
+Every format converts to every other, and the result parses back. This is
+covered by `converted_output_can_be_parsed_back`, which starts from a GP4
+source precisely because it carries no page setup, RSE master effect or lyric
+lines, and so exercises every section the GP5 writer has to pad.
 
-- **MusicXML export → import.** `song_to_score_partwise` writes absent
-  optional attributes as `attr=""`, which the importer rejects with
-  `invalid type: string "", expected u16`. Export works; re-importing the
-  result does not.
-- **GP4 → GP5.** The GP5 writer emits a page-setup block the GP5 reader then
-  rejects (`Type conversion failed for page width`).
+Note that *parsing back* is not the same as *byte-identical*: MusicXML in
+particular cannot express every Guitar Pro detail, so a score routed through
+it loses some fidelity. The crate-level `roundtrip_musicxml_bytes` tests track
+the stricter byte-identity goal and remain `#[ignore]`d.

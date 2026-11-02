@@ -22,7 +22,7 @@ pub struct PageSize {
 /// Margins for a page side. `type` is `"both"`, `"even"`, or `"odd"`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PageMargins {
-    #[serde(rename = "@type")]
+    #[serde(rename = "@type", skip_serializing_if = "Option::is_none")]
     pub margin_type: Option<String>,
     #[serde(rename = "left-margin")]
     pub left_margin: f64,
@@ -55,60 +55,63 @@ pub struct SystemMargins {
 /// Vertical distance defaults for systems.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SystemLayout {
-    #[serde(rename = "system-margins")]
+    #[serde(rename = "system-margins", skip_serializing_if = "Option::is_none")]
     pub system_margins: Option<SystemMargins>,
-    #[serde(rename = "system-distance")]
+    #[serde(rename = "system-distance", skip_serializing_if = "Option::is_none")]
     pub system_distance: Option<f64>,
-    #[serde(rename = "top-system-distance")]
+    #[serde(
+        rename = "top-system-distance",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub top_system_distance: Option<f64>,
-    #[serde(rename = "system-dividers")]
+    #[serde(rename = "system-dividers", skip_serializing_if = "Option::is_none")]
     pub system_dividers: Option<SystemDividers>,
 }
 
 /// Whether system dividers are shown.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SystemDividers {
-    #[serde(rename = "left-divider")]
+    #[serde(rename = "left-divider", skip_serializing_if = "Option::is_none")]
     pub left_divider: Option<EmptyPrintStyleAlign>,
-    #[serde(rename = "right-divider")]
+    #[serde(rename = "right-divider", skip_serializing_if = "Option::is_none")]
     pub right_divider: Option<EmptyPrintStyleAlign>,
 }
 
 /// An empty element carrying only print-style and alignment attributes.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmptyPrintStyleAlign {
-    #[serde(rename = "@print-object")]
+    #[serde(rename = "@print-object", skip_serializing_if = "Option::is_none")]
     pub print_object: Option<String>,
 }
 
 /// Default distance between staves within a part.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StaffLayout {
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<u8>,
-    #[serde(rename = "staff-distance")]
+    #[serde(rename = "staff-distance", skip_serializing_if = "Option::is_none")]
     pub staff_distance: Option<f64>,
 }
 
 /// A named font (family, style, size).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Font {
-    #[serde(rename = "@font-family")]
+    #[serde(rename = "@font-family", skip_serializing_if = "Option::is_none")]
     pub font_family: Option<String>,
-    #[serde(rename = "@font-style")]
+    #[serde(rename = "@font-style", skip_serializing_if = "Option::is_none")]
     pub font_style: Option<String>,
-    #[serde(rename = "@font-size")]
+    #[serde(rename = "@font-size", skip_serializing_if = "Option::is_none")]
     pub font_size: Option<String>,
-    #[serde(rename = "@font-weight")]
+    #[serde(rename = "@font-weight", skip_serializing_if = "Option::is_none")]
     pub font_weight: Option<String>,
 }
 
 /// A named lyric font. The `name` attribute matches `<lyric name="">`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LyricFont {
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<String>,
-    #[serde(rename = "@name")]
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(flatten)]
     pub font: Font,
@@ -117,11 +120,11 @@ pub struct LyricFont {
 /// A named lyric language setting.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LyricLanguage {
-    #[serde(rename = "@number")]
+    #[serde(rename = "@number", skip_serializing_if = "Option::is_none")]
     pub number: Option<String>,
-    #[serde(rename = "@name")]
+    #[serde(rename = "@name", skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(rename = "@xml:lang")]
+    #[serde(rename = "@xml:lang", skip_serializing_if = "Option::is_none")]
     pub lang: Option<String>,
 }
 
@@ -190,19 +193,21 @@ pub struct OtherAppearance {
 /// Maps to the `<defaults>` element.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Defaults {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub scaling: Option<Scaling>,
-    #[serde(rename = "concert-score")]
+    #[serde(rename = "concert-score", skip_serializing_if = "Option::is_none")]
     pub concert_score: Option<()>,
-    #[serde(rename = "page-layout")]
+    #[serde(rename = "page-layout", skip_serializing_if = "Option::is_none")]
     pub page_layout: Option<PageLayout>,
-    #[serde(rename = "system-layout")]
+    #[serde(rename = "system-layout", skip_serializing_if = "Option::is_none")]
     pub system_layout: Option<SystemLayout>,
     #[serde(rename = "staff-layout", default)]
     pub staff_layouts: Vec<StaffLayout>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub appearance: Option<Appearance>,
-    #[serde(rename = "music-font")]
+    #[serde(rename = "music-font", skip_serializing_if = "Option::is_none")]
     pub music_font: Option<Font>,
-    #[serde(rename = "word-font")]
+    #[serde(rename = "word-font", skip_serializing_if = "Option::is_none")]
     pub word_font: Option<Font>,
     #[serde(rename = "lyric-font", default)]
     pub lyric_fonts: Vec<LyricFont>,

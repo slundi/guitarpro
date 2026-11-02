@@ -128,20 +128,10 @@ fn converts_one_input_into_every_output_format() {
 
 #[test]
 fn converted_output_can_be_parsed_back() {
-    // Deliberately a GP5 source. Two pre-existing library defects limit which
-    // pairs survive a round trip, and both reproduce through
-    // `score_tool convert` with no FFI involved:
-    //
-    // * GP4 → GP5 writes a page-setup block the GP5 reader then rejects
-    //   ("Type conversion failed for page width"), so a GP4 source cannot be
-    //   used here.
-    // * MusicXML export emits absent optional attributes as `attr=""`, which
-    //   its own importer rejects, so that target is excluded below.
-    //
-    // Export to both is still covered by
-    // `converts_one_input_into_every_output_format`; re-widen this list once
-    // the library gaps close.
-    let bytes = sample("test/Chords.gp5");
+    // A GP4 source is deliberate: it carries no page setup, no RSE master
+    // effect and no lyric lines, so converting it exercises every section the
+    // GP5 writer has to pad.
+    let bytes = sample("test/Chords.gp4");
 
     for target in [
         GpioFormat::Gp3,
@@ -149,6 +139,7 @@ fn converted_output_can_be_parsed_back() {
         GpioFormat::Gp5,
         GpioFormat::Gpx,
         GpioFormat::Gp,
+        GpioFormat::MusicXml,
         GpioFormat::Score,
         GpioFormat::Mscz,
     ] {
@@ -156,7 +147,7 @@ fn converted_output_can_be_parsed_back() {
             gpio_convert(
                 bytes.as_ptr(),
                 bytes.len(),
-                GpioFormat::Gp5 as u32,
+                GpioFormat::Gp4 as u32,
                 target as u32,
             )
         })

@@ -150,7 +150,14 @@ pub fn write_gp_bytes(song: &crate::model::legacy::song::Song) -> GpResult<Vec<u
     let cursor = std::io::Cursor::new(buf);
     let mut zip = zip::ZipWriter::new(cursor);
 
-    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    // Pin the archive timestamp to the DOS epoch instead of "now" so writing
+    // the same `Song` twice yields identical bytes. Without this the ZIP
+    // header carries the wall clock, which makes the output irreproducible
+    // and the write→read→write round-trip test fail whenever the two writes
+    // straddle a timestamp tick.
+    let options = SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .last_modified_time(zip::DateTime::default());
     zip.start_file("Content/score.gpif", options)
         .map_err(|e| format!("Zip write error: {}", e))?;
     zip.write_all(xml.as_bytes())
