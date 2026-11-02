@@ -22,7 +22,12 @@ allow = [
     "Zlib",
 ]
 confidence-threshold = 0.8
-exceptions = []
+exceptions = [
+    # cbindgen generates ffi/include/guitarpro.h at build time. It is a
+    # build-dependency only: no MPL-2.0 code is linked into any shipped
+    # artifact, so the file-level copyleft never reaches our output.
+    { name = "cbindgen", allow = ["MPL-2.0"] },
+]
 
 [bans]
 multiple-versions = "warn"

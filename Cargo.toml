@@ -3,4 +3,4 @@ authors = ["slundi"]
 
 [workspace]
 resolver = "2"
-members = ["guitarpro", "cli", "web_server"]
+members = ["guitarpro", "cli", "web_server", "ffi"]

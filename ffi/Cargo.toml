@@ -1,0 +1,25 @@
+[package]
+name = "guitarpro-ffi"
+version = "0.1.0"
+authors = ["slundi"]
+edition = "2024"
+description = "C ABI bindings for the guitarpro score library (Guitar Pro, MuseScore, MusicXML)."
+repository = "https://codeberg.org/slundi/scorelib"
+license = "MIT"
+readme = "README.md"
+
+[lib]
+name = "guitarpro_ffi"
+path = "src/lib.rs"
+# cdylib/staticlib are the shipped artifacts; rlib lets `tests/` link the crate
+# so the C entry points can be exercised from Rust integration tests.
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+guitarpro = { path = "../guitarpro" }
+serde_json = "1"
+quick-xml = { version = "0.42", features = ["serialize"] }
+zip = "9.0.5"
+
+[build-dependencies]
+cbindgen = "0.29"

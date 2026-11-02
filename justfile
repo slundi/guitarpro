@@ -37,6 +37,22 @@ build-web-dev: frontend-build
 watch:
     cargo watch -x run
 
+# --- FFI (C ABI) ---
+
+# Build the C shared/static library and regenerate ffi/include/guitarpro.h
+ffi-build:
+    cargo build -p guitarpro-ffi --release
+
+# Build and run the C demo against the debug cdylib
+# Usage: just ffi-demo test/Chords.gp5 [mscz]
+ffi-demo *args:
+    cargo build -p guitarpro-ffi
+    cc -Wall -Wextra -I ffi/include ffi/c/demo.c \
+       -L target/debug -lguitarpro_ffi \
+       -Wl,-rpath,{{justfile_directory()}}/target/debug \
+       -o target/debug/gpio-demo
+    ./target/debug/gpio-demo {{args}}
+
 # --- Quality Control ---
 
 # Run all tests

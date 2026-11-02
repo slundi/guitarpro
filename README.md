@@ -9,6 +9,7 @@ This workspace is divided into several crates:
 - **[lib](guitarpro/README.md)** (`guitarpro`): The core library to read and write **Guitar Pro** files (GP3, GP4, GP5, GPX, GP7) and **MuseScore** files (MSCZ). It provides a unified data model for musical scores.
 - **[cli](cli/README.md)** (`score_tool`): A command-line interface to inspect files, view metadata, and generate ASCII tablatures.
 - **web_server**: (Experimental) A web server to search and browse music scores through an API.
+- **[ffi](ffi/README.md)** (`guitarpro-ffi`): A C ABI over the core library, so C, C++, Swift, Kotlin or Python `ctypes` can parse and convert scores. Ships `libguitarpro_ffi.{so,a}` and a generated `guitarpro.h`.
 
 ## Supported formats
 
