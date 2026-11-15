@@ -257,3 +257,98 @@ fn test_roundtrip_preserves_pitches_single_part() {
         });
     assert_eq!(first_note_step.as_deref(), Some("C"), "C4 preserved");
 }
+
+type SlurMarks = Vec<Vec<Option<(u8, crate::model::optimized::beat::SlurKind)>>>;
+
+/// The slur marks of a MusicXML document's first part, per measure.
+fn musicxml_slur_marks(
+    document: &crate::model::musicxml::ScorePartwise,
+) -> crate::tests::common::TestResult<SlurMarks> {
+    let loaded = crate::convert::optimized::score_partwise_to_loaded_score(document);
+    let track = loaded.score.tracks.first().ok_or("no track")?;
+    Ok(track
+        .measures
+        .values()
+        .map(|data| {
+            let mut voices: Vec<_> = data.voices.values().collect();
+            voices.sort_by_key(|voice| voice.voice_id);
+            voices
+                .into_iter()
+                .flat_map(|voice| &voice.beats)
+                .map(|beat| beat.slur.map(|slur| (slur.slur_id, slur.kind)))
+                .collect()
+        })
+        .collect())
+}
+
+/// MusicXML slurs pair by `number`: a stop and a start on one note make
+/// an `EndStart`, nested slurs keep their own ids, and slurs on a chord's
+/// later notes count for the chord.
+#[test]
+fn musicxml_slurs_pair_by_number() -> crate::tests::common::TestResult {
+    use crate::model::optimized::beat::SlurKind::{End, EndStart, Start};
+    use crate::tests::common::read_musicxml;
+
+    assert_eq!(
+        musicxml_slur_marks(&read_musicxml("33c-Spanners-Slurs.xml")?)?,
+        vec![
+            vec![
+                Some((0, Start)),
+                Some((0, EndStart)),
+                Some((0, EndStart)),
+                Some((0, End))
+            ],
+            vec![
+                Some((0, Start)),
+                Some((1, Start)),
+                Some((1, End)),
+                Some((0, End))
+            ],
+        ]
+    );
+    assert_eq!(
+        musicxml_slur_marks(&read_musicxml("33g-Slur-ChordedNotes.xml")?)?,
+        vec![vec![
+            Some((0, Start)),
+            Some((1, Start)),
+            Some((0, End)),
+            Some((1, End))
+        ]]
+    );
+    Ok(())
+}
+
+/// A MusicXML slur open at a barline ends in a later measure under its id.
+#[test]
+fn musicxml_slurs_cross_barlines() -> crate::tests::common::TestResult {
+    use crate::model::optimized::beat::SlurKind::{End, EndStart, Start};
+
+    // 33c with bar 1's last slur running on into bar 2 (to bar 2's outer
+    // slur's stop): bar 1's last stop and bar 2's outer start removed.
+    let raw = String::from_utf8(crate::tests::common::read_file(
+        "test/33c-Spanners-Slurs.xml".into(),
+    ))?;
+    let without_third = |raw: &str, element: &str| -> Option<String> {
+        let (at, _) = raw.match_indices(element).nth(2)?;
+        Some(format!("{}{}", &raw[..at], &raw[at + element.len()..]))
+    };
+    let raw = without_third(&raw, r#"<slur number="1" type="stop"/>"#).ok_or("no stop")?;
+    let raw = without_third(&raw, r#"<slur number="1" placement="above" type="start"/>"#)
+        .ok_or("no start")?;
+    let start = raw.find("<!DOCTYPE").ok_or("no doctype")?;
+    let end = start + raw[start..].find('>').ok_or("no doctype end")?;
+    let document = quick_xml::de::from_str(&format!("{}{}", &raw[..start], &raw[end + 1..]))?;
+    assert_eq!(
+        musicxml_slur_marks(&document)?,
+        vec![
+            vec![
+                Some((0, Start)),
+                Some((0, EndStart)),
+                Some((0, EndStart)),
+                None
+            ],
+            vec![None, Some((1, Start)), Some((1, End)), Some((0, End))],
+        ]
+    );
+    Ok(())
+}

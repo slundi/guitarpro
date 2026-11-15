@@ -24,6 +24,23 @@ The library defines two binary file formats serialized with [Postcard](https://g
 
 The layout file embeds a checksum of the song file to detect desync after re-import.
 
+Postcard is positional: it can't skip or default a field, so the loader's
+migrations of older saves (which read fields by name) only work for JSON.
+`Score::format_version` is serialized first so a binary reader can decode
+it alone (e.g. `postcard::take_from_bytes::<u32>`) and refuse a save whose
+version isn't `SCORE_FORMAT_VERSION` before decoding the rest. Versions
+start at 2, so an unversioned binary save (which starts with an `Option`
+tag, 0 or 1) can't pass for a versioned one; `Score`'s own `Deserialize`
+also reads a binary save's version first and refuses any other before
+decoding the rest. A JSON save newer than
+`SCORE_FORMAT_VERSION` is refused.
+
+Before a binary format is added: many fields use `skip_serializing_if`
+(keeping JSON saves small), which a positional format can't read back —
+a skipped field shifts every one after it. A binary writer needs those
+fields always written (e.g. a wrapper that skips only when
+`serializer.is_human_readable()`), across the whole model at once.
+
 ## Architecture Overview
 
 ```
@@ -50,6 +67,7 @@ Score
 │   ├── staves          Vec<StaffId>
 │   └── measures        BTreeMap<MeasureIndex, MeasureData>
 │       ├── repeat      Option<MeasureRepeat>    (%, %%)
+│       ├── clef        Option<Clef>             (mid-score clef change)
 │       └── voices      HashMap<u8, Voice>
 │           └── beats   Vec<Beat>
 │               ├── tick_offset, duration
@@ -74,7 +92,9 @@ Score
 Two distinct levels:
 
 - **Local repeats** (`%`, `%%`) — per-track, inside `MeasureData`. Abbreviate notation; resolved dynamically during rendering or MIDI export.
-- **Structural repeats** — global, inside `MeasureDef.navigation`. Cover bar repeats (`|:`, `:|`), voltas, Da Capo, Dal Segno, Coda. Applied uniformly across all tracks. Resolved by `Arrangement::resolve() -> Vec<MeasureIndex>`.
+- **Structural repeats** — global, inside `MeasureDef.navigation`. Cover bar repeats (`|:`, `:|`), Da Capo, Dal Segno, Coda. Applied uniformly across all tracks. Resolved by `Arrangement::resolve() -> Vec<MeasureIndex>`.
+- **Voltas** — the barlines' `Ending`s (a `Start` on the first measure's left barline, a `Stop`/`Discontinue` on the last one's right barline, with the passes as `numbers`); `timeline::ending_numbers` gives each measure's passes. Every importer sets them, and they are the only record of voltas (GP's per-measure bitmask becomes endings on import and is rebuilt from them on export). An ending without a stop ends at the next repeat barline.
+- **Key signatures** — `KeySignature.root` is the mode's own tonic (D for D dorian; serialized as `tonic`, an older file's `root` read as the major tonic); `KeySignature::from_fifths` / `fifths` convert to and from the signature.
 
 ## Effect System
 

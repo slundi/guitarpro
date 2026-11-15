@@ -28,6 +28,15 @@ pub struct GraceNote {
     /// Fraction of the beat duration to steal for this grace note (0.0–1.0).
     /// `None` = renderer decides based on context and style.
     pub steal_time: Option<f32>,
+    /// Its written note value. `None` = an eighth.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<Duration>,
+    /// Sounds together with the grace note before it (a grace chord).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub with_previous: bool,
+    /// Follows the beat instead of preceding it (a grace note after).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub after: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -51,6 +60,10 @@ pub struct Beat {
     pub cue: bool,
     /// Chord symbol that begins on this beat. Rendered above the staff.
     pub chord: Option<ChordSymbol>,
+    /// A fermata over a rest. Notes carry theirs as
+    /// [`Articulation::Fermata`](crate::model::optimized::note::Articulation::Fermata).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub fermata: bool,
     /// GP-format hint: when `true` this beat is a filler (BeatStatus::Empty, takes 0 time).
     /// Used only in the legacy↔optimized roundtrip; ignored by renderers.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
@@ -95,6 +108,19 @@ pub struct Beat {
     /// GP4/5 chord diagram on this beat.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gp_chord: Option<GpChord>,
+}
+
+impl Beat {
+    /// Whether it's a rest: marked as one, or holding no notes.
+    pub fn is_rest(&self) -> bool {
+        self.gp_rest || self.notes.is_empty()
+    }
+
+    /// Whether staff notation shows it as a rest: a rest, or none of its
+    /// notes with a pitch (as a GP note on a string beyond the tuning).
+    pub fn is_staff_rest(&self) -> bool {
+        self.is_rest() || self.notes.iter().all(|note| note.pitch.is_none())
+    }
 }
 
 /// GP4/5 chord diagram, preserved for byte-identical roundtrip.
@@ -196,13 +222,49 @@ pub struct Duration {
     pub tuplet: Option<Tuplet>,
 }
 
+impl Duration {
+    /// `base` ticks lengthened by `dots`: each adds half the one before.
+    pub fn dotted_ticks(base: u32, dots: u8) -> u32 {
+        let mut total = base;
+        let mut increment = base / 2;
+        for _ in 0..dots {
+            if increment == 0 {
+                break;
+            }
+            total = total.saturating_add(increment);
+            increment /= 2;
+        }
+        total
+    }
+
+    /// Its written length in ticks (at `divisions` per quarter): the note
+    /// value and dots, without the tuplet.
+    pub fn written_ticks(&self, divisions: u32) -> u32 {
+        Self::dotted_ticks(self.base.ticks(divisions), self.dots)
+    }
+
+    /// Its played length in ticks (at `divisions` per quarter): the
+    /// written one scaled by the tuplet.
+    pub fn ticks(&self, divisions: u32) -> u32 {
+        let written = self.written_ticks(divisions);
+        match self.tuplet {
+            Some(Tuplet { actual, normal }) if actual > 0 => {
+                written * u32::from(normal) / u32::from(actual)
+            }
+            _ => written,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub struct Tuplet {
     pub actual: u8, // e.g. 3 (triplet plays 3 notes…)
     pub normal: u8, // …in the time of 2
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+/// A dynamic marking. `Other` holds one with no variant ("sempre p")
+/// verbatim.
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub enum Dynamic {
     PPP,
     PP,
@@ -212,6 +274,126 @@ pub enum Dynamic {
     F,
     FF,
     FFF,
+    // Added after the ones above, so a positional (binary) save's indices
+    // stay those of its version.
+    PPPPPP,
+    PPPPP,
+    PPPP,
+    FFFF,
+    FFFFF,
+    FFFFFF,
+    FP,
+    PF,
+    SF,
+    SFP,
+    SFPP,
+    SFZ,
+    SFF,
+    SFFZ,
+    SFZP,
+    RF,
+    RFZ,
+    FZ,
+    /// Niente.
+    N,
+    Other(String),
+}
+
+impl Dynamic {
+    /// The MIDI velocity it plays at; `None` for one without a level:
+    /// MuseScore's defaults, which the GP velocities follow too (see
+    /// `convert::legacy::dynamics`), so both formats play a marking alike.
+    pub(crate) fn playback_velocity(&self) -> Option<u8> {
+        use Dynamic as D;
+        Some(match self {
+            D::PPPPPP => 1,
+            D::PPPPP => 5,
+            D::PPPP => 10,
+            D::PPP => 16,
+            D::PP => 33,
+            D::P | D::PF => 49,
+            D::MP => 64,
+            D::MF => 80,
+            D::F | D::FP => 96,
+            D::FF | D::SF | D::SFZ | D::SFP | D::SFPP | D::RFZ | D::RF | D::FZ => 112,
+            D::FFF | D::SFF | D::SFFZ => 126,
+            D::FFFF | D::FFFFF | D::FFFFFF => 127,
+            D::SFZP | D::N | D::Other(_) => return None,
+        })
+    }
+
+    /// Every marking but `Other`.
+    const MARKINGS: [Dynamic; 27] = [
+        Dynamic::PPPPPP,
+        Dynamic::PPPPP,
+        Dynamic::PPPP,
+        Dynamic::PPP,
+        Dynamic::PP,
+        Dynamic::P,
+        Dynamic::MP,
+        Dynamic::MF,
+        Dynamic::F,
+        Dynamic::FF,
+        Dynamic::FFF,
+        Dynamic::FFFF,
+        Dynamic::FFFFF,
+        Dynamic::FFFFFF,
+        Dynamic::FP,
+        Dynamic::PF,
+        Dynamic::SF,
+        Dynamic::SFP,
+        Dynamic::SFPP,
+        Dynamic::SFZ,
+        Dynamic::SFF,
+        Dynamic::SFFZ,
+        Dynamic::SFZP,
+        Dynamic::RF,
+        Dynamic::RFZ,
+        Dynamic::FZ,
+        Dynamic::N,
+    ];
+
+    /// The marking as written (`sfz`; `Other` verbatim).
+    pub fn name(&self) -> &str {
+        match self {
+            Dynamic::PPPPPP => "pppppp",
+            Dynamic::PPPPP => "ppppp",
+            Dynamic::PPPP => "pppp",
+            Dynamic::PPP => "ppp",
+            Dynamic::PP => "pp",
+            Dynamic::P => "p",
+            Dynamic::MP => "mp",
+            Dynamic::MF => "mf",
+            Dynamic::F => "f",
+            Dynamic::FF => "ff",
+            Dynamic::FFF => "fff",
+            Dynamic::FFFF => "ffff",
+            Dynamic::FFFFF => "fffff",
+            Dynamic::FFFFFF => "ffffff",
+            Dynamic::FP => "fp",
+            Dynamic::PF => "pf",
+            Dynamic::SF => "sf",
+            Dynamic::SFP => "sfp",
+            Dynamic::SFPP => "sfpp",
+            Dynamic::SFZ => "sfz",
+            Dynamic::SFF => "sff",
+            Dynamic::SFFZ => "sffz",
+            Dynamic::SFZP => "sfzp",
+            Dynamic::RF => "rf",
+            Dynamic::RFZ => "rfz",
+            Dynamic::FZ => "fz",
+            Dynamic::N => "n",
+            Dynamic::Other(text) => text,
+        }
+    }
+
+    /// Inverse of [`Dynamic::name`]; anything else is `Other`.
+    pub fn from_name(name: &str) -> Dynamic {
+        Self::MARKINGS
+            .into_iter()
+            .find(|dynamic| dynamic.name() == name)
+            .unwrap_or_else(|| Dynamic::Other(name.to_string()))
+    }
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
@@ -224,6 +406,10 @@ pub struct Slur {
 pub enum SlurKind {
     Start,
     End,
+    /// One slur ends on this beat and the next one starts on it. The
+    /// beat's `slur_id` names both: the new slur takes over the ending
+    /// one's id.
+    EndStart,
 }
 
 /// Binds a beat to a specific syllable in a LyricLine.

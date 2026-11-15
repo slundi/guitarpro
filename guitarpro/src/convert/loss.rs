@@ -1,13 +1,15 @@
-//! Loss report emitted by [`super::mscx_to_loaded_score`].
+//! Loss report emitted by the converters, such as
+//! [`mscx_to_loaded_score`](super::mscz::mscx_to_loaded_score) and
+//! [`loaded_score_to_legacy_song_with_losses`](super::legacy::loaded_score_to_legacy_song_with_losses).
 //!
-//! The report tallies MSCX features that the current converter recognizes
-//! but does not (yet) preserve in the [`LoadedScore`](crate::model::optimized::LoadedScore).
+//! The report tallies features that a converter recognizes but does not
+//! (yet) preserve in its target.
 //! It is deliberately shallow — a name + count — so tests can assert that a
 //! specific tag was surfaced without pinning line numbers.
 
 use std::collections::BTreeMap;
 
-/// Summary of MSCX features the converter observed but did not represent.
+/// Summary of features a converter observed but did not represent.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LossReport {
     /// Element name → occurrence count. Only elements the converter
@@ -27,6 +29,17 @@ impl LossReport {
         *entry = entry.saturating_add(1);
     }
 
+    /// Record `count` occurrences of a missing feature at once; nothing
+    /// for none.
+    pub fn note_n(&mut self, name: impl Into<String>, count: usize) {
+        if count == 0 {
+            return;
+        }
+        let count = u32::try_from(count).unwrap_or(u32::MAX);
+        let entry = self.counts.entry(name.into()).or_default();
+        *entry = entry.saturating_add(count);
+    }
+
     /// Number of distinct feature names recorded.
     pub fn distinct(&self) -> usize {
         self.counts.len()
@@ -34,7 +47,9 @@ impl LossReport {
 
     /// Total occurrences across all feature names.
     pub fn total(&self) -> u32 {
-        self.counts.values().sum()
+        self.counts
+            .values()
+            .fold(0u32, |total, &count| total.saturating_add(count))
     }
 
     /// Iterate over recorded (name, count) pairs, sorted by name.

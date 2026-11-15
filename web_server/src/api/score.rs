@@ -9,7 +9,6 @@ use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
 use guitarpro::io::mscz::write_mscz;
 use guitarpro::model::mscz::{MsczArchive, MsczEntry, MsczFile};
 use guitarpro::model::optimized::global::InstrumentKind;
-use guitarpro::model::optimized::note::{Pitch, PitchStep};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -242,7 +241,10 @@ pub async fn info(
                     string_count,
                     tuning,
                     ..
-                } => (*string_count, tuning.iter().map(pitch_to_midi).collect()),
+                } => (
+                    *string_count,
+                    tuning.iter().map(|p| p.midi() as i16).collect(),
+                ),
                 _ => (0u8, vec![]),
             };
             TrackInfo {
@@ -319,17 +321,4 @@ pub async fn audio(
         .header(header::CACHE_CONTROL, "private, max-age=3600")
         .body(Body::from(mp3))
         .map_err(|e| ApiError::internal(e.to_string()))
-}
-
-fn pitch_to_midi(p: &Pitch) -> i16 {
-    let semitone: i16 = match p.step {
-        PitchStep::C => 0,
-        PitchStep::D => 2,
-        PitchStep::E => 4,
-        PitchStep::F => 5,
-        PitchStep::G => 7,
-        PitchStep::A => 9,
-        PitchStep::B => 11,
-    };
-    12 * (p.octave as i16 + 1) + semitone + p.alter as i16
 }

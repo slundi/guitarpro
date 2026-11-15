@@ -1,5 +1,5 @@
 mod read;
-mod write;
+pub(crate) mod write;
 
 use crate::error::{GpError, GpResult};
 use crate::model::legacy::{beat::Beat, effects::*, enums::*, key_signature::Duration, song::Song};
@@ -144,7 +144,6 @@ pub trait SongNoteOps {
         seek: &mut usize,
         note: &mut Note,
         guitar_string: (i8, i8),
-        track_index: usize,
     ) -> GpResult<()>;
     fn read_note_v5(
         &mut self,
@@ -152,7 +151,6 @@ pub trait SongNoteOps {
         seek: &mut usize,
         note: &mut Note,
         guitar_string: (i8, i8),
-        track_index: usize,
     ) -> GpResult<()>;
     fn read_note_effects_v3(&self, data: &[u8], seek: &mut usize, note: &mut Note) -> GpResult<()>;
     fn read_note_effects_v4(
@@ -161,7 +159,6 @@ pub trait SongNoteOps {
         seek: &mut usize,
         note: &mut Note,
     ) -> GpResult<()>;
-    fn get_tied_note_value(&self, string_index: i8, track_index: usize) -> i16;
     fn write_notes(
         &self,
         data: &mut Vec<u8>,
@@ -213,9 +210,8 @@ impl SongNoteOps for Song {
         seek: &mut usize,
         note: &mut Note,
         guitar_string: (i8, i8),
-        track_index: usize,
     ) -> GpResult<()> {
-        read::read_note(self, data, seek, note, guitar_string, track_index)
+        read::read_note(self, data, seek, note, guitar_string)
     }
     fn read_note_v5(
         &mut self,
@@ -223,9 +219,8 @@ impl SongNoteOps for Song {
         seek: &mut usize,
         note: &mut Note,
         guitar_string: (i8, i8),
-        track_index: usize,
     ) -> GpResult<()> {
-        read::read_note_v5(self, data, seek, note, guitar_string, track_index)
+        read::read_note_v5(self, data, seek, note, guitar_string)
     }
     fn read_note_effects_v3(&self, data: &[u8], seek: &mut usize, note: &mut Note) -> GpResult<()> {
         read::read_note_effects_v3(self, data, seek, note)
@@ -237,9 +232,6 @@ impl SongNoteOps for Song {
         note: &mut Note,
     ) -> GpResult<()> {
         read::read_note_effects_v4(self, data, seek, note)
-    }
-    fn get_tied_note_value(&self, string_index: i8, track_index: usize) -> i16 {
-        read::get_tied_note_value(self, string_index, track_index)
     }
     fn write_notes(
         &self,

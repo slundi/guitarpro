@@ -506,6 +506,31 @@ fn test_gp7_directions() {
     let song = read_gp7("test/directions.gp");
     assert!(!song.measure_headers.is_empty());
 }
+/// `<Target>`s and `<Jump>`s may interleave, and unknown elements are skipped.
+#[test]
+fn test_gp7_directions_interleaved() -> Result<(), quick_xml::DeError> {
+    use crate::io::gpif::DirectionsWrapper;
+    let xml = "<Directions><Jump>DaCapo</Jump><Target>Fine</Target>\
+               <Future>x</Future><Nested><Sign>y</Sign></Nested><Empty/>\
+               <Marked kind=\"z\">w</Marked>\
+               <Jump>DaSegno</Jump></Directions>";
+    let dirs: DirectionsWrapper = quick_xml::de::from_str(xml)?;
+    let names: Vec<_> = dirs.signs.iter().filter_map(|sign| sign.name()).collect();
+    assert_eq!(names, ["DaCapo", "Fine", "DaSegno"]);
+    Ok(())
+}
+/// Indented `<Directions>` (whitespace, comments and stray text between the
+/// signs, as a pretty-printed GPIF has) read the same signs.
+#[test]
+fn test_gp7_directions_indented() -> Result<(), quick_xml::DeError> {
+    use crate::io::gpif::DirectionsWrapper;
+    let xml = "<Directions>\n    <Target>Segno</Target>\n    <!-- note -->\n    \
+               stray\n    <Jump>DaSegnoAlFine</Jump>\n    <Target>Fine</Target>\n</Directions>";
+    let dirs: DirectionsWrapper = quick_xml::de::from_str(xml)?;
+    let names: Vec<_> = dirs.signs.iter().filter_map(|sign| sign.name()).collect();
+    assert_eq!(names, ["Segno", "DaSegnoAlFine", "Fine"]);
+    Ok(())
+}
 #[test]
 fn test_gp7_fermata() {
     let song = read_gp7("test/fermata.gp");
@@ -635,4 +660,32 @@ fn test_gp7_all_files_parse() {
         "{} files failed to parse",
         failures.len()
     );
+}
+
+#[test]
+fn test_gpif_directions_ignore_unknown_signs() {
+    use crate::io::gpif::DirectionsWrapper;
+    let xml = "<Directions><Target>Coda</Target><Foo>x</Foo><Bar/><Jump>DaCapo</Jump></Directions>";
+    let directions: DirectionsWrapper = match quick_xml::de::from_str(xml) {
+        Ok(directions) => directions,
+        Err(error) => panic!("unknown direction element rejected: {error}"),
+    };
+    let names: Vec<_> = directions
+        .signs
+        .iter()
+        .filter_map(|sign| sign.name())
+        .collect();
+    assert_eq!(names, ["Coda", "DaCapo"]);
+}
+
+/// An unknown element among a master bar's direction signs, with or
+/// without text, is skipped, not a parse error.
+#[test]
+fn unknown_direction_elements_are_skipped() -> Result<(), quick_xml::DeError> {
+    use crate::io::gpif::{Direction, DirectionsWrapper};
+    let xml = "<Directions><Target>Coda</Target><Foo>x</Foo><Bar/><Jump>DaCapo</Jump></Directions>";
+    let directions: DirectionsWrapper = quick_xml::de::from_str(xml)?;
+    let names: Vec<Option<&str>> = directions.signs.iter().map(Direction::name).collect();
+    assert_eq!(names, vec![Some("Coda"), None, None, Some("DaCapo")]);
+    Ok(())
 }

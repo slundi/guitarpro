@@ -22,21 +22,9 @@ pub(super) fn read_notes(
                 ..Default::default()
             };
             if song.version.number < (5, 0, 0) {
-                song.read_note(
-                    data,
-                    seek,
-                    &mut note,
-                    song.tracks[track_index].strings[i],
-                    track_index,
-                )?;
+                song.read_note(data, seek, &mut note, song.tracks[track_index].strings[i])?;
             } else {
-                song.read_note_v5(
-                    data,
-                    seek,
-                    &mut note,
-                    song.tracks[track_index].strings[i],
-                    track_index,
-                )?;
+                song.read_note_v5(data, seek, &mut note, song.tracks[track_index].strings[i])?;
             }
             beat.notes.push(note);
         }
@@ -51,7 +39,6 @@ pub(super) fn read_note(
     seek: &mut usize,
     note: &mut Note,
     guitar_string: (i8, i8),
-    track_index: usize,
 ) -> GpResult<()> {
     let flags = read_byte(data, seek)?;
     note.string = guitar_string.0;
@@ -69,12 +56,9 @@ pub(super) fn read_note(
     }
     if (flags & 0x20) == 0x20 {
         let fret = read_signed_byte(data, seek)?;
-        let value = if note.kind == NoteType::Tie {
-            song.get_tied_note_value(guitar_string.0, track_index)
-        } else {
-            fret.to_i16_gp("fret value")?
-        };
-        note.value = value.clamp(0, 99);
+        // A tied note's fret is the one it's tied from, as `read_measures`
+        // finds it once the voice is read; the file's stands in till then.
+        note.value = fret.to_i16_gp("fret value")?.clamp(0, 99);
     }
     if (flags & 0x80) == 0x80 {
         note.effect.left_hand_finger = get_fingering(read_signed_byte(data, seek)?);
@@ -102,7 +86,6 @@ pub(super) fn read_note_v5(
     seek: &mut usize,
     note: &mut Note,
     guitar_string: (i8, i8),
-    track_index: usize,
 ) -> GpResult<()> {
     let flags = read_byte(data, seek)?;
     note.string = guitar_string.0;
@@ -118,12 +101,9 @@ pub(super) fn read_note_v5(
     }
     if (flags & 0x20) == 0x20 {
         let fret = read_signed_byte(data, seek)?;
-        let value = if note.kind == NoteType::Tie {
-            song.get_tied_note_value(guitar_string.0, track_index)
-        } else {
-            fret.to_i16_gp("fret value")?
-        };
-        note.value = value.clamp(0, 99);
+        // A tied note's fret is the one it's tied from, as `read_measures`
+        // finds it once the voice is read; the file's stands in till then.
+        note.value = fret.to_i16_gp("fret value")?.clamp(0, 99);
     }
     if (flags & 0x80) == 0x80 {
         note.effect.left_hand_finger = get_fingering(read_signed_byte(data, seek)?);
@@ -208,30 +188,4 @@ pub(super) fn read_note_effects_v4(
         note.effect.trill = Some(song.read_trill(data, seek)?);
     }
     Ok(())
-}
-
-pub(super) fn get_tied_note_value(song: &Song, string_index: i8, track_index: usize) -> i16 {
-    for m in (0usize..song.tracks[track_index].measures.len()).rev() {
-        for v in (0usize..song.tracks[track_index].measures[m].voices.len()).rev() {
-            for b in 0..song.tracks[track_index].measures[m].voices[v].beats.len() {
-                if song.tracks[track_index].measures[m].voices[v].beats[b].status
-                    != BeatStatus::Empty
-                {
-                    for n in 0..song.tracks[track_index].measures[m].voices[v].beats[b]
-                        .notes
-                        .len()
-                    {
-                        if song.tracks[track_index].measures[m].voices[v].beats[b].notes[n].string
-                            == string_index
-                        {
-                            return song.tracks[track_index].measures[m].voices[v].beats[b].notes
-                                [n]
-                                .value;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    -1
 }

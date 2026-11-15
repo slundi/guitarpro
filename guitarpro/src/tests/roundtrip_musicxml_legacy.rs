@@ -247,3 +247,126 @@ fn test_musicxml_to_legacy_song() {
         failures.len()
     );
 }
+
+/// A MusicXML score of `measures` (each a measure's notes) for one part.
+fn one_part_score(measures: &[&str]) -> String {
+    let body: String = measures
+        .iter()
+        .enumerate()
+        .map(|(i, notes)| {
+            let attributes = if i == 0 {
+                "<attributes><divisions>1</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>"
+            } else {
+                ""
+            };
+            format!("<measure number=\"{}\">{attributes}{notes}</measure>", i + 1)
+        })
+        .collect();
+    format!(
+        r#"<score-partwise version="3.1"><part-list><score-part id="P1"><part-name>Guitar</part-name></score-part></part-list><part id="P1">{body}</part></score-partwise>"#
+    )
+}
+
+fn whole_note(step: &str, octave: u8, chord: bool, tie: Option<&str>) -> String {
+    let chord = if chord { "<chord/>" } else { "" };
+    let tie = tie.map_or(String::new(), |kind| format!("<tie type=\"{kind}\"/>"));
+    format!(
+        "<note>{chord}<pitch><step>{step}</step><octave>{octave}</octave></pitch><duration>4</duration>{tie}<voice>1</voice><type>whole</type></note>"
+    )
+}
+
+/// A chord note no free string reaches (E2 and F2: both only on the low
+/// E string) is left out and reported, not doubled on one string.
+#[test]
+fn musicxml_chord_notes_without_a_free_string_are_reported() -> Result<(), String> {
+    use crate::convert::guitarpro::musicxml_to_legacy_song_with_losses;
+
+    let chord = whole_note("E", 2, false, None) + &whole_note("F", 2, true, None);
+    let src = parse_musicxml(one_part_score(&[&chord]).as_bytes())?;
+    let (song, losses) = musicxml_to_legacy_song_with_losses(&src);
+    assert_eq!(losses.get("Note on no free string of its track"), 1);
+    assert_eq!(song.tracks[0].measures[0].voices[0].beats[0].notes.len(), 1);
+    Ok(())
+}
+
+/// A note held on while one is added below it keeps its string.
+#[test]
+fn musicxml_held_notes_keep_their_string() -> Result<(), String> {
+    use crate::convert::guitarpro::musicxml_to_legacy_song;
+    use crate::model::legacy::enums::NoteType;
+
+    let held = whole_note("C", 4, false, Some("start"));
+    let added = whole_note("B", 3, false, None) + &whole_note("C", 4, true, Some("stop"));
+    let src = parse_musicxml(one_part_score(&[&held, &added]).as_bytes())?;
+    let song = musicxml_to_legacy_song(&src);
+    let first = &song.tracks[0].measures[0].voices[0].beats[0].notes[0];
+    let second = &song.tracks[0].measures[1].voices[0].beats[0].notes;
+    let tied = second
+        .iter()
+        .find(|note| note.kind == NoteType::Tie)
+        .ok_or("no tied note")?;
+    assert_eq!((tied.string, tied.value), (first.string, first.value));
+    assert_ne!(second[0].string, second[1].string);
+    Ok(())
+}
+
+/// A unison, one note tied on: the tie continues on that note's string,
+/// not the untied one's.
+#[test]
+fn musicxml_ties_from_a_unison_keep_the_tied_string() -> Result<(), String> {
+    use crate::convert::guitarpro::musicxml_to_legacy_song;
+    use crate::model::legacy::enums::NoteType;
+
+    let unison = whole_note("E", 4, false, Some("start")) + &whole_note("E", 4, true, None);
+    let tied = whole_note("E", 4, false, Some("stop"));
+    let src = parse_musicxml(one_part_score(&[&unison, &tied]).as_bytes())?;
+    let song = musicxml_to_legacy_song(&src);
+    let first = &song.tracks[0].measures[0].voices[0].beats[0].notes;
+    let second = &song.tracks[0].measures[1].voices[0].beats[0].notes[0];
+    assert_ne!(first[0].string, first[1].string);
+    assert_eq!(second.kind, NoteType::Tie);
+    assert_eq!(second.string, first[0].string);
+    Ok(())
+}
+
+/// A clef at the first measure's start, written after a <backup> back to
+/// it (between voices), is the staff's opening clef: not lost.
+#[test]
+fn musicxml_opening_clef_after_a_backup_holds() -> Result<(), String> {
+    use crate::convert::optimized::score_partwise_to_loaded_score;
+    use crate::model::optimized::track::Clef;
+
+    let notes = whole_note("C", 4, false, None)
+        + "<backup><duration>4</duration></backup>"
+        + "<attributes><clef><sign>F</sign><line>4</line></clef></attributes>"
+        + &whole_note("C", 3, false, None).replace("<voice>1</voice>", "<voice>2</voice>");
+    let src = parse_musicxml(one_part_score(&[&notes]).as_bytes())?;
+    let score = score_partwise_to_loaded_score(&src).score;
+    let staff = score.tracks[0].staves.first().ok_or("no staff")?;
+    let clef = score
+        .staves
+        .get(staff.0 as usize)
+        .ok_or("no staff def")?
+        .clef;
+    assert_eq!(clef, Clef::Bass);
+    Ok(())
+}
+
+/// A tie start is used up by its tie end: a later tie stop without a start
+/// of its own doesn't claim that string, so the chord's other notes keep
+/// their best ones.
+#[test]
+fn musicxml_ended_ties_free_their_string() -> Result<(), String> {
+    use crate::convert::guitarpro::musicxml_to_legacy_song;
+
+    let start = whole_note("C", 4, false, Some("start"));
+    let stop = whole_note("C", 4, false, Some("stop"));
+    // B3 (nearest the B string, open) with a C4 whose stop has no start.
+    let chord = whole_note("B", 3, false, None) + &whole_note("C", 4, true, Some("stop"));
+    let src = parse_musicxml(one_part_score(&[&start, &stop, &chord]).as_bytes())?;
+    let song = musicxml_to_legacy_song(&src);
+    let held = &song.tracks[0].measures[0].voices[0].beats[0].notes[0];
+    let b3 = &song.tracks[0].measures[2].voices[0].beats[0].notes[0];
+    assert_eq!((b3.string, b3.value), (held.string, 0));
+    Ok(())
+}

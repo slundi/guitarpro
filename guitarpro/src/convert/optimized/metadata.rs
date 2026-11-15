@@ -274,13 +274,18 @@ fn instrument_kind(
     part_idx: usize,
     sp: &crate::model::musicxml::part_list::ScorePart,
 ) -> InstrumentKind {
-    // Check instrument sound for percussion
+    // Check instrument sound for percussion: drums and cymbals, but not
+    // the pitched timpani or pitched percussion (xylophone, …), as the
+    // MSCZ import tells them apart.
     let is_percussion = sp
         .score_instruments
         .first()
         .and_then(|si| si.instrument_sound.as_deref())
-        .map(|s| s.contains("drum") || s.contains("percussion") || s.contains("cymbal"))
-        .unwrap_or(false);
+        .is_some_and(|s| {
+            (s.starts_with("drum.") && s != "drum.timpani")
+                || s.contains("cymbal")
+                || (s.contains("percussion") && !s.starts_with("pitched-percussion."))
+        });
 
     if is_percussion {
         return InstrumentKind::Percussion;

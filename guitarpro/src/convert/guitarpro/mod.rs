@@ -7,6 +7,9 @@
 
 use std::collections::HashMap;
 
+use crate::convert::HeldStrings;
+use crate::convert::loss::LossReport;
+
 use crate::{
     audio::midi::MidiChannel,
     model::{
@@ -40,7 +43,15 @@ use crate::{
 /// Maps directly from MusicXML elements without passing through the optimized
 /// intermediate model.
 pub fn musicxml_to_legacy_song(src: &ScorePartwise) -> Song {
+    musicxml_to_legacy_song_with_losses(src).0
+}
+
+/// [`musicxml_to_legacy_song`], with what it couldn't keep: notes no free
+/// string of their track reaches (out of its range, or every string that
+/// reaches them taken by the chord's other notes: GP holds one per string).
+pub fn musicxml_to_legacy_song_with_losses(src: &ScorePartwise) -> (Song, LossReport) {
     let mut song = Song::default();
+    let mut placement = Placement::default();
 
     build_metadata(&mut song, src);
     build_channels(&mut song, src);
@@ -51,9 +62,21 @@ pub fn musicxml_to_legacy_song(src: &ScorePartwise) -> Song {
 
     song.measure_headers = build_measure_headers(src, global_tempo);
     let measure_count = song.measure_headers.len();
-    song.tracks = build_tracks(src, measure_count);
+    song.tracks = build_tracks(src, measure_count, &mut placement);
 
-    song
+    let mut report = LossReport::new();
+    report.note_n("Note on no free string of its track", placement.unplaced);
+    (song, report)
+}
+
+/// What placing notes on strings keeps from beat to beat, and counts.
+#[derive(Default)]
+struct Placement {
+    /// Per voice (its MusicXML number) of the track: where its tied notes
+    /// go on.
+    held: HashMap<String, HeldStrings>,
+    /// Notes no free string reaches.
+    unplaced: usize,
 }
 
 /// Convert a MusicXML [`ScoreTimewise`] document into a Guitar Pro [`Song`].
@@ -295,7 +318,11 @@ fn build_measure_headers(src: &ScorePartwise, global_tempo: i16) -> Vec<MeasureH
 // Track building
 // ---------------------------------------------------------------------------
 
-fn build_tracks(src: &ScorePartwise, measure_count: usize) -> Vec<Track> {
+fn build_tracks(
+    src: &ScorePartwise,
+    measure_count: usize,
+    placement: &mut Placement,
+) -> Vec<Track> {
     let score_parts: Vec<_> = src
         .part_list
         .items
@@ -345,9 +372,16 @@ fn build_tracks(src: &ScorePartwise, measure_count: usize) -> Vec<Track> {
 
             if let Some(part) = part {
                 let mut divisions: u32 = 960;
+                placement.held.clear();
                 for (mi, xml_measure) in part.measures.iter().enumerate() {
-                    let measure =
-                        build_legacy_measure(xml_measure, mi, ti, &strings, &mut divisions);
+                    let measure = build_legacy_measure(
+                        xml_measure,
+                        mi,
+                        ti,
+                        &strings,
+                        &mut divisions,
+                        placement,
+                    );
                     track.measures.push(measure);
                 }
             }
@@ -430,8 +464,9 @@ fn build_legacy_measure(
     track_index: usize,
     strings: &[(i8, i8)],
     divisions: &mut u32,
+    placement: &mut Placement,
 ) -> Measure {
-    let voices = build_voices(xml_measure, strings, divisions);
+    let voices = build_voices(xml_measure, strings, divisions, placement);
     Measure {
         header_index,
         track_index,
@@ -448,6 +483,7 @@ fn build_voices(
     xml_measure: &crate::model::musicxml::measure::Measure,
     strings: &[(i8, i8)],
     divisions: &mut u32,
+    placement: &mut Placement,
 ) -> Vec<Voice> {
     let mut cursor: i64 = 0;
     let mut last_onset: HashMap<String, i64> = HashMap::new();
@@ -510,9 +546,11 @@ fn build_voices(
         .iter()
         .map(|vk| {
             let beats_data = &voices_map[vk];
+            let held = placement.held.entry(vk.clone()).or_default();
+            let unplaced = &mut placement.unplaced;
             let beats = beats_data
                 .iter()
-                .map(|(_, notes)| build_beat(notes, strings, *divisions))
+                .map(|(_, notes)| build_beat(notes, strings, *divisions, held, unplaced))
                 .collect();
             Voice {
                 beats,
@@ -522,7 +560,16 @@ fn build_voices(
         .collect()
 }
 
-fn build_beat(notes: &[&XmlNote], strings: &[(i8, i8)], divisions: u32) -> Beat {
+/// `held`: where this voice's tied notes go on (updated with this beat's
+/// notes); `unplaced`
+/// counts the notes no free string reaches.
+fn build_beat(
+    notes: &[&XmlNote],
+    strings: &[(i8, i8)],
+    divisions: u32,
+    held: &mut HeldStrings,
+    unplaced: &mut usize,
+) -> Beat {
     let first = notes[0];
     let duration = xml_note_to_duration(first, divisions);
 
@@ -535,10 +582,41 @@ fn build_beat(notes: &[&XmlNote], strings: &[(i8, i8)], divisions: u32) -> Beat 
         };
     }
 
-    let legacy_notes: Vec<LegacyNote> = notes
+    // One note per string: those with a <technical> string take theirs
+    // first, then each placed by pitch takes a free one.
+    let mut taken: Vec<i8> = notes
         .iter()
-        .filter_map(|n| xml_note_to_legacy(n, strings))
+        .filter_map(|n| xml_tab(n).map(|(string, _)| string))
         .collect();
+    // A note tied from another, placed by pitch, keeps that one's string
+    // (GP ties a note to the one before it on its string), claimed before
+    // the others are placed.
+    let presets: Vec<Option<(i8, i16)>> = notes
+        .iter()
+        .map(|n| {
+            let pitch = n.pitch.as_ref().filter(|_| {
+                n.rest.is_none()
+                    && xml_tab(n).is_none()
+                    && n.ties.iter().any(|t| t.tie_type == "stop")
+            })?;
+            held.claim(xml_pitch_to_midi(pitch), strings, &mut taken)
+        })
+        .collect();
+    let mut legacy_notes: Vec<LegacyNote> = Vec::with_capacity(notes.len());
+    for (n, preset) in notes.iter().zip(presets) {
+        let placed = xml_note_to_legacy(n, strings, &mut taken, preset);
+        match (&placed, &n.pitch) {
+            (Some(note), Some(pitch)) => {
+                if n.ties.iter().any(|t| t.tie_type == "start") {
+                    held.start(xml_pitch_to_midi(pitch), note.string);
+                }
+            }
+            // A pitched note on no string (with none of its own).
+            (None, Some(_)) if n.rest.is_none() && xml_tab(n).is_none() => *unplaced += 1,
+            _ => {}
+        }
+        legacy_notes.extend(placed);
+    }
 
     if legacy_notes.is_empty() {
         return Beat {
@@ -556,7 +634,26 @@ fn build_beat(notes: &[&XmlNote], strings: &[(i8, i8)], divisions: u32) -> Beat 
     }
 }
 
-fn xml_note_to_legacy(note: &XmlNote, strings: &[(i8, i8)]) -> Option<LegacyNote> {
+/// A note's explicit string and fret, from its `<technical>`.
+fn xml_tab(note: &XmlNote) -> Option<(i8, i16)> {
+    note.notations.iter().find_map(|n| {
+        n.technical.as_ref().and_then(|tech| {
+            if let (Some(s), Some(f)) = (&tech.string, &tech.fret) {
+                Some((s.value as i8, f.value as i16))
+            } else {
+                None
+            }
+        })
+    })
+}
+
+/// `preset`: the string and fret already claimed for it (a tied note's).
+fn xml_note_to_legacy(
+    note: &XmlNote,
+    strings: &[(i8, i8)],
+    taken: &mut Vec<i8>,
+    preset: Option<(i8, i16)>,
+) -> Option<LegacyNote> {
     if note.rest.is_some() {
         return None;
     }
@@ -568,20 +665,14 @@ fn xml_note_to_legacy(note: &XmlNote, strings: &[(i8, i8)]) -> Option<LegacyNote
     };
 
     // Prefer explicit string/fret from <technical> if present
-    let tab = note.notations.iter().find_map(|n| {
-        n.technical.as_ref().and_then(|tech| {
-            if let (Some(s), Some(f)) = (&tech.string, &tech.fret) {
-                Some((s.value as i8, f.value as i16))
-            } else {
-                None
-            }
-        })
-    });
-
-    let (string_num, fret_val) = if let Some(tab) = tab {
+    let (string_num, fret_val) = if let Some(tab) = xml_tab(note) {
         tab
+    } else if let Some(placed) = preset {
+        placed
     } else if let Some(pitch) = &note.pitch {
-        pitch_to_string_fret(xml_pitch_to_midi(pitch), strings)?
+        let placed = crate::convert::free_string_fret(xml_pitch_to_midi(pitch), strings, taken)?;
+        taken.push(placed.0);
+        placed
     } else {
         return None;
     };
@@ -662,20 +753,6 @@ fn xml_pitch_to_midi(pitch: &crate::model::musicxml::note::Pitch) -> i32 {
     };
     let alter = pitch.alter.unwrap_or(0.0).round() as i32;
     (pitch.octave as i32 + 1) * 12 + base + alter
-}
-
-fn pitch_to_string_fret(midi: i32, strings: &[(i8, i8)]) -> Option<(i8, i16)> {
-    let mut best: Option<(i8, i16)> = None;
-    for &(string_num, open_midi) in strings {
-        let fret = midi - open_midi as i32;
-        if (0..=24).contains(&fret) {
-            let fret = fret as i16;
-            if best.is_none_or(|(_, bf)| fret < bf) {
-                best = Some((string_num, fret));
-            }
-        }
-    }
-    best
 }
 
 // ---------------------------------------------------------------------------

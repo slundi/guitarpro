@@ -164,11 +164,12 @@ pub fn build_timeline(src: &ScorePartwise) -> TimelineData {
             captured_initial = true;
         }
 
-        let denominator = time_sig.denominator as u32;
-        let duration_ticks = (divisions * 4)
-            .checked_div(denominator)
-            .map(|q| time_sig.numerator as u32 * q)
-            .unwrap_or(divisions * 4);
+        // `divisions` is the file's, as large as it says; a zero
+        // denominator's measure is a whole.
+        let duration_ticks = time_sig
+            .measure_ticks(u64::from(divisions))
+            .unwrap_or(u64::from(divisions) * 4)
+            .min(u64::from(u32::MAX)) as u32;
 
         measures.push(MeasureDef {
             index: MeasureIndex(measure_idx as u16),
@@ -221,61 +222,35 @@ fn convert_barline(
             measure_index: MeasureIndex(measure_idx),
             kind,
             repeat_count,
-            volta: None,
-            volta_last: false,
         });
     }
 
-    // Volta endings: tag onto last RepeatClose or emit standalone
-    if let Some(ending) = &bl.ending {
-        let numbers: Vec<u8> = ending
+    // Visual barline style; an ending keeps a barline without one.
+    if bl.bar_style.is_none() && bl.ending.is_none() {
+        return None;
+    }
+    let style = bl
+        .bar_style
+        .as_ref()
+        .map_or(BarlineStyle::Regular, |bs| convert_bar_style(bs.value));
+    let ending = bl.ending.as_ref().map(|e| {
+        let numbers: Vec<u8> = e
             .number
             .split(',')
             .filter_map(|s| s.trim().parse::<u8>().ok())
             .collect();
-        let first_volta = numbers.first().copied();
-        let kind_str = ending.ending_type.as_str();
-        let last = kind_str == "stop" || kind_str == "discontinue";
-
-        if let Some(nav) = navigation.last_mut() {
-            if nav.kind == JumpKind::RepeatClose {
-                nav.volta = first_volta;
-                nav.volta_last = last;
-            }
-        } else if kind_str == "stop" || kind_str == "discontinue" {
-            // Last volta bracket with no repeat close
-            navigation.push(NavigationEvent {
-                measure_index: MeasureIndex(measure_idx),
-                kind: JumpKind::RepeatClose,
-                repeat_count: None,
-                volta: first_volta,
-                volta_last: true,
-            });
+        let kind = match e.ending_type.as_str() {
+            "start" => EndingKind::Start,
+            "discontinue" => EndingKind::Discontinue,
+            _ => EndingKind::Stop,
+        };
+        Ending {
+            numbers,
+            text: e.value.clone(),
+            kind,
         }
-    }
-
-    // Visual barline style
-    bl.bar_style.as_ref().map(|bs| {
-        let style = convert_bar_style(bs.value);
-        let ending = bl.ending.as_ref().map(|e| {
-            let numbers: Vec<u8> = e
-                .number
-                .split(',')
-                .filter_map(|s| s.trim().parse::<u8>().ok())
-                .collect();
-            let kind = match e.ending_type.as_str() {
-                "start" => EndingKind::Start,
-                "discontinue" => EndingKind::Discontinue,
-                _ => EndingKind::Stop,
-            };
-            Ending {
-                numbers,
-                text: e.value.clone(),
-                kind,
-            }
-        });
-        Barline { style, ending }
-    })
+    });
+    Some(Barline { style, ending })
 }
 
 fn convert_bar_style(style: crate::model::musicxml::barline::BarStyle) -> BarlineStyle {
@@ -299,189 +274,9 @@ fn convert_bar_style(style: crate::model::musicxml::barline::BarStyle) -> Barlin
 // Key signature conversion: fifths → root + mode
 // ---------------------------------------------------------------------------
 
+/// The key of a signature with `fifths` and a MusicXML `<mode>` (major
+/// without one); see [`KeySignature::from_fifths`].
 pub fn key_sig_from_fifths(fifths: i8, mode: Option<&str>) -> KeySignature {
-    let mode_val = match mode {
-        Some("minor") | Some("aeolian") => Mode::Minor,
-        Some("dorian") => Mode::Dorian,
-        Some("phrygian") => Mode::Phrygian,
-        Some("lydian") => Mode::Lydian,
-        Some("mixolydian") => Mode::Mixolydian,
-        Some("locrian") => Mode::Locrian,
-        _ => Mode::Major,
-    };
-
-    let root = if mode_val == Mode::Minor {
-        // Relative minor (sixth degree of the major key sharing this key signature)
-        match fifths {
-            -7 => Pitch {
-                step: PitchStep::A,
-                alter: -1,
-                octave: 4,
-            },
-            -6 => Pitch {
-                step: PitchStep::E,
-                alter: -1,
-                octave: 4,
-            },
-            -5 => Pitch {
-                step: PitchStep::B,
-                alter: -1,
-                octave: 4,
-            },
-            -4 => Pitch {
-                step: PitchStep::F,
-                alter: 0,
-                octave: 4,
-            },
-            -3 => Pitch {
-                step: PitchStep::C,
-                alter: 0,
-                octave: 4,
-            },
-            -2 => Pitch {
-                step: PitchStep::G,
-                alter: 0,
-                octave: 4,
-            },
-            -1 => Pitch {
-                step: PitchStep::D,
-                alter: 0,
-                octave: 4,
-            },
-            0 => Pitch {
-                step: PitchStep::A,
-                alter: 0,
-                octave: 4,
-            },
-            1 => Pitch {
-                step: PitchStep::E,
-                alter: 0,
-                octave: 4,
-            },
-            2 => Pitch {
-                step: PitchStep::B,
-                alter: 0,
-                octave: 4,
-            },
-            3 => Pitch {
-                step: PitchStep::F,
-                alter: 1,
-                octave: 4,
-            },
-            4 => Pitch {
-                step: PitchStep::C,
-                alter: 1,
-                octave: 4,
-            },
-            5 => Pitch {
-                step: PitchStep::G,
-                alter: 1,
-                octave: 4,
-            },
-            6 => Pitch {
-                step: PitchStep::D,
-                alter: 1,
-                octave: 4,
-            },
-            7 => Pitch {
-                step: PitchStep::A,
-                alter: 1,
-                octave: 4,
-            },
-            _ => Pitch {
-                step: PitchStep::A,
-                alter: 0,
-                octave: 4,
-            },
-        }
-    } else {
-        // Major root
-        match fifths {
-            -7 => Pitch {
-                step: PitchStep::C,
-                alter: -1,
-                octave: 4,
-            },
-            -6 => Pitch {
-                step: PitchStep::G,
-                alter: -1,
-                octave: 4,
-            },
-            -5 => Pitch {
-                step: PitchStep::D,
-                alter: -1,
-                octave: 4,
-            },
-            -4 => Pitch {
-                step: PitchStep::A,
-                alter: -1,
-                octave: 4,
-            },
-            -3 => Pitch {
-                step: PitchStep::E,
-                alter: -1,
-                octave: 4,
-            },
-            -2 => Pitch {
-                step: PitchStep::B,
-                alter: -1,
-                octave: 4,
-            },
-            -1 => Pitch {
-                step: PitchStep::F,
-                alter: 0,
-                octave: 4,
-            },
-            0 => Pitch {
-                step: PitchStep::C,
-                alter: 0,
-                octave: 4,
-            },
-            1 => Pitch {
-                step: PitchStep::G,
-                alter: 0,
-                octave: 4,
-            },
-            2 => Pitch {
-                step: PitchStep::D,
-                alter: 0,
-                octave: 4,
-            },
-            3 => Pitch {
-                step: PitchStep::A,
-                alter: 0,
-                octave: 4,
-            },
-            4 => Pitch {
-                step: PitchStep::E,
-                alter: 0,
-                octave: 4,
-            },
-            5 => Pitch {
-                step: PitchStep::B,
-                alter: 0,
-                octave: 4,
-            },
-            6 => Pitch {
-                step: PitchStep::F,
-                alter: 1,
-                octave: 4,
-            },
-            7 => Pitch {
-                step: PitchStep::C,
-                alter: 1,
-                octave: 4,
-            },
-            _ => Pitch {
-                step: PitchStep::C,
-                alter: 0,
-                octave: 4,
-            },
-        }
-    };
-
-    KeySignature {
-        root,
-        mode: mode_val,
-    }
+    let mode = mode.and_then(Mode::from_name).unwrap_or(Mode::Major);
+    KeySignature::from_fifths(fifths, mode)
 }

@@ -19,7 +19,7 @@
 
 use crate::model::optimized::{
     beat::Beat,
-    note::{Note, PitchStep},
+    note::{Note, Pitch},
 };
 
 // ---------------------------------------------------------------------------
@@ -337,18 +337,6 @@ pub fn identify_chord(beat: &Beat, strings: &[(i8, i8)]) -> Option<ChordName> {
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn pitch_step_semitone(step: PitchStep) -> i32 {
-    match step {
-        PitchStep::C => 0,
-        PitchStep::D => 2,
-        PitchStep::E => 4,
-        PitchStep::F => 5,
-        PitchStep::G => 7,
-        PitchStep::A => 9,
-        PitchStep::B => 11,
-    }
-}
-
 /// Convert a `Note` to a MIDI pitch integer.
 /// Prefers tab (string + fret) over explicit `Pitch` when both are available.
 /// Returns `None` for ghost notes with no pitch or tab information.
@@ -360,10 +348,7 @@ fn note_to_midi(note: &Note, strings: &[(i8, i8)]) -> Option<i32> {
             .map(|&(_, m)| m as i32)?;
         Some(open + f as i32)
     } else {
-        // Scientific pitch: C4 = MIDI 60 → (octave + 1) * 12 + step + alter
-        note.pitch
-            .as_ref()
-            .map(|p| (p.octave as i32 + 1) * 12 + pitch_step_semitone(p.step) + p.alter as i32)
+        note.pitch.map(Pitch::midi)
     }
 }
 
@@ -473,6 +458,7 @@ mod tests {
             grace_notes: vec![],
             cue: false,
             chord: None,
+            fermata: false,
             gp_empty: false,
             gp_rest: false,
             gp_vibrato: false,

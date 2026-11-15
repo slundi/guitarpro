@@ -54,21 +54,6 @@ fn note_value_to_duration(s: &str) -> u16 {
     }
 }
 
-/// Convert GPIF dynamic string to MIDI velocity
-fn dynamic_to_velocity(s: &str) -> i16 {
-    match s {
-        "PPP" => MIN_VELOCITY,
-        "PP" => MIN_VELOCITY + VELOCITY_INCREMENT,
-        "P" => MIN_VELOCITY + VELOCITY_INCREMENT * 2,
-        "MP" => MIN_VELOCITY + VELOCITY_INCREMENT * 3,
-        "MF" => MIN_VELOCITY + VELOCITY_INCREMENT * 4,
-        "F" => FORTE,
-        "FF" => MIN_VELOCITY + VELOCITY_INCREMENT * 6,
-        "FFF" => MIN_VELOCITY + VELOCITY_INCREMENT * 7,
-        _ => FORTE,
-    }
-}
-
 /// Parse space-separated integer IDs from a string.
 fn parse_ids(s: &str) -> Vec<i32> {
     s.split_whitespace()
@@ -124,32 +109,6 @@ fn parse_harmonic_type(htype: &str) -> HarmonicEffect {
     HarmonicEffect {
         kind,
         ..Default::default()
-    }
-}
-
-/// Parse direction string to DirectionSign enum.
-fn parse_direction_sign(s: &str) -> Option<DirectionSign> {
-    match s {
-        "Coda" => Some(DirectionSign::Coda),
-        "DoubleCoda" => Some(DirectionSign::DoubleCoda),
-        "Segno" => Some(DirectionSign::Segno),
-        "SegnoSegno" => Some(DirectionSign::SegnoSegno),
-        "Fine" => Some(DirectionSign::Fine),
-        "DaCapo" => Some(DirectionSign::DaCapo),
-        "DaCapoAlCoda" => Some(DirectionSign::DaCapoAlCoda),
-        "DaCapoAlDoubleCoda" => Some(DirectionSign::DaCapoAlDoubleCoda),
-        "DaCapoAlFine" => Some(DirectionSign::DaCapoAlFine),
-        "DaSegno" => Some(DirectionSign::DaSegno),
-        "DaSegnoAlCoda" => Some(DirectionSign::DaSegnoAlCoda),
-        "DaSegnoAlDoubleCoda" => Some(DirectionSign::DaSegnoAlDoubleCoda),
-        "DaSegnoAlFine" => Some(DirectionSign::DaSegnoAlFine),
-        "DaSegnoSegno" => Some(DirectionSign::DaSegnoSegno),
-        "DaSegnoSegnoAlCoda" => Some(DirectionSign::DaSegnoSegnoAlCoda),
-        "DaSegnoSegnoAlDoubleCoda" => Some(DirectionSign::DaSegnoSegnoAlDoubleCoda),
-        "DaSegnoSegnoAlFine" => Some(DirectionSign::DaSegnoSegnoAlFine),
-        "DaCoda" => Some(DirectionSign::DaCoda),
-        "DaDoubleCoda" => Some(DirectionSign::DaDoubleCoda),
-        _ => None,
     }
 }
 
@@ -374,11 +333,12 @@ impl SongGpifOps for Song {
 
             // Directions
             if let Some(dirs) = &mb.directions {
-                if let Some(target) = &dirs.target {
-                    mh.direction = parse_direction_sign(target);
-                } else if let Some(jump) = &dirs.jump {
-                    mh.direction = parse_direction_sign(jump);
-                }
+                mh.directions.clear();
+                mh.add_directions(
+                    dirs.signs
+                        .iter()
+                        .filter_map(|sign| DirectionSign::from_name(sign.name()?.trim())),
+                );
             }
 
             // Per-track bar IDs
@@ -542,7 +502,7 @@ fn convert_beat(
 
     // Dynamic
     if let Some(dyn_str) = &g_beat.dynamic {
-        *current_velocity = dynamic_to_velocity(dyn_str);
+        *current_velocity = named_velocity(dyn_str).unwrap_or(FORTE);
     }
 
     // Grace notes

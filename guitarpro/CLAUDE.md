@@ -18,7 +18,7 @@ Dedicated instructions for the core Guitar Pro parsing engine.
 - **Modern Formats**: `.gp` files use ZIP extraction → XML deserialization (`Gpif`) → `Song` conversion.
 
 ## Coding Standards
-- Tests live in `src/tests.rs` and use files from the `test/` directory.
+- Tests live in `src/tests/` and use files from the `test/` directory.
 - Refer to `FILE-STRUCTURE*.md` for binary format specifications.
 
 ## MSCZ (MuseScore compressed archive)
@@ -35,7 +35,9 @@ crate-side surface lives at:
 | `src/model/mscz/mscx.rs` | `Mscx` AST (envelope, meta tags, parts, staves, measures, voices, beats, notes) |
 | `src/convert/mscz/to_optimized.rs` | `mscx_to_loaded_score` (MSCX → `LoadedScore`) |
 | `src/convert/mscz/from_optimized.rs` | `loaded_score_to_mscx` (regenerates MSCX from `LoadedScore`) |
-| `src/convert/mscz/validate.rs` | `LossReport` — counts observed-but-unmapped MSCX features |
+| `src/convert/loss.rs` | `LossReport` — counts observed-but-unmapped features (shared by the MSCX and GP converters, re-exported from `convert::mscz`) |
+| `src/convert/mscz/spelling.rs` | `<tpc>`/`<tpc2>` spelling, written pitch and key of transposing staves |
+| `src/convert/mscz/instruments.rs` | MuseScore instrument template + sound for an `Instrument` |
 
 **Public entry points** (re-exported from `lib.rs`):
 `read_mscz(path)`, `read_mscz_bytes(&[u8])`, `write_mscz(&MsczFile)`,
@@ -50,4 +52,6 @@ crate-side surface lives at:
 - Side files (`.mss`, thumbnails, `audiosettings.json`) are kept verbatim
   inside `MsczArchive.entries` so they survive a full container round-trip.
 - Tests live in `src/tests/mscz.rs` (container + parser + archive
-  round-trip) and `src/tests/mscz_convert.rs` (MSCX ↔ `LoadedScore`).
+  round-trip), `src/tests/mscz_convert.rs` (MSCX ↔ `LoadedScore`),
+  `src/tests/mscz_notation.rs`, `src/tests/mscz_spelling.rs` and
+  `src/tests/mscz_instruments.rs`.

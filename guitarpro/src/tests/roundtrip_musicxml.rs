@@ -173,3 +173,70 @@ fn test_musicxml_to_optimized() {
         failures.len()
     );
 }
+
+/// A clef first written after the start is a change: the staff opens in
+/// the default treble, or in the clef written before the first note.
+#[test]
+fn a_later_clef_is_a_change_not_the_staffs() -> crate::error::GpResult<()> {
+    use crate::model::optimized::{global::MeasureIndex, track::Clef};
+    let measure = |number: u8, attributes: &str| {
+        format!(
+            r#"<measure number="{number}">{attributes}<note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><type>whole</type></note></measure>"#
+        )
+    };
+    let bass = "<attributes><clef><sign>F</sign><line>4</line></clef></attributes>";
+    let score = |measures: &str| {
+        let xml = format!(
+            r#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>P</part-name></score-part></part-list><part id="P1">{measures}</part></score-partwise>"#
+        );
+        let src = parse_musicxml(xml.as_bytes())?;
+        Ok::<_, crate::error::GpError>(score_partwise_to_loaded_score(&src))
+    };
+
+    let later = score(
+        &[
+            measure(1, "<attributes><divisions>1</divisions></attributes>"),
+            measure(2, bass),
+        ]
+        .concat(),
+    )?;
+    assert_eq!(later.score.staves[0].clef, Clef::Treble);
+    let track = &later.score.tracks[0];
+    assert_eq!(track.measures[&MeasureIndex(1)].clef, Some(Clef::Bass));
+
+    let opening = score(
+        &[
+            measure(1, &bass.replace("<clef>", "<divisions>1</divisions><clef>")),
+            measure(2, bass),
+        ]
+        .concat(),
+    )?;
+    assert_eq!(opening.score.staves[0].clef, Clef::Bass);
+    assert_eq!(
+        opening.score.tracks[0].measures[&MeasureIndex(1)].clef,
+        None
+    );
+    Ok(())
+}
+
+/// Timpani and pitched percussion keep their pitches; drums are percussion.
+#[test]
+fn only_unpitched_sounds_are_percussion() -> crate::error::GpResult<()> {
+    use crate::model::optimized::global::InstrumentKind;
+    let kind = |sound: &str| {
+        let xml = format!(
+            r#"<score-partwise version="4.0"><part-list><score-part id="P1"><part-name>P</part-name><score-instrument id="P1-I1"><instrument-name>I</instrument-name><instrument-sound>{sound}</instrument-sound></score-instrument></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions></attributes><note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration><type>whole</type></note></measure></part></score-partwise>"#
+        );
+        let src = parse_musicxml(xml.as_bytes())?;
+        let score = score_partwise_to_loaded_score(&src);
+        Ok::<_, crate::error::GpError>(matches!(
+            score.score.instruments[0].kind,
+            InstrumentKind::Percussion
+        ))
+    };
+    assert!(!kind("drum.timpani")?);
+    assert!(!kind("pitched-percussion.xylophone")?);
+    assert!(kind("drum.group.set")?);
+    assert!(kind("metal.cymbal.crash")?);
+    Ok(())
+}

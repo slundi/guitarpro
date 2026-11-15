@@ -18,6 +18,101 @@ pub struct Pitch {
     pub octave: u8, // scientific notation: C4 = middle C
 }
 
+impl PitchStep {
+    /// The steps in octave order, from C.
+    pub const ALL: [PitchStep; 7] = [
+        PitchStep::C,
+        PitchStep::D,
+        PitchStep::E,
+        PitchStep::F,
+        PitchStep::G,
+        PitchStep::A,
+        PitchStep::B,
+    ];
+
+    /// The step at `index` in the octave (C = 0, wrapping around: −1 = B).
+    /// Inverse of [`PitchStep::index`].
+    pub fn from_index(index: i32) -> PitchStep {
+        Self::ALL[index.rem_euclid(7) as usize]
+    }
+
+    /// The step's position in the octave, from C = 0 to B = 6.
+    pub fn index(self) -> i32 {
+        match self {
+            PitchStep::C => 0,
+            PitchStep::D => 1,
+            PitchStep::E => 2,
+            PitchStep::F => 3,
+            PitchStep::G => 4,
+            PitchStep::A => 5,
+            PitchStep::B => 6,
+        }
+    }
+
+    /// The natural step's semitones above C (E = 4, B = 11).
+    pub fn semitone(self) -> i32 {
+        match self {
+            PitchStep::C => 0,
+            PitchStep::D => 2,
+            PitchStep::E => 4,
+            PitchStep::F => 5,
+            PitchStep::G => 7,
+            PitchStep::A => 9,
+            PitchStep::B => 11,
+        }
+    }
+
+    /// The natural step's position on the line of fifths, relative to C
+    /// (F = −1, G = 1, B = 5).
+    pub fn fifths(self) -> i32 {
+        match self {
+            PitchStep::F => -1,
+            PitchStep::C => 0,
+            PitchStep::G => 1,
+            PitchStep::D => 2,
+            PitchStep::A => 3,
+            PitchStep::E => 4,
+            PitchStep::B => 5,
+        }
+    }
+}
+
+impl Pitch {
+    /// The MIDI note number (C4 = 60).
+    pub fn midi(self) -> i32 {
+        (self.octave as i32 + 1) * 12 + self.step.semitone() + self.alter as i32
+    }
+
+    /// The pitch class's position on the line of fifths, relative to C
+    /// (F♯ = 6, B♭ = −2). Inverse of [`Pitch::from_fifths`].
+    pub fn fifths(self) -> i32 {
+        self.step.fifths() + 7 * self.alter as i32
+    }
+
+    /// The pitch class `fifths` from C on the line of fifths, in octave 4;
+    /// `None` beyond a double sharp/flat.
+    pub fn from_fifths(fifths: i32) -> Option<Pitch> {
+        let alter = (fifths + 1).div_euclid(7);
+        if !(-2..=2).contains(&alter) {
+            return None;
+        }
+        let step = match fifths - 7 * alter {
+            -1 => PitchStep::F,
+            0 => PitchStep::C,
+            1 => PitchStep::G,
+            2 => PitchStep::D,
+            3 => PitchStep::A,
+            4 => PitchStep::E,
+            _ => PitchStep::B,
+        };
+        Some(Pitch {
+            step,
+            alter: alter as i8,
+            octave: 4,
+        })
+    }
+}
+
 /// Base rhythmic value, shared by Duration and TechniqueParams::Tremolo.
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum NoteValue {
@@ -33,20 +128,69 @@ pub enum NoteValue {
     Other(u16),
 }
 
+impl NoteValue {
+    /// The denominator of its fraction of a whole note (4 for a quarter);
+    /// `Other`'s own, at least 1.
+    pub fn denominator(self) -> u32 {
+        match self {
+            NoteValue::Whole => 1,
+            NoteValue::Half => 2,
+            NoteValue::Quarter => 4,
+            NoteValue::Eighth => 8,
+            NoteValue::Sixteenth => 16,
+            NoteValue::ThirtySecond => 32,
+            NoteValue::SixtyFourth => 64,
+            NoteValue::HundredTwentyEighth => 128,
+            NoteValue::Other(n) => u32::from(n).max(1),
+        }
+    }
+
+    /// Its length in ticks, at `divisions` ticks per quarter.
+    pub fn ticks(self, divisions: u32) -> u32 {
+        divisions * 4 / self.denominator()
+    }
+}
+
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TieType {
     /// This note starts a tie chain; sounding duration extends to the End note.
     Start,
     /// No new MIDI attack; extends the Start note's sounding duration.
     End,
+    /// Ends one tie and starts the next: the middle of a tie chain.
+    Continue,
+}
+
+impl TieType {
+    /// Whether the note is tied from the one before it.
+    pub fn ends_tie(self) -> bool {
+        matches!(self, TieType::End | TieType::Continue)
+    }
+
+    /// Whether the note is tied to the one after it.
+    pub fn starts_tie(self) -> bool {
+        matches!(self, TieType::Start | TieType::Continue)
+    }
+
+    /// The tie type for a note tied from the one before and/or to the one
+    /// after.
+    pub fn from_ends(from_previous: bool, to_next: bool) -> Option<TieType> {
+        match (from_previous, to_next) {
+            (true, true) => Some(TieType::Continue),
+            (true, false) => Some(TieType::End),
+            (false, true) => Some(TieType::Start),
+            (false, false) => None,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Ornaments
 // ---------------------------------------------------------------------------
 
-/// Ornament marks attached to a note.
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+/// Ornament marks attached to a note. `Other` holds a symbol with no
+/// variant (a SMuFL name such as `ornamentPrallMordent`) verbatim.
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub enum Ornament {
     Trill,
     Turn,
@@ -62,13 +206,23 @@ pub enum Ornament {
     Tremolo(u8),
     /// Wavy line: trill extension or vibrato continuation.
     WavyLine,
+    /// A turn stood on end.
+    VerticalTurn,
+    InvertedVerticalTurn,
+    /// A slide up into the note (Schleifer).
+    Schleifer,
+    /// Haydn's ornament.
+    Haydn,
+    Other(String),
 }
 
 // ---------------------------------------------------------------------------
 // Articulations
 // ---------------------------------------------------------------------------
 
-#[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]
+/// Articulation marks. `Other` holds a symbol with no variant (a SMuFL
+/// name such as `brassMuteClosed`) verbatim.
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub enum Articulation {
     // --- standard ---
     Staccato,
@@ -91,6 +245,11 @@ pub enum Articulation {
     Stress,
     Unstress,
     SoftAccent,
+    // Added after the ones above, so a positional (binary) save's indices
+    // stay those of its version.
+    /// Tenuto and staccato together (portato).
+    DetachedLegato,
+    Other(String),
 }
 
 // ---------------------------------------------------------------------------

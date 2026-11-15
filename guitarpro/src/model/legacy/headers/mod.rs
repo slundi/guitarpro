@@ -1,8 +1,13 @@
 mod io;
 pub use io::SongHeaderOps;
+#[cfg(test)]
+pub(crate) use io::{EndingWalks, ending_ordinal};
 
 use crate::error::{GpResult, ToPrimitiveGp};
-use crate::model::legacy::{enums::*, key_signature::*};
+use crate::model::{
+    endings::ending_mask_numbers,
+    legacy::{enums::*, key_signature::*},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Version {
@@ -46,7 +51,8 @@ pub struct MeasureHeader {
     pub repeat_alternative: u8,
     pub repeat_close: i8,
     pub triplet_feel: TripletFeel,
-    pub direction: Option<DirectionSign>,
+    /// Its direction signs, in [`DirectionSign`] order.
+    pub directions: Vec<DirectionSign>,
     /// Tonality of the measure
     pub key_signature: KeySignature,
     pub double_bar: bool,
@@ -65,7 +71,7 @@ impl Default for MeasureHeader {
             repeat_alternative: 0,
             repeat_close: -1,
             triplet_feel: TripletFeel::None,
-            direction: None,
+            directions: Vec::new(),
             key_signature: KeySignature::default(),
             double_bar: false,
             marker: None,
@@ -96,6 +102,27 @@ impl MeasureHeader {
     }
     pub(crate) fn _end(&self) -> GpResult<i64> {
         Ok(self.start + self.length()?)
+    }
+
+    /// The 1-based numbers of the alternate endings it's in.
+    pub fn ending_numbers(&self) -> Vec<u8> {
+        ending_mask_numbers(self.repeat_alternative)
+    }
+
+    /// All of its direction signs' labels.
+    pub fn direction_labels(&self) -> Vec<String> {
+        self.directions
+            .iter()
+            .map(|sign| sign.label().to_owned())
+            .collect()
+    }
+
+    /// Adds direction signs, keeping [`MeasureHeader::directions`] in
+    /// [`DirectionSign`] order and each sign once.
+    pub fn add_directions(&mut self, signs: impl IntoIterator<Item = DirectionSign>) {
+        self.directions.extend(signs);
+        self.directions.sort();
+        self.directions.dedup();
     }
 }
 

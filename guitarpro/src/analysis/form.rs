@@ -28,7 +28,7 @@
 //! - Otherwise → new base letter.
 
 use crate::model::optimized::{
-    note::{NoteValue, PitchStep},
+    note::NoteValue,
     track::{MeasureData, Track},
 };
 
@@ -310,10 +310,7 @@ fn measure_pc_set(md: &MeasureData, strings: &[(i8, i8)]) -> [bool; 12] {
                         .find(|&&(sn, _)| sn == s as i8)
                         .map(|&(_, open)| ((open as i32 + f as i32).rem_euclid(12)) as u8)
                 } else {
-                    note.pitch.as_ref().map(|p| {
-                        let semi = pitch_step_semitone(p.step) + p.alter as i32;
-                        semi.rem_euclid(12) as u8
-                    })
+                    note.pitch.map(|p| p.midi().rem_euclid(12) as u8)
                 };
                 if let Some(v) = pc_val {
                     pc[v as usize] = true;
@@ -348,18 +345,6 @@ fn note_value_to_u8(v: NoteValue) -> u8 {
         NoteValue::SixtyFourth => 6,
         NoteValue::HundredTwentyEighth => 7,
         NoteValue::Other(x) => 8u8.saturating_add(x.min(247) as u8),
-    }
-}
-
-fn pitch_step_semitone(step: PitchStep) -> i32 {
-    match step {
-        PitchStep::C => 0,
-        PitchStep::D => 2,
-        PitchStep::E => 4,
-        PitchStep::F => 5,
-        PitchStep::G => 7,
-        PitchStep::A => 9,
-        PitchStep::B => 11,
     }
 }
 
@@ -543,6 +528,7 @@ mod tests {
             grace_notes: vec![],
             cue: false,
             chord: None,
+            fermata: false,
             gp_empty: false,
             gp_rest: false,
             gp_vibrato: false,
@@ -575,8 +561,10 @@ mod tests {
             track_id: TrackId(0),
             repeat: None,
             voices,
+            barline_right: None,
             gp_line_break: 0,
             gp_simile_mark: None,
+            clef: None,
         }
     }
 

@@ -137,7 +137,8 @@ Design principles (aligned with the existing GPIF / MusicXML modules):
 
 Delivered: MSCX ↔ `LoadedScore` for the **structural** subset — metadata,
 instruments/tunings, staff definitions, per-measure signatures / tempo /
-repeats, and note content (pitch/string/fret/ties). The converter runs
+repeats, and note content (pitch/string/fret/ties), plus slurs, clefs,
+noteheads and transposing instruments. The converter runs
 against the 94-file real-world MuseScore 4.0 – 4.6 corpus (469 k notes
 across 361 k beats) without failures, and every observed-but-not-mapped
 feature is tallied in a `LossReport`.
@@ -151,18 +152,25 @@ work inside this Part rather than a separate roadmap Part.
 - `src/convert/mscz/mod.rs` — module entry
 - `src/convert/mscz/to_optimized.rs` — `mscx_to_loaded_score(&Mscx) ->
   ConvertOutcome { score, report }`
-  - Parts → `Instrument` (name, abbreviation, `instrument_sound`,
-    transpose, `Stringed { tuning }` / `Percussion` detection)
-  - Part `Staff` → `StaffDef` (clef + notation/tab display)
+  - Parts → `Instrument` (name, abbreviation, `instrument_sound`, GM
+    program from the first `<Channel>`, transpose, `Stringed { tuning }` /
+    `Percussion` detection)
+  - Part `Staff` → `StaffDef` (clef incl. octave clefs + notation/tab
+    display)
   - Score-level `Staff` `<Measure>` → per-track `MeasureData` with voices,
-    beats (Chord/Rest), notes (`<pitch>` → `Pitch`, `<string>` → 1-based,
-    `<fret>`, `<Spanner type="Tie">` → `TieType`)
+    beats (Chord/Rest), notes (`<pitch>` spelled by `<tpc>` → sounding
+    `Pitch`, `<head>` → `Notehead`, `<string>` → 1-based, `<fret>`,
+    `<Spanner type="Tie">` → `TieType`), chord-level
+    `<Spanner type="Slur">` → `Beat.slur` (paired by `<location>`, so nested
+    and cross-voice slurs survive), and mid-score `<Clef>` changes
+    → `MeasureData.clef`
   - `metaTag`s → `Metadata` (title, composer, copyright, encoding date,
     `Work { number, title }`, `Identification { creators, encoding_software,
     encoding_date, source }`)
-  - `<TimeSig>` / `<KeySig>` / `<Tempo>` → `MeasureDef.time_signature`,
-    `.key_signature`, `.tempo`; first measure always announces the initial
-    triple, subsequent measures announce only on change
+  - `<TimeSig>` / `<KeySig>` (concert key) / `<Tempo>` →
+    `MeasureDef.time_signature`, `.key_signature`, `.tempo`; first measure
+    always announces the initial triple, subsequent measures announce only
+    on change
   - `<startRepeat/>` / `<endRepeat>N</endRepeat>` → `NavigationEvent`
     entries with `JumpKind::RepeatOpen` / `RepeatClose { repeat_count }`
 - `src/convert/mscz/from_optimized.rs` —
@@ -170,10 +178,15 @@ work inside this Part rather than a separate roadmap Part.
   - Emits `<museScore version="4.10">` envelope, `metaTag`s, one `<Part>`
     per track with Staff/Instrument/StringData, and one master `<Staff>`
     per track with Measure/voice/Chord/Rest/Note
+  - `<Instrument id>` template + `<instrumentId>` sound picked from
+    `instrument_sound` or the GM program (`instruments.rs`), so parts don't
+    fall back to piano playback
+  - Transposing staves get `<actualKey>` and `<tpc2>` (`spelling.rs`);
+    clefs, slurs (located via relative `<location>`) and noteheads
   - Deterministic ordering (parts, measures, voices sorted by id)
 - Deferred (tracked in `LossReport`):
   - `<Beam>` grouping, tuplets, grace notes
-  - `<HairPin>`, `<Slur>`, `<Trill>`, `<Volta>` spanners
+  - `<HairPin>`, `<Trill>`, `<Volta>` spanners (`<Slur>` is mapped)
   - Chord symbols, fret diagrams, dynamics, articulations, ornaments
   - MuseScore layout hints (`<LayoutBreak>`, `<vspacerFixed>`, etc.)
   - `mscz.*` misc-store keys are unused so far — the raw XML on

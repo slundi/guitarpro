@@ -20,7 +20,7 @@ use crate::model::{
     musicxml::{ScorePartwise, ScoreTimewise, measure::MusicData, part_list::PartListItem},
     optimized::{
         LoadedScore,
-        global::{MeasureIndex, Score, StaffId, TrackId},
+        global::{MeasureIndex, SCORE_FORMAT_VERSION, Score, StaffId, TrackId},
         track::{Clef, MeasureData, StaffDef, StaffDisplay, Track},
     },
 };
@@ -55,7 +55,13 @@ pub fn score_partwise_to_loaded_score(src: &ScorePartwise) -> LoadedScore {
     let mut lyric_coll = metadata::collect_lyrics(src);
 
     // 7. Tracks (per-part measures, voices, beats, notes).
-    let tracks = build_tracks(src, &score_parts, &part_staff_ids, &mut lyric_coll.counters);
+    let tracks = build_tracks(
+        src,
+        &score_parts,
+        &staves,
+        &part_staff_ids,
+        &mut lyric_coll.counters,
+    );
 
     LoadedScore {
         score: Score {
@@ -68,6 +74,7 @@ pub fn score_partwise_to_loaded_score(src: &ScorePartwise) -> LoadedScore {
             lyric_lines: lyric_coll.lines,
             lyric_projections: lyric_coll.projections,
             defaults,
+            format_version: SCORE_FORMAT_VERSION,
         },
         layout: None,
     }
@@ -123,7 +130,7 @@ fn build_staves(
             continue;
         };
 
-        // Find the first Attributes block.
+        // The first Attributes block with clefs gives the staves.
         let mut clefs: Vec<&crate::model::musicxml::attributes::Clef> = Vec::new();
         let mut staff_details: Vec<&crate::model::musicxml::attributes::StaffDetails> = Vec::new();
 
@@ -136,6 +143,24 @@ fn build_staves(
                         break 'outer;
                     }
                 }
+            }
+        }
+
+        // The clefs in effect from the start: the first measure's at its
+        // start (before any time passes, or after a <backup> back to it, as
+        // between voices). A later one is a change (`build_measure_data`,
+        // which moves the position alike).
+        let mut opening: Vec<&crate::model::musicxml::attributes::Clef> = Vec::new();
+        let mut cursor: u32 = 0;
+        for event in part.measures.first().map_or(&[][..], |m| &m.music_data[..]) {
+            match event {
+                MusicData::Attributes(attrs) if cursor == 0 => opening.extend(attrs.clefs.iter()),
+                MusicData::Note(n) if n.grace.is_none() && n.chord.is_none() => {
+                    cursor += n.duration.unwrap_or(0);
+                }
+                MusicData::Backup(b) => cursor = cursor.saturating_sub(b.duration),
+                MusicData::Forward(f) => cursor += f.duration,
+                _ => {}
             }
         }
 
@@ -155,7 +180,20 @@ fn build_staves(
             sorted.sort_by_key(|(n, _)| *n);
 
             for (staff_num, clef) in sorted {
-                let clef_kind = convert_clef(clef);
+                // A tab staff stays one; a notation staff without an
+                // opening clef starts in the default treble. Clef changes
+                // are followed on the first staff only: a later staff's
+                // first clef stands for all of it.
+                let clef_kind = match convert_clef(clef) {
+                    Clef::Tab => Clef::Tab,
+                    _ => opening
+                        .iter()
+                        .rev()
+                        .find(|c| c.number.unwrap_or(1) == staff_num)
+                        .copied()
+                        .or((staff_num != 1).then_some(clef))
+                        .map_or(Clef::Treble, convert_clef),
+                };
 
                 // Check if this staff number has a TAB staff-type override.
                 let is_tab = clef_kind == Clef::Tab
@@ -186,8 +224,13 @@ fn build_staves(
 }
 
 fn convert_clef(clef: &crate::model::musicxml::attributes::Clef) -> Clef {
+    let octave = clef.clef_octave_change.unwrap_or(0);
     match clef.sign.as_str() {
+        "G" if octave < 0 => Clef::Treble8vb,
+        "G" if octave > 0 => Clef::Treble8va,
         "G" => Clef::Treble,
+        "F" if octave < 0 => Clef::Bass8vb,
+        "F" if octave > 0 => Clef::Bass8va,
         "F" => Clef::Bass,
         "C" => match clef.line {
             Some(4) => Clef::Tenor,
@@ -206,6 +249,7 @@ fn convert_clef(clef: &crate::model::musicxml::attributes::Clef) -> Clef {
 fn build_tracks(
     src: &ScorePartwise,
     score_parts: &[&crate::model::musicxml::part_list::ScorePart],
+    staff_defs: &[StaffDef],
     part_staff_ids: &[Vec<StaffId>],
     lyric_counters: &mut HashMap<
         (usize, String),
@@ -242,6 +286,7 @@ fn build_tracks(
             let mut divisions: u32 = timeline::DEFAULT_DIVISIONS;
             let mut measures: std::collections::BTreeMap<MeasureIndex, MeasureData> =
                 std::collections::BTreeMap::new();
+            let mut carried = note::PartCarry::default();
 
             for (measure_idx, measure) in part.measures.iter().enumerate() {
                 let measure_index = MeasureIndex(measure_idx as u16);
@@ -256,8 +301,22 @@ fn build_tracks(
                     part_idx,
                     &mut divisions,
                     &mut lyric_state,
+                    &mut carried,
                 );
                 measures.insert(measure_index, measure_data);
+            }
+            // Exporters restate the clef at system starts: only a clef
+            // other than the one in effect is a change.
+            let mut current = staves
+                .first()
+                .and_then(|id| staff_defs.get(id.0 as usize))
+                .map(|staff| staff.clef);
+            for data in measures.values_mut() {
+                if data.clef == current {
+                    data.clef = None;
+                } else if data.clef.is_some() {
+                    current = data.clef;
+                }
             }
 
             Track {

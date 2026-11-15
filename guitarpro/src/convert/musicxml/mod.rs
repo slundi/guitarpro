@@ -8,7 +8,7 @@
 //! - [`note`]     — beat/note construction
 //! - [`notations`] — technical markings, ornaments, articulations
 
-mod from_optimized;
+pub(crate) mod from_optimized;
 pub mod helpers;
 mod measure;
 mod metadata;

@@ -16,19 +16,16 @@
 //! is therefore lossy, but it reaches a **fixed point**: converting a document
 //! `musicxml → optimized → musicxml` once and then again yields identical output.
 
-use crate::{
-    convert::optimized::timeline::key_sig_from_fifths,
-    model::{
-        musicxml,
-        optimized::{
-            LoadedScore,
-            beat::{Beat, Duration, Tuplet, Voice},
-            global::{Instrument, Score},
-            metadata::{KeySignature, Metadata, Mode},
-            note::{NoteValue, Pitch as OptPitch, PitchStep, TieType},
-            timeline::MeasureDef,
-            track::{Clef as OptClef, Track},
-        },
+use crate::model::{
+    musicxml,
+    optimized::{
+        LoadedScore,
+        beat::{Beat, Duration, Tuplet, Voice},
+        global::{Instrument, Score},
+        metadata::Metadata,
+        note::{NoteValue, Pitch as OptPitch, PitchStep, TieType},
+        timeline::MeasureDef,
+        track::{Clef as OptClef, Track},
     },
 };
 
@@ -298,9 +295,14 @@ fn build_attributes(
     let is_first = measure_idx == 0;
     let time_sig = measure_def.and_then(|md| md.time_signature);
     let key_sig = measure_def.and_then(|md| md.key_signature);
+    // A clef change taking effect here (on the track's first staff).
+    let clef_change = measure_def
+        .and_then(|md| track.measures.get(&md.index))
+        .and_then(|data| data.clef);
 
-    // Nothing to emit unless it's the first measure or a signature change.
-    if !is_first && time_sig.is_none() && key_sig.is_none() {
+    // Nothing to emit unless it's the first measure or a signature or clef
+    // change.
+    if !is_first && time_sig.is_none() && key_sig.is_none() && clef_change.is_none() {
         return None;
     }
 
@@ -310,8 +312,8 @@ fn build_attributes(
                 number: None,
                 print_object: None,
                 cancel: None,
-                fifths: Some(fifths_from_key_sig(&ks)),
-                mode: Some(mode_str(ks.mode).to_string()),
+                fifths: Some(ks.fifths()),
+                mode: Some(ks.mode.name().to_string()),
                 key_steps: vec![],
                 key_alters: vec![],
                 key_accidentals: vec![],
@@ -338,7 +340,10 @@ fn build_attributes(
     let clefs = if is_first {
         build_clefs(score, track)
     } else {
-        vec![]
+        let number = (track.staves.len() > 1).then_some(1);
+        clef_change
+            .map(|clef| vec![make_clef(clef, number)])
+            .unwrap_or_default()
     };
 
     Some(Attributes {
@@ -359,6 +364,12 @@ fn build_attributes(
 
 fn build_clefs(score: &Score, track: &Track) -> Vec<musicxml::attributes::Clef> {
     let multi = track.staves.len() > 1;
+    // The first measure's own clef (first staff) wins over the staff's.
+    let first_measure_clef = score
+        .timeline
+        .first()
+        .and_then(|md| track.measures.get(&md.index))
+        .and_then(|data| data.clef);
     track
         .staves
         .iter()
@@ -370,12 +381,17 @@ fn build_clefs(score: &Score, track: &Track) -> Vec<musicxml::attributes::Clef> 
             } else {
                 None
             };
-            Some(make_clef(staff.clef, number))
+            let clef = if staff_idx == 0 {
+                first_measure_clef.unwrap_or(staff.clef)
+            } else {
+                staff.clef
+            };
+            Some(make_clef(clef, number))
         })
         .collect()
 }
 
-fn make_clef(clef: OptClef, number: Option<u8>) -> musicxml::attributes::Clef {
+pub(crate) fn make_clef(clef: OptClef, number: Option<u8>) -> musicxml::attributes::Clef {
     let (sign, line) = match clef {
         OptClef::Treble => ("G", Some(2)),
         OptClef::Bass => ("F", Some(4)),
@@ -383,6 +399,8 @@ fn make_clef(clef: OptClef, number: Option<u8>) -> musicxml::attributes::Clef {
         OptClef::Tenor => ("C", Some(4)),
         OptClef::Percussion => ("percussion", None),
         OptClef::Tab => ("TAB", None),
+        OptClef::Treble8vb | OptClef::Treble8va => ("G", Some(2)),
+        OptClef::Bass8vb | OptClef::Bass8va => ("F", Some(4)),
     };
     musicxml::attributes::Clef {
         number,
@@ -392,7 +410,7 @@ fn make_clef(clef: OptClef, number: Option<u8>) -> musicxml::attributes::Clef {
         print_object: None,
         sign: sign.to_string(),
         line,
-        clef_octave_change: None,
+        clef_octave_change: Some(clef.octave_change()).filter(|&octaves| octaves != 0),
     }
 }
 
@@ -447,10 +465,10 @@ fn emit_voice(voice: &Voice, voice_num: &str, out: &mut Vec<musicxml::measure::M
     beats.sort_by_key(|beat| beat.tick_offset);
 
     for beat in beats {
-        let divisions = duration_divisions(&beat.duration);
+        let divisions = beat.duration.ticks(DIVISIONS);
         total_ticks += divisions;
 
-        if is_rest(beat) {
+        if beat.is_staff_rest() {
             out.push(MusicData::Note(make_note(
                 None,
                 false,
@@ -482,12 +500,6 @@ fn emit_voice(voice: &Voice, voice_num: &str, out: &mut Vec<musicxml::measure::M
     total_ticks
 }
 
-/// A beat renders as a rest when it has no notes, or none of its notes carries a
-/// pitch (the forward converter represents rests as pitch-less notes).
-fn is_rest(beat: &Beat) -> bool {
-    beat.gp_rest || beat.notes.is_empty() || beat.notes.iter().all(|note| note.pitch.is_none())
-}
-
 #[allow(clippy::too_many_arguments)]
 fn make_note(
     pitch: Option<OptPitch>,
@@ -512,17 +524,18 @@ fn make_note(
         ),
     };
 
-    let ties = match tie {
-        Some(TieType::Start) => vec![Tie {
-            tie_type: "start".to_string(),
-            time_only: None,
-        }],
-        Some(TieType::End) => vec![Tie {
-            tie_type: "stop".to_string(),
-            time_only: None,
-        }],
-        None => vec![],
-    };
+    // A tie's stop goes before the next one's start.
+    let ties = [
+        tie.is_some_and(TieType::ends_tie).then_some("stop"),
+        tie.is_some_and(TieType::starts_tie).then_some("start"),
+    ]
+    .into_iter()
+    .flatten()
+    .map(|tie_type| Tie {
+        tie_type: tie_type.to_string(),
+        time_only: None,
+    })
+    .collect();
 
     let dots = (0..duration.dots)
         .map(|_| Dot {
@@ -630,41 +643,8 @@ fn pitch_out(pitch: &OptPitch) -> musicxml::note::Pitch {
     }
 }
 
-/// Note-value denominator: Whole = 1, Half = 2, Quarter = 4, …
-fn note_value_number(value: NoteValue) -> u32 {
-    match value {
-        NoteValue::Whole => 1,
-        NoteValue::Half => 2,
-        NoteValue::Quarter => 4,
-        NoteValue::Eighth => 8,
-        NoteValue::Sixteenth => 16,
-        NoteValue::ThirtySecond => 32,
-        NoteValue::SixtyFourth => 64,
-        NoteValue::HundredTwentyEighth => 128,
-        NoteValue::Other(n) => (n as u32).max(1),
-    }
-}
-
-/// Duration in `<divisions>` ticks, applying dots and tuplet scaling.
-fn duration_divisions(duration: &Duration) -> u32 {
-    let base = (DIVISIONS * 4) / note_value_number(duration.base);
-
-    // Dots: each dot adds half of the running value.
-    let mut ticks = base;
-    let mut increment = base;
-    for _ in 0..duration.dots {
-        increment /= 2;
-        ticks += increment;
-    }
-
-    if let Some(Tuplet { actual, normal }) = duration.tuplet
-        && actual > 0
-    {
-        ticks = ticks * normal as u32 / actual as u32;
-    }
-    ticks
-}
-
+/// The MusicXML `<type>` of a note value; a non-standard one is written
+/// as a quarter.
 fn note_value_to_type(value: NoteValue) -> musicxml::note::NoteTypeValue {
     use musicxml::note::NoteTypeValue as T;
     match value {
@@ -690,28 +670,6 @@ fn build_time_modification(duration: &Duration) -> Option<musicxml::note::TimeMo
     })
 }
 
-fn mode_str(mode: Mode) -> &'static str {
-    match mode {
-        Mode::Major => "major",
-        Mode::Minor => "minor",
-        Mode::Dorian => "dorian",
-        Mode::Phrygian => "phrygian",
-        Mode::Lydian => "lydian",
-        Mode::Mixolydian => "mixolydian",
-        Mode::Locrian => "locrian",
-    }
-}
-
-/// Inverse of [`key_sig_from_fifths`]: find the fifths value in −7..=7 that
-/// reproduces this key signature. Reusing the forward function guarantees the
-/// mapping is a consistent round-trip.
-fn fifths_from_key_sig(key_sig: &KeySignature) -> i8 {
-    let mode = mode_str(key_sig.mode);
-    (-7..=7)
-        .find(|&fifths| key_sig_from_fifths(fifths, Some(mode)) == *key_sig)
-        .unwrap_or(0)
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -725,27 +683,24 @@ mod tests {
     }
 
     #[test]
-    fn note_value_number_maps_denominators() {
-        assert_eq!(note_value_number(NoteValue::Whole), 1);
-        assert_eq!(note_value_number(NoteValue::Quarter), 4);
-        assert_eq!(note_value_number(NoteValue::SixtyFourth), 64);
-        assert_eq!(note_value_number(NoteValue::Other(3)), 3);
+    fn note_values_map_to_denominators() {
+        assert_eq!(NoteValue::Whole.denominator(), 1);
+        assert_eq!(NoteValue::Quarter.denominator(), 4);
+        assert_eq!(NoteValue::SixtyFourth.denominator(), 64);
+        assert_eq!(NoteValue::Other(3).denominator(), 3);
         // Other(0) must not become a divide-by-zero.
-        assert_eq!(note_value_number(NoteValue::Other(0)), 1);
+        assert_eq!(NoteValue::Other(0).denominator(), 1);
     }
 
     #[test]
     fn quarter_note_is_one_division_unit() {
-        assert_eq!(
-            duration_divisions(&dur(NoteValue::Quarter, 0, None)),
-            DIVISIONS
-        );
+        assert_eq!(dur(NoteValue::Quarter, 0, None).ticks(DIVISIONS), DIVISIONS);
     }
 
     #[test]
     fn whole_note_is_four_division_units() {
         assert_eq!(
-            duration_divisions(&dur(NoteValue::Whole, 0, None)),
+            dur(NoteValue::Whole, 0, None).ticks(DIVISIONS),
             DIVISIONS * 4
         );
     }
@@ -753,7 +708,7 @@ mod tests {
     #[test]
     fn dotted_quarter_adds_half() {
         assert_eq!(
-            duration_divisions(&dur(NoteValue::Quarter, 1, None)),
+            dur(NoteValue::Quarter, 1, None).ticks(DIVISIONS),
             DIVISIONS + DIVISIONS / 2
         );
     }
@@ -761,7 +716,7 @@ mod tests {
     #[test]
     fn double_dotted_quarter_adds_half_then_quarter() {
         assert_eq!(
-            duration_divisions(&dur(NoteValue::Quarter, 2, None)),
+            dur(NoteValue::Quarter, 2, None).ticks(DIVISIONS),
             DIVISIONS + DIVISIONS / 2 + DIVISIONS / 4
         );
     }
@@ -775,7 +730,7 @@ mod tests {
         };
         let base = DIVISIONS / 2;
         assert_eq!(
-            duration_divisions(&dur(NoteValue::Eighth, 0, Some(tuplet))),
+            (dur(NoteValue::Eighth, 0, Some(tuplet))).ticks(DIVISIONS),
             base * 2 / 3
         );
     }
@@ -829,31 +784,6 @@ mod tests {
         let tm = build_time_modification(&dur(NoteValue::Eighth, 0, Some(tuplet))).unwrap();
         assert_eq!(tm.actual_notes, 3);
         assert_eq!(tm.normal_notes, 2);
-    }
-
-    #[test]
-    fn fifths_from_key_sig_inverts_major_keys() {
-        // Every major key signature must round-trip through the forward mapping.
-        for fifths in -7..=7i8 {
-            let key_sig = key_sig_from_fifths(fifths, Some("major"));
-            assert_eq!(
-                fifths_from_key_sig(&key_sig),
-                fifths,
-                "major fifths={fifths}"
-            );
-        }
-    }
-
-    #[test]
-    fn fifths_from_key_sig_inverts_minor_keys() {
-        for fifths in -7..=7i8 {
-            let key_sig = key_sig_from_fifths(fifths, Some("minor"));
-            assert_eq!(
-                fifths_from_key_sig(&key_sig),
-                fifths,
-                "minor fifths={fifths}"
-            );
-        }
     }
 
     #[test]

@@ -57,7 +57,7 @@ fn claude_md_references_actual_module_paths() {
         "src/model/mscz/mscx.rs",
         "src/convert/mscz/to_optimized.rs",
         "src/convert/mscz/from_optimized.rs",
-        "src/convert/mscz/validate.rs",
+        "src/convert/loss.rs",
     ] {
         assert!(
             text.contains(expected),
@@ -76,7 +76,7 @@ fn referenced_modules_actually_exist_on_disk() {
         "guitarpro/src/model/mscz/mscx.rs",
         "guitarpro/src/convert/mscz/to_optimized.rs",
         "guitarpro/src/convert/mscz/from_optimized.rs",
-        "guitarpro/src/convert/mscz/validate.rs",
+        "guitarpro/src/convert/loss.rs",
     ] {
         assert!(
             workspace_root().join(path).is_file(),
