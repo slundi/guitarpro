@@ -14,7 +14,7 @@ use crate::model::{
             NoteValue, Notehead, Ornament, Pitch, PitchStep, StemDirection, Technique,
             TechniqueKind, TechniqueParams, TieType,
         },
-        track::MeasureData,
+        track::{Clef, MeasureData},
     },
 };
 
@@ -40,16 +40,27 @@ pub fn build_measure_data(
     part_idx: usize,
     divisions: &mut u32,
     lyric_state: &mut LyricState<'_>,
+    carried: &mut PartCarry,
 ) -> MeasureData {
+    let PartCarry {
+        clef: carried_clef,
+        slurs: open_slurs,
+    } = carried;
     // cursor = absolute tick position within the measure
     let mut cursor: u32 = 0;
     // last onset used for <chord> grouping
     let mut last_onset: u32 = 0;
     // voice string → list of beats (accumulator)
     let mut voice_beats: HashMap<String, Vec<BeatAcc>> = HashMap::new();
-    // open slur IDs per voice
-    let mut open_slurs: HashMap<String, u8> = HashMap::new();
-    let mut next_slur_id: u8 = 1;
+    // A clef change at the measure's start (first staff), or carried over
+    // from the end of the measure before; the first measure's clefs are
+    // the staves' own.
+    let mut clef = carried_clef.take().filter(|_| measure_index.0 > 0);
+    // The last clef met after the start. The model holds one clef per
+    // measure, so it takes effect in the next measure: exactly for one at
+    // the measure's end (before the barline); one in mid-measure loses its
+    // place but still holds from then on.
+    let mut later_clef: Option<Clef> = None;
 
     for event in &measure.music_data {
         match event {
@@ -74,7 +85,6 @@ pub fn build_measure_data(
 
                 let note = convert_note(n, part_idx, lyric_state);
                 let duration = note_duration(n);
-                let slur = note_slur(n, &voice, &mut open_slurs, &mut next_slur_id);
                 let beams = note_beams(n);
                 let dynamic = None;
                 let chord = None; // chord symbol from direction, not per-note
@@ -85,7 +95,10 @@ pub fn build_measure_data(
                     // Add note to the existing beat at `onset`
                     if let Some(b) = beats.iter_mut().rev().find(|b| b.tick == onset) {
                         b.notes.push(note);
+                        note_slur(n, &mut b.slur, open_slurs);
                     } else {
+                        let mut slur = None;
+                        note_slur(n, &mut slur, open_slurs);
                         beats.push(BeatAcc {
                             tick: onset,
                             duration,
@@ -99,6 +112,8 @@ pub fn build_measure_data(
                         });
                     }
                 } else {
+                    let mut slur = None;
+                    note_slur(n, &mut slur, open_slurs);
                     beats.push(BeatAcc {
                         tick: onset,
                         duration,
@@ -127,10 +142,27 @@ pub fn build_measure_data(
                 if let Some(d) = a.divisions {
                     *divisions = d;
                 }
+                if let Some(change) = a
+                    .clefs
+                    .iter()
+                    .find(|c| c.number.is_none_or(|number| number == 1))
+                {
+                    let change = super::convert_clef(change);
+                    if cursor == 0 {
+                        if measure_index.0 > 0 {
+                            clef = Some(change);
+                        }
+                    } else {
+                        later_clef = Some(change);
+                    }
+                }
             }
 
             _ => {}
         }
+    }
+    if later_clef.is_some() {
+        *carried_clef = later_clef;
     }
 
     // Assemble voices
@@ -154,6 +186,7 @@ pub fn build_measure_data(
                 grace_notes: acc.grace_notes,
                 cue: false,
                 chord: acc.chord,
+                fermata: false,
                 gp_empty: false,
                 gp_rest: false,
                 gp_vibrato: false,
@@ -189,8 +222,10 @@ pub fn build_measure_data(
         track_id,
         repeat: None,
         voices,
+        barline_right: None,
         gp_line_break: 0,
         gp_simile_mark: None,
+        clef,
     }
 }
 
@@ -234,6 +269,9 @@ fn handle_grace_note(
         note,
         slash,
         steal_time,
+        duration: None,
+        with_previous: false,
+        after: false,
     };
 
     // Attach to the next existing beat or create a placeholder beat
@@ -411,11 +449,8 @@ fn note_tab(n: &mx_note::Note) -> (Option<u8>, Option<u8>) {
 
 fn note_tie(n: &mx_note::Note) -> Option<TieType> {
     // Use the <tie> elements (not <tied> in notations)
-    n.ties.first().and_then(|tie| match tie.tie_type.as_str() {
-        "start" => Some(TieType::Start),
-        "stop" => Some(TieType::End),
-        _ => None,
-    })
+    let has = |kind: &str| n.ties.iter().any(|tie| tie.tie_type == kind);
+    TieType::from_ends(has("stop"), has("start"))
 }
 
 // ---------------------------------------------------------------------------
@@ -765,29 +800,89 @@ fn note_beams(n: &mx_note::Note) -> Vec<Beam> {
 // Slurs
 // ---------------------------------------------------------------------------
 
-fn note_slur(
-    n: &mx_note::Note,
-    voice: &str,
-    open_slurs: &mut HashMap<String, u8>,
-    next_id: &mut u8,
-) -> Option<Slur> {
-    let notations = n.notations.first()?;
-    for slur in &notations.slurs {
-        let kind = match slur.slur_type.as_str() {
-            "start" => {
-                let id = *next_id;
-                *next_id = next_id.wrapping_add(1);
-                open_slurs.insert(voice.to_owned(), id);
-                SlurKind::Start
-            }
-            "stop" => {
-                open_slurs.remove(voice);
-                SlurKind::End
-            }
-            _ => continue,
+/// What a part's measure leaves open for the next ones.
+#[derive(Default)]
+pub struct PartCarry {
+    /// A clef change written before a barline, for the next measure.
+    pub clef: Option<Clef>,
+    pub slurs: OpenSlurs,
+}
+
+/// The slurs open in a part, by MusicXML `number` (one per level of
+/// nesting, shared by the part's voices), with their ids. Held across the
+/// part's measures, as slurs cross barlines.
+#[derive(Default)]
+pub struct OpenSlurs(HashMap<u8, u8>);
+
+/// Takes a note's slur stops, then its starts, into its beat's `mark`
+/// (`None`, or what the beat's earlier chord notes left): the first stop
+/// of an open slur ends it under its id, the first start opens a slur
+/// under a free one, and both make an `EndStart`, the new slur taking the
+/// ending one's id. A beat holds one slur end and one start: further ones,
+/// and stops of slurs not open, are dropped.
+fn note_slur(n: &mx_note::Note, mark: &mut Option<Slur>, open: &mut OpenSlurs) {
+    let open = &mut open.0;
+    let slurs = || n.notations.iter().flat_map(|notations| &notations.slurs);
+    let number = |slur: &mx_note::Slur| slur.number.unwrap_or(1);
+    for slur in slurs().filter(|slur| slur.slur_type == "stop") {
+        let ends = matches!(
+            mark,
+            Some(Slur {
+                kind: SlurKind::End | SlurKind::EndStart,
+                ..
+            })
+        );
+        if ends {
+            break;
+        }
+        let Some(id) = open.remove(&number(slur)) else {
+            continue;
         };
-        let slur_id = *open_slurs.get(voice).unwrap_or(next_id);
-        return Some(Slur { slur_id, kind });
+        *mark = Some(match *mark {
+            // A slur an earlier chord note started here hands its number
+            // over to the ending slur's id.
+            Some(Slur {
+                slur_id: started,
+                kind: SlurKind::Start,
+            }) => {
+                for open_id in open.values_mut().filter(|open_id| **open_id == started) {
+                    *open_id = id;
+                }
+                Slur {
+                    slur_id: id,
+                    kind: SlurKind::EndStart,
+                }
+            }
+            _ => Slur {
+                slur_id: id,
+                kind: SlurKind::End,
+            },
+        });
     }
-    None
+    for slur in slurs().filter(|slur| slur.slur_type == "start") {
+        match *mark {
+            Some(Slur {
+                kind: SlurKind::Start | SlurKind::EndStart,
+                ..
+            }) => break,
+            Some(Slur { slur_id, .. }) => {
+                open.insert(number(slur), slur_id);
+                *mark = Some(Slur {
+                    slur_id,
+                    kind: SlurKind::EndStart,
+                });
+            }
+            None => {
+                let Some(slur_id) = (0..=u8::MAX).find(|id| !open.values().any(|open| open == id))
+                else {
+                    break;
+                };
+                open.insert(number(slur), slur_id);
+                *mark = Some(Slur {
+                    slur_id,
+                    kind: SlurKind::Start,
+                });
+            }
+        }
+    }
 }

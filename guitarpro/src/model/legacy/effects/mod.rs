@@ -55,6 +55,40 @@ pub const VELOCITY_INCREMENT: i16 = 16;
 pub const FORTE: i16 = MIN_VELOCITY + VELOCITY_INCREMENT * 5;
 pub const DEFAULT_VELOCITY: i16 = FORTE;
 
+/// GP's eight dynamic levels by name (as GPIF writes them), quietest
+/// first: level `i` sounds at [`level_velocity`]`(i)`.
+pub(crate) const DYNAMIC_LEVELS: [&str; 8] = ["PPP", "PP", "P", "MP", "MF", "F", "FF", "FFF"];
+
+/// The level (index into [`DYNAMIC_LEVELS`]) nearest a velocity, the
+/// quieter one between two: as GPIF writes it, and as the optimized model
+/// reads it, so both give a velocity the same marking.
+pub(crate) fn nearest_dynamic_level(velocity: i16) -> usize {
+    // In i32: any velocity, however far out, fits.
+    let doubled = 2 * (i32::from(velocity) - i32::from(MIN_VELOCITY));
+    let level =
+        (doubled + i32::from(VELOCITY_INCREMENT) - 1).div_euclid(2 * i32::from(VELOCITY_INCREMENT));
+    level.clamp(0, DYNAMIC_LEVELS.len() as i32 - 1) as usize
+}
+
+/// The velocity a level (index into [`DYNAMIC_LEVELS`]) sounds at.
+pub(crate) fn level_velocity(level: usize) -> i16 {
+    MIN_VELOCITY + VELOCITY_INCREMENT * level as i16
+}
+
+/// The name (as GPIF writes it) of the level nearest a velocity, the
+/// quieter one between two.
+pub(crate) fn nearest_dynamic_name(velocity: i16) -> &'static str {
+    DYNAMIC_LEVELS[nearest_dynamic_level(velocity)]
+}
+
+/// The velocity a level, by name, sounds at; `None` for an unknown name.
+pub(crate) fn named_velocity(name: &str) -> Option<i16> {
+    DYNAMIC_LEVELS
+        .iter()
+        .position(|&level| level == name)
+        .map(level_velocity)
+}
+
 /// Convert Guitar Pro dynamic value to raw MIDI velocity
 pub(crate) fn unpack_velocity(v: i16) -> i16 {
     MIN_VELOCITY + VELOCITY_INCREMENT * v - VELOCITY_INCREMENT

@@ -35,3 +35,32 @@ pub fn read_gp7(filename: &str) -> Song {
     song.read_gp(&read_file(String::from(filename))).unwrap();
     song
 }
+
+/// A MusicXML (partwise) fixture from `test/`, without its DTD declaration,
+/// which quick-xml can't parse.
+/// A test's result: any error fails it.
+pub type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+pub fn read_musicxml(filename: &str) -> TestResult<crate::model::musicxml::ScorePartwise> {
+    let raw = String::from_utf8(read_file(String::from(filename)))?;
+    let raw = match raw.find("<!DOCTYPE") {
+        Some(start) => match raw[start..].find('>') {
+            Some(end) => format!("{}{}", &raw[..start], &raw[start + end + 1..]),
+            None => raw,
+        },
+        None => raw,
+    };
+    Ok(quick_xml::de::from_str(&raw)?)
+}
+
+/// `score` saved as before saves had a format version: loading it runs the
+/// migrations of older forms.
+pub fn unversioned_save(
+    score: &crate::model::optimized::global::Score,
+) -> serde_json::Result<String> {
+    let mut value = serde_json::to_value(score)?;
+    if let Some(object) = value.as_object_mut() {
+        object.remove("format_version");
+    }
+    serde_json::to_string(&value)
+}

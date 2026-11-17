@@ -1,5 +1,5 @@
 use crate::model::legacy::beat::Beat;
-use crate::model::legacy::effects::{FORTE, GP_BEND_SEMITONE, MIN_VELOCITY, VELOCITY_INCREMENT};
+use crate::model::legacy::effects::{FORTE, GP_BEND_SEMITONE, nearest_dynamic_name};
 use crate::model::legacy::enums::*;
 use crate::model::legacy::note::Note;
 use crate::model::legacy::song::Song;
@@ -19,29 +19,6 @@ fn escape_xml(s: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
-}
-
-fn velocity_to_dynamic(velocity: i16) -> &'static str {
-    let levels: [(i16, &str); 8] = [
-        (MIN_VELOCITY, "PPP"),
-        (MIN_VELOCITY + VELOCITY_INCREMENT, "PP"),
-        (MIN_VELOCITY + VELOCITY_INCREMENT * 2, "P"),
-        (MIN_VELOCITY + VELOCITY_INCREMENT * 3, "MP"),
-        (MIN_VELOCITY + VELOCITY_INCREMENT * 4, "MF"),
-        (FORTE, "F"),
-        (MIN_VELOCITY + VELOCITY_INCREMENT * 6, "FF"),
-        (MIN_VELOCITY + VELOCITY_INCREMENT * 7, "FFF"),
-    ];
-    let mut best = "F";
-    let mut best_diff = i16::MAX;
-    for (v, name) in &levels {
-        let diff = (velocity - v).abs();
-        if diff < best_diff {
-            best_diff = diff;
-            best = name;
-        }
-    }
-    best
 }
 
 fn note_value_str(value: u16) -> &'static str {
@@ -81,30 +58,6 @@ fn harmonic_type_str(kind: &HarmonicType) -> &'static str {
         HarmonicType::Pinch => "Pinch",
         HarmonicType::Tapped => "Tap",
         HarmonicType::Semi => "Semi",
-    }
-}
-
-fn direction_sign_str(d: &DirectionSign) -> &'static str {
-    match d {
-        DirectionSign::Coda => "Coda",
-        DirectionSign::DoubleCoda => "DoubleCoda",
-        DirectionSign::Segno => "Segno",
-        DirectionSign::SegnoSegno => "SegnoSegno",
-        DirectionSign::Fine => "Fine",
-        DirectionSign::DaCapo => "DaCapo",
-        DirectionSign::DaCapoAlCoda => "DaCapoAlCoda",
-        DirectionSign::DaCapoAlDoubleCoda => "DaCapoAlDoubleCoda",
-        DirectionSign::DaCapoAlFine => "DaCapoAlFine",
-        DirectionSign::DaSegno => "DaSegno",
-        DirectionSign::DaSegnoAlCoda => "DaSegnoAlCoda",
-        DirectionSign::DaSegnoAlDoubleCoda => "DaSegnoAlDoubleCoda",
-        DirectionSign::DaSegnoAlFine => "DaSegnoAlFine",
-        DirectionSign::DaSegnoSegno => "DaSegnoSegno",
-        DirectionSign::DaSegnoSegnoAlCoda => "DaSegnoSegnoAlCoda",
-        DirectionSign::DaSegnoSegnoAlDoubleCoda => "DaSegnoSegnoAlDoubleCoda",
-        DirectionSign::DaSegnoSegnoAlFine => "DaSegnoSegnoAlFine",
-        DirectionSign::DaCoda => "DaCoda",
-        DirectionSign::DaDoubleCoda => "DaDoubleCoda",
     }
 }
 
@@ -280,7 +233,7 @@ fn build_beat_xml(
     if beat_velocity != *prev_velocity {
         bxml.push_str(&format!(
             "<Dynamic>{}</Dynamic>",
-            velocity_to_dynamic(beat_velocity)
+            nearest_dynamic_name(beat_velocity)
         ));
         *prev_velocity = beat_velocity;
     }
@@ -614,11 +567,17 @@ impl SongGpifExportOps for Song {
             if mh.free_time {
                 xml.push_str("<FreeTime/>");
             }
-            if let Some(dir) = &mh.direction {
-                xml.push_str(&format!(
-                    "<Directions><Jump>{}</Jump></Directions>",
-                    direction_sign_str(dir)
-                ));
+            if !mh.directions.is_empty() {
+                xml.push_str("<Directions>");
+                let (targets, jumps): (Vec<DirectionSign>, Vec<DirectionSign>) =
+                    mh.directions.iter().partition(|sign| sign.is_target());
+                for sign in targets {
+                    xml.push_str(&format!("<Target>{}</Target>", sign.name()));
+                }
+                for sign in jumps {
+                    xml.push_str(&format!("<Jump>{}</Jump>", sign.name()));
+                }
+                xml.push_str("</Directions>");
             }
             xml.push_str("</MasterBar>");
         }

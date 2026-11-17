@@ -1,13 +1,21 @@
 //! Conversion from `optimized::LoadedScore` to `legacy::Song`.
 
+pub(crate) mod dynamics;
+
+use std::collections::HashMap;
+
+use self::dynamics::{DynamicLevels, measure_velocities};
+use crate::convert::HeldStrings;
+use crate::convert::loss::LossReport;
+use crate::model::directions::{direction_to_jump, jump_to_direction};
+use crate::model::endings::ending_numbers_mask;
 use crate::{
     audio::midi::MidiChannel,
     model::{
         legacy::{
             beat::{Beat as LBeat, BeatStroke, Voice as LVoice},
             chord::PitchClass,
-            effects::DEFAULT_VELOCITY,
-            effects::{GraceEffect, HarmonicEffect},
+            effects::{DEFAULT_VELOCITY, GraceEffect, HarmonicEffect},
             enums::{
                 BeatStatus, BeatStrokeDirection, DirectionSign, Fingering as LFingering,
                 GraceEffectTransition, HarmonicType, LineBreak, MeasureClef, NoteType, Octave,
@@ -18,8 +26,9 @@ use crate::{
                 DURATION_QUARTER_TIME, Duration as LDuration, KeySignature as LKeySignature,
                 TimeSignature as LTimeSig,
             },
-            measure::Measure as LMeasure,
+            measure::{Measure as LMeasure, TieChains, on_tie_chains},
             mix_table::{MixTableChange, MixTableItem, WahEffect},
+            note::write::on_track_string,
             note::{Note as LNote, NoteEffect},
             rse::RseInstrument,
             song::Song,
@@ -27,18 +36,97 @@ use crate::{
         },
         optimized::{
             LoadedScore,
-            beat::{Beat, Duration, Dynamic, Voice},
+            beat::{Beat, Duration, Voice},
             global::{Instrument, InstrumentKind, MeasureIndex},
             metadata::{KeySignature, Mode},
             note::{
-                Articulation, Finger, Note, NoteValue, Notehead, Pitch, PitchStep, TechniqueKind,
+                Articulation, Finger, Note, NoteValue, Notehead, Pitch, TechniqueKind,
                 TechniqueParams, TieType,
             },
-            timeline::{JumpKind, MeasureDef},
+            timeline::{
+                EndingSpan, JumpKind, MeasureDef, coda_branches, ending_spans, spans_numbers,
+            },
             track::Track,
         },
     },
 };
+
+/// [`loaded_score_to_legacy_song`], with what it can't keep of `score`,
+/// which GP can't store: the passes of endings past its eight (an ending
+/// only for those is no ending in GP, its measures played on every pass),
+/// and the modes of keys neither major nor minor (kept as their signature,
+/// read back as major), and coda signs an al Coda pass branches from (GP
+/// has one coda sign, where that pass lands: kept as To Coda, which plays
+/// the same).
+pub fn loaded_score_to_legacy_song_with_losses(score: &LoadedScore) -> (Song, LossReport) {
+    let timeline = &score.score.timeline;
+    let spans = ending_spans(timeline);
+    let branches = coda_branches(timeline);
+    let report = losses(score, &spans, &branches);
+    (convert(score, &spans, &branches), report)
+}
+
+/// The losses of [`loaded_score_to_legacy_song_with_losses`], given the
+/// timeline's [`ending_spans`] and [`coda_branches`].
+fn losses(score: &LoadedScore, spans: &[EndingSpan<'_>], branches: &[Option<usize>]) -> LossReport {
+    let mut report = LossReport::new();
+    let timeline = &score.score.timeline;
+    // The song's key, unless the first measure gives its own.
+    let song_key = timeline
+        .first()
+        .is_none_or(|measure| measure.key_signature.is_none())
+        .then_some(score.score.metadata.key_signature);
+    let keys = song_key
+        .into_iter()
+        .chain(timeline.iter().filter_map(|measure| measure.key_signature));
+    for key in keys.filter(|key| !matches!(key.mode, Mode::Major | Mode::Minor)) {
+        report.note(format!(
+            "Key mode {} (kept as its signature, read back as major)",
+            key.mode.name()
+        ));
+    }
+    for _ in branches.iter().flatten() {
+        report.note("Coda sign before another coda (kept as To Coda)");
+    }
+    let too_many_passes = timeline
+        .iter()
+        .flat_map(|measure| &measure.navigation)
+        .filter(|nav| nav.kind == JumpKind::RepeatClose)
+        .filter_map(|nav| nav.repeat_count)
+        .filter(|&count| count > GP_MAX_REPEAT_PASSES);
+    for _ in too_many_passes {
+        report.note(format!(
+            "Repeat of more than {GP_MAX_REPEAT_PASSES} passes (kept as {GP_MAX_REPEAT_PASSES})"
+        ));
+    }
+    for span in spans {
+        if span
+            .numbers
+            .iter()
+            .any(|&number| !(1..=8).contains(&number))
+        {
+            report.note(if ending_numbers_mask(span.numbers) == 0 {
+                "Ending (only for passes past 8, played on every pass)"
+            } else {
+                "Ending pass past 8"
+            });
+        }
+    }
+    report
+}
+
+/// The most passes a GP repeat close holds: GP5 stores the count as a
+/// signed byte.
+const GP_MAX_REPEAT_PASSES: u8 = 127;
+
+/// GP's `repeat_close` (passes − 1) for a repeat close of `count` passes;
+/// a close without a count plays twice, as in
+/// [`Arrangement::resolve`](crate::model::optimized::timeline::Arrangement::resolve).
+fn gp_repeat_close(count: Option<u8>) -> i8 {
+    let passes = count.unwrap_or(2).clamp(1, GP_MAX_REPEAT_PASSES);
+    // 0..=126 after the clamp: always an i8.
+    (passes - 1) as i8
+}
 
 /// Convert an optimized [`LoadedScore`] back into a legacy [`Song`].
 ///
@@ -47,6 +135,13 @@ use crate::{
 /// cannot be fully reconstructed from the optimized model and will be
 /// set to their defaults.
 pub fn loaded_score_to_legacy_song(score: &LoadedScore) -> Song {
+    let timeline = &score.score.timeline;
+    convert(score, &ending_spans(timeline), &coda_branches(timeline))
+}
+
+/// [`loaded_score_to_legacy_song`], given the timeline's [`ending_spans`]
+/// and [`coda_branches`].
+fn convert(score: &LoadedScore, spans: &[EndingSpan<'_>], branches: &[Option<usize>]) -> Song {
     let s = &score.score;
     let mut song = Song {
         name: s.metadata.title.clone(),
@@ -202,7 +297,7 @@ pub fn loaded_score_to_legacy_song(score: &LoadedScore) -> Song {
     song.key = opt_key_to_legacy_key(&s.metadata.key_signature);
 
     // --- Measure headers from timeline ---
-    song.measure_headers = build_measure_headers(s.timeline.as_slice());
+    song.measure_headers = build_measure_headers(s.timeline.as_slice(), spans, branches);
 
     // --- Channels & tracks ---
     let misc: &[(String, String)] = s
@@ -247,33 +342,20 @@ pub fn loaded_score_to_legacy_song(score: &LoadedScore) -> Song {
     }
 
     // --- Direction signs (Coda, Fine, Segno, Da Capo, etc.) ---
+    // The model's navigation gives the signs (see `build_measure_headers`);
+    // a GP file's own add those it has no jump for (double coda, segno
+    // segno…). Those with a jump come from the navigation alone, so a
+    // removed jump stays so (older saves' are moved there on load, see
+    // `model::directions::migrate_direction_signs`).
     for (key, value) in misc_all.iter() {
-        if let Some(idx_str) = key.strip_prefix("gp.direction.")
-            && let Ok(idx) = idx_str.parse::<usize>()
+        if let Some((idx, names)) = crate::model::directions::parse_direction_entry(key, value)
             && let Some(header) = song.measure_headers.get_mut(idx)
         {
-            header.direction = match value.as_str() {
-                "Coda" => Some(DirectionSign::Coda),
-                "DoubleCoda" => Some(DirectionSign::DoubleCoda),
-                "Segno" => Some(DirectionSign::Segno),
-                "SegnoSegno" => Some(DirectionSign::SegnoSegno),
-                "Fine" => Some(DirectionSign::Fine),
-                "DaCapo" => Some(DirectionSign::DaCapo),
-                "DaCapoAlCoda" => Some(DirectionSign::DaCapoAlCoda),
-                "DaCapoAlDoubleCoda" => Some(DirectionSign::DaCapoAlDoubleCoda),
-                "DaCapoAlFine" => Some(DirectionSign::DaCapoAlFine),
-                "DaSegno" => Some(DirectionSign::DaSegno),
-                "DaSegnoAlCoda" => Some(DirectionSign::DaSegnoAlCoda),
-                "DaSegnoAlDoubleCoda" => Some(DirectionSign::DaSegnoAlDoubleCoda),
-                "DaSegnoAlFine" => Some(DirectionSign::DaSegnoAlFine),
-                "DaSegnoSegno" => Some(DirectionSign::DaSegnoSegno),
-                "DaSegnoSegnoAlCoda" => Some(DirectionSign::DaSegnoSegnoAlCoda),
-                "DaSegnoSegnoAlDoubleCoda" => Some(DirectionSign::DaSegnoSegnoAlDoubleCoda),
-                "DaSegnoSegnoAlFine" => Some(DirectionSign::DaSegnoSegnoAlFine),
-                "DaCoda" => Some(DirectionSign::DaCoda),
-                "DaDoubleCoda" => Some(DirectionSign::DaDoubleCoda),
-                _ => None,
-            };
+            header.add_directions(
+                names
+                    .filter_map(DirectionSign::from_name)
+                    .filter(|sign| direction_to_jump(sign).is_none()),
+            );
         }
     }
 
@@ -284,7 +366,11 @@ pub fn loaded_score_to_legacy_song(score: &LoadedScore) -> Song {
 // Measure headers
 // ---------------------------------------------------------------------------
 
-fn build_measure_headers(timeline: &[MeasureDef]) -> Vec<MeasureHeader> {
+fn build_measure_headers(
+    timeline: &[MeasureDef],
+    spans: &[EndingSpan<'_>],
+    branches: &[Option<usize>],
+) -> Vec<MeasureHeader> {
     let mut headers: Vec<MeasureHeader> = Vec::new();
     let mut running_tempo: f32 = 120.0;
     let mut running_num: i8 = 4;
@@ -294,6 +380,7 @@ fn build_measure_headers(timeline: &[MeasureDef]) -> Vec<MeasureHeader> {
 
     // First pass: build headers with all fields
     let starts = compute_measure_starts(timeline);
+    let endings = spans_numbers(timeline.len(), spans);
 
     for (i, md) in timeline.iter().enumerate() {
         if let Some(t) = md.tempo {
@@ -352,15 +439,23 @@ fn build_measure_headers(timeline: &[MeasureDef]) -> Vec<MeasureHeader> {
                     header.repeat_open = true;
                 }
                 JumpKind::RepeatClose => {
-                    if let Some(count) = nav.repeat_count {
-                        header.repeat_close = (count.saturating_sub(1)) as i8;
-                    }
-                    if let Some(v) = nav.volta {
-                        header.repeat_alternative = v;
-                    }
+                    header.repeat_close = gp_repeat_close(nav.repeat_count);
                 }
                 _ => {}
             }
+        }
+        // Its jumps and markers as GP signs, each once. A coda sign an al
+        // Coda pass branches from is GP's Da Coda (To Coda): GP keeps one
+        // measure per sign, and its coda is where that pass lands.
+        let branch = branches[i].is_some();
+        header.directions.clear();
+        header.add_directions(md.navigation.iter().filter_map(|nav| match nav.kind {
+            JumpKind::Coda if branch => Some(DirectionSign::DaCoda),
+            kind => jump_to_direction(kind),
+        }));
+        // GP keeps an ending's passes 1–8 as a bitmask.
+        if let Some(numbers) = endings[i] {
+            header.repeat_alternative = ending_numbers_mask(numbers);
         }
 
         header.fermatas = md.gp_fermatas.clone();
@@ -524,7 +619,10 @@ fn build_tracks(
                         instrument_strings(ins)
                     }
                 })
-                .unwrap_or_default();
+                // Without an instrument or a tuning, a guitar's: notes need
+                // strings to be written on (the writer leaves out the rest).
+                .filter(|strings: &Vec<(i8, i8)>| !strings.is_empty())
+                .unwrap_or_else(|| DEFAULT_GUITAR_STRINGS.to_vec());
 
             let measures =
                 build_legacy_measures(opt_track, &s.timeline, &starts, &strings, percussion);
@@ -639,21 +737,11 @@ fn instrument_strings(instrument: &Instrument) -> Vec<(i8, i8)> {
     }
 }
 
-/// Find the lowest-fret valid string/fret assignment for `pitch` given `strings`.
-///
-/// Iterates all strings and picks the one whose open tuning requires the fewest
-/// frets to reach `pitch` (fret range 0–24). Returns `None` when the pitch is
-/// out of range on every string.
-fn pitch_to_string_fret(pitch: &Pitch, strings: &[(i8, i8)]) -> Option<(i8, i16)> {
-    let target_midi = pitch_to_midi(pitch) as i16;
-    let mut best: Option<(i8, i16)> = None;
-    for &(string_num, open_midi) in strings {
-        let fret = target_midi - open_midi as i16;
-        if (0i16..=24).contains(&fret) && best.is_none_or(|(_, bf)| fret < bf) {
-            best = Some((string_num, fret));
-        }
-    }
-    best
+/// The string and fret for `pitch`: the fewest frets up on a string none
+/// of `taken` (see [`free_string_fret`](crate::convert::free_string_fret)).
+fn pitch_to_string_fret(pitch: &Pitch, strings: &[(i8, i8)], taken: &[i8]) -> Option<(i8, i16)> {
+    // Unclamped: a pitch beyond MIDI's range is on no string.
+    crate::convert::free_string_fret(pitch.midi(), strings, taken)
 }
 
 fn build_legacy_measures(
@@ -663,11 +751,33 @@ fn build_legacy_measures(
     strings: &[(i8, i8)],
     _percussion: bool,
 ) -> Vec<LMeasure> {
+    // The dynamic levels in effect, carried across measures.
+    let mut levels = DynamicLevels::new();
+    // Per string: whether the note a tie there is from starts one.
+    let mut tie_starts: TieChains<bool> = TieChains::new();
+    // Per voice slot: where its tied notes go on, across measures.
+    let mut held_strings: HashMap<u8, HeldStrings> = HashMap::new();
+    // Each voice id's slot in every measure: the track's ids in order, so a
+    // voice keeps its slot (and its ties) throughout, and ids that skip
+    // (MuseScore's 1 and 3) still fit GP5's two slots.
+    let mut ids: Vec<u8> = opt_track
+        .measures
+        .values()
+        .flat_map(|data| data.voices.keys().copied())
+        .collect();
+    ids.sort_unstable();
+    ids.dedup();
+    let slots: HashMap<u8, u8> = ids
+        .into_iter()
+        .enumerate()
+        .map(|(slot, id)| (id, slot as u8))
+        .collect();
     timeline
         .iter()
         .enumerate()
         .map(|(i, md)| {
             let measure_index = MeasureIndex(i as u16);
+            tie_starts.next_measure();
             let measure_start = starts.get(i).copied().unwrap_or(DURATION_QUARTER_TIME);
 
             let mut measure = LMeasure {
@@ -707,16 +817,28 @@ fn build_legacy_measures(
                 measure.line_break =
                     crate::model::legacy::enums::get_line_break(md_data.gp_line_break);
                 measure.simile_mark = md_data.gp_simile_mark.clone();
-                // Restore exactly the voices stored in the optimized model, in index order.
-                // Empty bars (GP7 <Voices></Voices>) store no voices → produce no voices.
-                // GP5 always has 2 voices; GP7 may have 0, 1, 2, or 4 voices per bar.
+                // Restore exactly the voices stored in the optimized model, each in
+                // its track-wide slot (a missing one's left empty, so the ones after
+                // it don't move into another voice). Empty bars (GP7
+                // <Voices></Voices>) store no voices → produce no voices. GP5 always
+                // has 2 voices; GP7 may have 0, 1, 2, or 4 voices per bar: a writer
+                // drops those past its format's (see `Song::write_losses`).
                 let mut vis: Vec<u8> = md_data.voices.keys().copied().collect();
                 vis.sort_unstable();
+                let velocities = measure_velocities(md_data, &mut levels);
                 for vi in vis {
+                    let slot = slots.get(&vi).copied().unwrap_or(vi);
+                    // Padded up to its slot, never cut: the slots grow with
+                    // the ids (were one lower, it'd go after the others).
+                    let len = measure.voices.len().max(usize::from(slot));
+                    measure.voices.resize_with(len, LVoice::default);
+                    let slot = u8::try_from(measure.voices.len()).unwrap_or(slot);
                     let opt_voice = &md_data.voices[&vi];
-                    measure
-                        .voices
-                        .push(build_legacy_voice(opt_voice, vi, strings));
+                    let held = held_strings.entry(slot).or_default();
+                    let mut voice = build_legacy_voice(opt_voice, vi, strings, &velocities, held);
+                    // By its slot: as the reader numbers it.
+                    unlink_unpaired_ties(opt_voice, &mut voice, slot, strings, &mut tie_starts);
+                    measure.voices.push(voice);
                 }
             } else {
                 measure.voices.push(LVoice::default());
@@ -728,11 +850,73 @@ fn build_legacy_measures(
         .collect()
 }
 
-fn build_legacy_voice(opt_voice: &Voice, voice_id: u8, strings: &[(i8, i8)]) -> LVoice {
+/// GP marks only a tie's end, which ties the note from the one before it
+/// ([`TieChains`]): a tie end that one doesn't start, as a MusicXML tie
+/// stop without its start, is written as a plain note. `tie_starts` keeps
+/// whether each chain's last note starts a tie, across measures. Only the
+/// notes the writer keeps of a beat are on the chains, as the reader sees
+/// them: those on one of the track's `strings`, the first on each (see
+/// `written_notes`). (Which voices a file holds depends on its format,
+/// which isn't known here: a voice it drops is reported lost whole.)
+fn unlink_unpaired_ties(
+    opt_voice: &Voice,
+    voice: &mut LVoice,
+    slot: u8,
+    strings: &[(i8, i8)],
+    tie_starts: &mut TieChains<bool>,
+) {
+    for (opt_beat, beat) in opt_voice.beats.iter().zip(&mut voice.beats) {
+        if !on_tie_chains(&beat.status) {
+            continue;
+        }
+        let mut seen: Vec<i8> = Vec::new();
+        for (opt_note, note) in opt_beat.notes.iter().zip(&mut beat.notes) {
+            if !on_track_string(note.string, strings) || seen.contains(&note.string) {
+                continue;
+            }
+            seen.push(note.string);
+            let (rest, ends) = (note.kind == NoteType::Rest, note.kind == NoteType::Tie);
+            let start = opt_beat.tick_offset.into();
+            tie_starts.link(slot, note.string, start, rest, ends, |from| {
+                if ends && from != Some(true) {
+                    note.kind = NoteType::Normal;
+                }
+                opt_note.tie.is_some_and(TieType::starts_tie)
+            });
+        }
+    }
+}
+
+/// A beat's GP status.
+pub(crate) fn beat_status(beat: &Beat) -> BeatStatus {
+    if beat.gp_empty {
+        BeatStatus::Empty
+    } else if beat.gp_rest {
+        BeatStatus::Rest
+    } else {
+        BeatStatus::Normal
+    }
+}
+
+fn build_legacy_voice(
+    opt_voice: &Voice,
+    voice_id: u8,
+    strings: &[(i8, i8)],
+    // Each beat's velocity, by (voice, beat index).
+    velocities: &HashMap<(u8, usize), i16>,
+    held: &mut HeldStrings,
+) -> LVoice {
     let beats = opt_voice
         .beats
         .iter()
-        .map(|b| build_legacy_beat(b, voice_id, strings))
+        .enumerate()
+        .map(|(index, b)| {
+            let velocity = velocities
+                .get(&(voice_id, index))
+                .copied()
+                .unwrap_or(DEFAULT_VELOCITY);
+            build_legacy_beat(b, strings, velocity, held)
+        })
         .collect();
     LVoice {
         beats,
@@ -740,7 +924,14 @@ fn build_legacy_voice(opt_voice: &Voice, voice_id: u8, strings: &[(i8, i8)]) -> 
     }
 }
 
-fn build_legacy_beat(beat: &Beat, _voice_id: u8, strings: &[(i8, i8)]) -> LBeat {
+/// `held`: where this voice's tied notes go on (updated with this beat's
+/// notes).
+fn build_legacy_beat(
+    beat: &Beat,
+    strings: &[(i8, i8)],
+    velocity: i16,
+    held: &mut HeldStrings,
+) -> LBeat {
     // Legacy `Beat.start` is measure-relative (each measure's beats start at
     // `DURATION_QUARTER_TIME`), matching the parser. `tick_offset` is the 0-based
     // in-measure position, so `start = 960 + tick_offset`. (Using the cumulative
@@ -748,20 +939,47 @@ fn build_legacy_beat(beat: &Beat, _voice_id: u8, strings: &[(i8, i8)]) -> LBeat 
     // since `legacy_song_to_loaded_score` recovers `tick_offset` as `start - 960`.)
     let start = Some(DURATION_QUARTER_TIME + beat.tick_offset as i64);
     let duration = duration_to_legacy(&beat.duration);
-    let velocity = dynamic_to_velocity(beat.dynamic);
-    let notes = beat
+    // One note per string: those given one take theirs first, then each
+    // placed by pitch takes a free one.
+    let mut taken: Vec<i8> = beat
         .notes
         .iter()
-        .map(|n| build_legacy_note(n, velocity, strings))
+        .filter(|n| n.gp_is_rest || n.fret.is_some())
+        .filter_map(|n| n.string.map(|s| s as i8))
         .collect();
+    // A note tied from another, placed by pitch, keeps that one's string
+    // (GP ties a note to the one before it on its string), claimed before
+    // the others are placed; one whose string is taken is placed anew.
+    let presets: Vec<Option<(i8, i16)>> = beat
+        .notes
+        .iter()
+        .map(|n| {
+            let pitch = n.pitch.as_ref().filter(|_| {
+                !n.gp_is_rest
+                    && (n.string.is_none() || n.fret.is_none())
+                    && n.tie.is_some_and(TieType::ends_tie)
+            })?;
+            held.claim(pitch.midi(), strings, &mut taken)
+        })
+        .collect();
+    let notes: Vec<LNote> = beat
+        .notes
+        .iter()
+        .zip(presets)
+        .map(|(n, preset)| build_legacy_note(n, velocity, strings, &mut taken, preset))
+        .collect();
+    for (n, note) in beat.notes.iter().zip(&notes) {
+        if let Some(pitch) = &n.pitch
+            && !n.gp_is_rest
+            && n.tie.is_some_and(TieType::starts_tie)
+            && note.kind != NoteType::Rest
+            && on_track_string(note.string, strings)
+        {
+            held.start(pitch.midi(), note.string);
+        }
+    }
 
-    let status = if beat.gp_empty {
-        BeatStatus::Empty
-    } else if beat.gp_rest {
-        BeatStatus::Rest
-    } else {
-        BeatStatus::Normal
-    };
+    let status = beat_status(beat);
 
     let mut effect = crate::model::legacy::beat::BeatEffects {
         vibrato: beat.gp_vibrato,
@@ -940,7 +1158,14 @@ fn build_legacy_beat(beat: &Beat, _voice_id: u8, strings: &[(i8, i8)]) -> LBeat 
     }
 }
 
-fn build_legacy_note(note: &Note, velocity: i16, strings: &[(i8, i8)]) -> LNote {
+/// `preset`: the string and fret already claimed for it (a tied note's).
+fn build_legacy_note(
+    note: &Note,
+    velocity: i16,
+    strings: &[(i8, i8)],
+    taken: &mut Vec<i8>,
+    preset: Option<(i8, i16)>,
+) -> LNote {
     let (string, value, kind) = if note.gp_is_rest {
         // Rest notes: string and value are preserved directly.
         let s = note.string.map(|s| s as i8).unwrap_or(0);
@@ -948,30 +1173,40 @@ fn build_legacy_note(note: &Note, velocity: i16, strings: &[(i8, i8)]) -> LNote 
         (s, v, NoteType::Rest)
     } else if let (Some(s), Some(f)) = (note.string, note.fret) {
         // Explicit tab info (from GP files or MusicXML <technical>).
-        let kind = if let Some(raw) = note.gp_note_type_raw {
-            NoteType::Unknown(raw)
-        } else if note.tie == Some(TieType::End) {
-            NoteType::Tie
-        } else if note.notehead == Some(Notehead::X) {
-            NoteType::Dead
-        } else {
-            NoteType::Normal
+        // A tie the note ends wins. Otherwise an unknown raw type (the
+        // only kind the import keeps: never a tie, which it reads as the
+        // note's tie) is written back as it was.
+        let tied = note.tie.is_some_and(TieType::ends_tie);
+        let kind = match note
+            .gp_note_type_raw
+            .map(crate::model::legacy::enums::get_note_type)
+        {
+            _ if tied => NoteType::Tie,
+            Some(kind) => kind,
+            _ if note.notehead == Some(Notehead::X) => NoteType::Dead,
+            _ => NoteType::Normal,
         };
         (s as i8, f as i16, kind)
     } else if let Some(pitch) = &note.pitch {
         // Standard notation: derive string/fret from the instrument tuning.
-        if let Some((s, f)) = pitch_to_string_fret(pitch, strings) {
-            let kind = if note.tie == Some(TieType::End) {
+        let placed = preset.or_else(|| {
+            let placed = pitch_to_string_fret(pitch, strings, taken)?;
+            taken.push(placed.0);
+            Some(placed)
+        });
+        if let Some((s, f)) = placed {
+            let kind = if note.tie.is_some_and(TieType::ends_tie) {
                 NoteType::Tie
             } else {
                 NoteType::Normal
             };
             (s, f, kind)
         } else {
-            // Pitch is out of the instrument's playable range → rest.
+            // Pitch is out of the instrument's playable range, or every
+            // string it reaches has another of the chord's notes → rest.
             (0, 0, NoteType::Rest)
         }
-    } else if note.tie == Some(TieType::End) {
+    } else if note.tie.is_some_and(TieType::ends_tie) {
         // Tied note without pitch or explicit string/fret — keep as tie.
         (0, 0, NoteType::Tie)
     } else {
@@ -1162,87 +1397,17 @@ fn duration_to_legacy(dur: &Duration) -> LDuration {
     }
 }
 
+/// GP's MIDI note number (a string's tuning): 0–127 in a signed byte.
 pub(crate) fn pitch_to_midi(pitch: &Pitch) -> i8 {
-    let base: i32 = match pitch.step {
-        PitchStep::C => 0,
-        PitchStep::D => 2,
-        PitchStep::E => 4,
-        PitchStep::F => 5,
-        PitchStep::G => 7,
-        PitchStep::A => 9,
-        PitchStep::B => 11,
-    };
-    let midi = (pitch.octave as i32 + 1) * 12 + base + pitch.alter as i32;
-    midi.clamp(-128, 127) as i8
-}
-
-fn dynamic_to_velocity(dyn_opt: Option<Dynamic>) -> i16 {
-    // Reconstruct exact velocity values used in legacy model
-    // MIN_VELOCITY=15, VELOCITY_INCREMENT=16, packed 1..8 → 15,31,47,63,79,95,111,127
-    match dyn_opt {
-        None => DEFAULT_VELOCITY, // 95 = FORTE
-        Some(Dynamic::PPP) => 15,
-        Some(Dynamic::PP) => 31,
-        Some(Dynamic::P) => 47,
-        Some(Dynamic::MP) => 63,
-        Some(Dynamic::MF) => 79,
-        Some(Dynamic::F) => 95,
-        Some(Dynamic::FF) => 111,
-        Some(Dynamic::FFF) => 127,
-    }
+    pitch.midi().clamp(0, 127) as i8
 }
 
 pub(crate) fn opt_key_to_legacy_key(ks: &KeySignature) -> LKeySignature {
     let is_minor = matches!(ks.mode, Mode::Minor);
-    let key = pitch_and_mode_to_fifths(&ks.root, ks.mode);
-    LKeySignature { key, is_minor }
-}
-
-fn pitch_and_mode_to_fifths(root: &Pitch, mode: Mode) -> i8 {
-    // Reverse lookup: (step, alter) → fifths, preserving enharmonic spelling.
-    // Major: C=0 G=1 D=2 A=3 E=4 B=5 F#=6 C#=7 F=-1 Bb=-2 Eb=-3 Ab=-4 Db=-5 Gb=-6 Cb=-7
-    // Minor: Am=0 Em=1 Bm=2 F#m=3 C#m=4 G#m=5 D#m=6 A#m=7
-    //        Dm=-1 Gm=-2 Cm=-3 Fm=-4 Bbm=-5 Ebm=-6 Abm=-7
-    use PitchStep::*;
-    let key = (root.step, root.alter);
-    if matches!(mode, Mode::Minor) {
-        match key {
-            (A, 0) => 0,
-            (E, 0) => 1,
-            (B, 0) => 2,
-            (F, 1) => 3, // F#
-            (C, 1) => 4, // C#
-            (G, 1) => 5, // G#
-            (D, 1) => 6, // D#
-            (A, 1) => 7, // A#
-            (D, 0) => -1,
-            (G, 0) => -2,
-            (C, 0) => -3,
-            (F, 0) => -4,
-            (B, -1) => -5, // Bb
-            (E, -1) => -6, // Eb
-            (A, -1) => -7, // Ab
-            _ => 0,
-        }
-    } else {
-        match key {
-            (C, 0) => 0,
-            (G, 0) => 1,
-            (D, 0) => 2,
-            (A, 0) => 3,
-            (E, 0) => 4,
-            (B, 0) => 5,
-            (F, 1) => 6, // F#
-            (C, 1) => 7, // C#
-            (F, 0) => -1,
-            (B, -1) => -2, // Bb
-            (E, -1) => -3, // Eb
-            (A, -1) => -4, // Ab
-            (D, -1) => -5, // Db
-            (G, -1) => -6, // Gb
-            (C, -1) => -7, // Cb
-            _ => 0,
-        }
+    // GP keeps only major and minor: a modal key keeps its signature.
+    LKeySignature {
+        key: ks.fifths(),
+        is_minor,
     }
 }
 

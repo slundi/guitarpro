@@ -400,3 +400,28 @@ fn write_container_from_hand_built_archive() {
     assert_eq!(reparsed.rootfiles, vec!["hand.mscx".to_string()]);
     assert_eq!(reparsed.mscx_entry().unwrap().path, "hand.mscx");
 }
+
+#[test]
+fn location_gaps_add_up_reduced() {
+    use crate::io::mscz::parse::add_fractions;
+
+    assert_eq!(add_fractions((1, 4), (1, 4)), Some((1, 2)));
+    assert_eq!(add_fractions((1, 2), (-3, -4)), Some((5, 4)));
+    // Many small gaps keep a small denominator instead of overflowing.
+    let sum = (0..64).try_fold((0, 1), |sum, _| add_fractions(sum, (1, 96)));
+    assert_eq!(sum, Some((2, 3)));
+    assert_eq!(add_fractions((i32::MAX, 1), (i32::MAX, 1)), None);
+}
+
+/// A negative denominator moves its sign to the numerator, so a fraction
+/// keeps its value (not read as a whole note).
+#[test]
+fn mscx_fraction_with_a_negative_denominator_keeps_its_sign() {
+    use crate::io::mscz::parse::parse_fraction;
+
+    assert_eq!(parse_fraction("1/-4"), Some((-1, 4)));
+    assert_eq!(parse_fraction("-3/-4"), Some((3, 4)));
+    assert_eq!(parse_fraction("-7/16"), Some((-7, 16)));
+    assert_eq!(parse_fraction("1/0"), None);
+    assert_eq!(parse_fraction("1/-2147483648"), None);
+}

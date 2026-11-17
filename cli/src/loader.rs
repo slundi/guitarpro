@@ -6,6 +6,7 @@ use guitarpro::Song;
 use guitarpro::convert::legacy::loaded_score_to_legacy_song;
 use guitarpro::convert::mscz::mscx_to_loaded_score;
 use guitarpro::io::mscz::read_mscz_bytes;
+use guitarpro::model::optimized::LoadedScore;
 
 /// Maximum accepted size for legacy Guitar Pro binaries and GPX/GP containers.
 const MAX_LEGACY_FILE_SIZE: usize = 16 * 1024 * 1024;
@@ -24,6 +25,15 @@ const ZIP_MAGIC: &[u8; 4] = b"PK\x03\x04";
 /// CLI commands (info, repeats, form, fingering, extract, duplicates) can
 /// consume them without needing a separate MSCZ code path.
 pub fn load_song(path_str: &str) -> anyhow::Result<(Song, String)> {
+    let (song, format, _) = load_song_and_score(path_str)?;
+    Ok((song, format))
+}
+
+/// [`load_song`], plus the `LoadedScore` an MSCZ archive was read into:
+/// its timeline keeps the endings, texts and repeat counts the `Song`
+/// loses. `None` for a Guitar Pro file, whose `Song` is the one it was
+/// read into.
+pub fn load_song_and_score(path_str: &str) -> anyhow::Result<(Song, String, Option<LoadedScore>)> {
     let path = Path::new(path_str);
     if !path.exists() {
         anyhow::bail!("File '{}' not found", path_str);
@@ -48,8 +58,11 @@ pub fn load_song(path_str: &str) -> anyhow::Result<(Song, String)> {
         let data = fs::read(path_str)?;
         let file = read_mscz_bytes(&data)
             .map_err(|e| anyhow::anyhow!("cannot read MSCZ '{}': {}", path_str, e))?;
+        // Read-only commands don't warn of import losses (the converting
+        // ones, which write what was kept, do: see `load_as_song`).
         let outcome = mscx_to_loaded_score(&file.mscx);
-        return Ok((loaded_score_to_legacy_song(&outcome.score), "MSCZ".into()));
+        let song = loaded_score_to_legacy_song(&outcome.score);
+        return Ok((song, "MSCZ".into(), Some(outcome.score)));
     }
 
     if size > MAX_LEGACY_FILE_SIZE {
@@ -99,7 +112,7 @@ pub fn load_song(path_str: &str) -> anyhow::Result<(Song, String)> {
         ),
     };
 
-    Ok((song, format_label))
+    Ok((song, format_label, None))
 }
 
 /// Peek the first four bytes to check for the ZIP magic. Returns `false` on
@@ -150,6 +163,13 @@ fn detect_legacy_version(data: &[u8]) -> Option<(u8, u8, u8)> {
     let minor: u8 = minor_raw[..1].parse().ok()?;
     let patch: u8 = minor_raw[1..2].parse().ok()?;
     Some((major, minor, patch))
+}
+
+/// Warns of what an import read but did not keep.
+pub(crate) fn warn_import_losses(report: &guitarpro::convert::mscz::LossReport) {
+    for (feature, count) in report.iter() {
+        eprintln!("warning: not imported: {feature} ×{count}");
+    }
 }
 
 #[cfg(test)]

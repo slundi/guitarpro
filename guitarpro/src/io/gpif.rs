@@ -265,12 +265,30 @@ pub struct Section {
     pub text: Option<String>,
 }
 
+/// A master bar's direction signs, in any order of `<Target>`s and
+/// `<Jump>`s (read element by element, so the two may interleave).
 #[derive(Debug, Deserialize)]
 pub struct DirectionsWrapper {
-    #[serde(rename = "Target", default)]
-    pub target: Option<String>,
-    #[serde(rename = "Jump", default)]
-    pub jump: Option<String>,
+    #[serde(rename = "$value", default)]
+    pub signs: Vec<Direction>,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum Direction {
+    Target(String),
+    Jump(String),
+    #[serde(other)]
+    Other,
+}
+
+impl Direction {
+    /// The sign's name; `None` for an unknown element.
+    pub fn name(&self) -> Option<&str> {
+        match self {
+            Direction::Target(name) | Direction::Jump(name) => Some(name),
+            Direction::Other => None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]

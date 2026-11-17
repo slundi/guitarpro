@@ -12,12 +12,16 @@ pub(super) fn write_notes(
     strings: &[(i8, i8)],
     version: &(u8, u8, u8),
 ) -> GpResult<()> {
+    // The notes the reader reads back: one per flagged string, so only
+    // those on one of the track's strings (not string 0, a converter's
+    // fallback), the first on each; another record would throw it off
+    // (see `Song::write_losses`).
+    let mut notes: Vec<Note> = written_notes(beat, strings).cloned().collect();
     let mut string_flags: u8 = 0;
-    for i in 0..beat.notes.len() {
-        string_flags |= 1 << (7 - beat.notes[i].string);
+    for note in &notes {
+        string_flags |= 1 << (7 - note.string);
     }
     write_byte(data, string_flags);
-    let mut notes = beat.notes.clone();
     notes.sort_by_key(|k| k.string);
     for note in &notes {
         if version.0 == 3 {
@@ -337,4 +341,28 @@ pub(super) fn write_note_effects(
         write_signed_byte(data, encoded);
     }
     Ok(())
+}
+
+/// Whether `string` is one of a track's `strings` (1-based, at most GP's
+/// seven): the strings a note can be written on.
+pub(crate) fn on_track_string(string: i8, strings: &[(i8, i8)]) -> bool {
+    string >= 1 && string as usize <= strings.len().min(7)
+}
+
+/// The notes of `beat` a GP3–5 file holds: those on one of the track's
+/// `strings`, the first on each.
+pub(crate) fn written_notes<'a>(
+    beat: &'a Beat,
+    strings: &[(i8, i8)],
+) -> impl Iterator<Item = &'a Note> {
+    let mut seen = 0u8;
+    beat.notes.iter().filter(move |note| {
+        if !on_track_string(note.string, strings) {
+            return false;
+        }
+        let bit = 1 << note.string;
+        let first = seen & bit == 0;
+        seen |= bit;
+        first
+    })
 }

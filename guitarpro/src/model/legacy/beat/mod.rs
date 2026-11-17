@@ -200,7 +200,7 @@ pub trait SongBeatOps {
     fn read_beat_stroke(&self, data: &[u8], seek: &mut usize) -> GpResult<BeatStroke>;
     fn stroke_value(&self, value: i8) -> u8;
     fn read_tremolo_bar(&self, data: &[u8], seek: &mut usize) -> GpResult<BendEffect>;
-    fn write_beat_v3(&self, data: &mut Vec<u8>, beat: &Beat) -> GpResult<()>;
+    fn write_beat_v3(&self, data: &mut Vec<u8>, beat: &Beat, strings: &[(i8, i8)]) -> GpResult<()>;
     fn write_beat(
         &self,
         data: &mut Vec<u8>,
@@ -266,8 +266,8 @@ impl SongBeatOps for Song {
     fn read_tremolo_bar(&self, data: &[u8], seek: &mut usize) -> GpResult<BendEffect> {
         read::read_tremolo_bar(self, data, seek)
     }
-    fn write_beat_v3(&self, data: &mut Vec<u8>, beat: &Beat) -> GpResult<()> {
-        write::write_beat_v3(self, data, beat)
+    fn write_beat_v3(&self, data: &mut Vec<u8>, beat: &Beat, strings: &[(i8, i8)]) -> GpResult<()> {
+        write::write_beat_v3(self, data, beat, strings)
     }
     fn write_beat(
         &self,

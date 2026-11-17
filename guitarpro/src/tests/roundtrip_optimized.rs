@@ -165,3 +165,61 @@ fn test_gp7_via_optimized_roundtrip() {
         |song| song.write_gp().unwrap(),
     );
 }
+
+/// A measure's ticks at a resolution too large for them are `None`, not
+/// an overflow.
+#[test]
+fn measure_ticks_too_large_are_none() {
+    use crate::model::optimized::metadata::TimeSignature;
+
+    let time = TimeSignature {
+        numerator: 6,
+        denominator: 8,
+    };
+    assert_eq!(time.measure_ticks(3), Some(9));
+    assert_eq!(time.measure_ticks(u64::MAX / 4), None);
+}
+
+/// A positional (non-self-describing) deserializer over JSON arrays, as a
+/// stand-in for Postcard.
+struct Positional<D>(D);
+
+impl<'de, D: serde::Deserializer<'de>> serde::Deserializer<'de> for Positional<D> {
+    type Error = D::Error;
+
+    fn deserialize_any<V: serde::de::Visitor<'de>>(self, visitor: V) -> Result<V::Value, D::Error> {
+        self.0.deserialize_any(visitor)
+    }
+
+    fn is_human_readable(&self) -> bool {
+        false
+    }
+
+    serde::forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct enum identifier ignored_any
+    }
+}
+
+/// A binary save of another version is refused by its version, before the
+/// rest (here, not even a score) is decoded.
+#[test]
+fn binary_saves_of_another_version_are_refused_first() {
+    use serde::Deserialize;
+
+    use crate::model::optimized::global::Score;
+
+    for version in [0, 1, 3] {
+        let json = format!(r#"[{version}, "not a score"]"#);
+        let mut deserializer = serde_json::Deserializer::from_str(&json);
+        let error = match Score::deserialize(Positional(&mut deserializer)) {
+            Ok(_) => panic!("version {version} read"),
+            Err(error) => error.to_string(),
+        };
+        assert!(
+            error.contains(&format!("binary score format version {version} isn't")),
+            "{error}"
+        );
+    }
+}

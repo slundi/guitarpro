@@ -342,6 +342,7 @@ mod tests {
             grace_notes: vec![],
             cue: false,
             chord: None,
+            fermata: false,
             gp_empty: false,
             gp_rest: false,
             gp_vibrato: false,
@@ -368,8 +369,10 @@ mod tests {
             track_id: TrackId(0),
             repeat: None,
             voices,
+            barline_right: None,
             gp_line_break: 0,
             gp_simile_mark: None,
+            clef: None,
         }
     }
 
@@ -677,8 +680,10 @@ mod tests {
             track_id: TrackId(0),
             repeat: None::<MeasureRepeat>,
             voices,
+            barline_right: None,
             gp_line_break: 0,
             gp_simile_mark: None,
+            clef: None,
         };
 
         let result = suggest_fingering(&[&m], &[]);

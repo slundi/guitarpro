@@ -1,3 +1,5 @@
+pub mod directions;
+pub mod endings;
 pub mod legacy;
 pub mod mnx;
 pub mod mscz;

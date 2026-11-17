@@ -1,6 +1,6 @@
 use bpaf::Bpaf;
+use guitarpro::Song;
 use guitarpro::audio::midi::CHANNEL_DEFAULT_NAMES;
-use guitarpro::{DirectionSign, Song};
 use serde::Serialize;
 
 /// Print metadata, track listing, and timeline for a score file
@@ -42,38 +42,6 @@ fn midi_to_note(midi: i8) -> String {
 
 fn instrument_name(program: i32) -> &'static str {
     CHANNEL_DEFAULT_NAMES[program.clamp(0, 127) as usize]
-}
-
-fn direction_label(d: &DirectionSign) -> &'static str {
-    match d {
-        DirectionSign::Coda => "Coda",
-        DirectionSign::DoubleCoda => "Double Coda",
-        DirectionSign::Segno => "Segno",
-        DirectionSign::SegnoSegno => "Segno Segno",
-        DirectionSign::Fine => "Fine",
-        DirectionSign::DaCapo => "D.C.",
-        DirectionSign::DaCapoAlCoda => "D.C. al Coda",
-        DirectionSign::DaCapoAlDoubleCoda => "D.C. al Double Coda",
-        DirectionSign::DaCapoAlFine => "D.C. al Fine",
-        DirectionSign::DaSegno => "D.S.",
-        DirectionSign::DaSegnoAlCoda => "D.S. al Coda",
-        DirectionSign::DaSegnoAlDoubleCoda => "D.S. al Double Coda",
-        DirectionSign::DaSegnoAlFine => "D.S. al Fine",
-        DirectionSign::DaSegnoSegno => "D.S.S.",
-        DirectionSign::DaSegnoSegnoAlCoda => "D.S.S. al Coda",
-        DirectionSign::DaSegnoSegnoAlDoubleCoda => "D.S.S. al Double Coda",
-        DirectionSign::DaSegnoSegnoAlFine => "D.S.S. al Fine",
-        DirectionSign::DaCoda => "Da Coda",
-        DirectionSign::DaDoubleCoda => "Da Double Coda",
-    }
-}
-
-/// Decode an 8-bit volta mask into a list of 1-based ending numbers.
-fn decode_volta_mask(bits: u8) -> Vec<u8> {
-    (0u8..8)
-        .filter(|&i| bits & (1 << i) != 0)
-        .map(|i| i + 1)
-        .collect()
 }
 
 fn truncate(s: &str, max: usize) -> &str {
@@ -316,7 +284,7 @@ pub fn print_text(song: &Song, path: &str, fmt: &str) {
         let has_nav = mh.repeat_open
             || mh.repeat_close >= 0
             || mh.repeat_alternative != 0
-            || mh.direction.is_some();
+            || !mh.directions.is_empty();
 
         if is_first || time_changed || tempo_changed || key_changed || has_marker || has_nav {
             let time_col = if is_first || time_changed {
@@ -341,16 +309,14 @@ pub fn print_text(song: &Song, path: &str, fmt: &str) {
                 nav.push("|:".to_owned());
             }
             if mh.repeat_close >= 0 {
-                nav.push(format!(":|x{}", mh.repeat_close + 1));
+                nav.push(format!(":|x{}", i16::from(mh.repeat_close) + 1));
             }
             if mh.repeat_alternative != 0 {
-                let endings = decode_volta_mask(mh.repeat_alternative);
+                let endings = mh.ending_numbers();
                 let labels: Vec<String> = endings.iter().map(|n| n.to_string()).collect();
                 nav.push(format!("[{}.]", labels.join(",")));
             }
-            if let Some(dir) = &mh.direction {
-                nav.push(direction_label(dir).to_owned());
-            }
+            nav.extend(mh.directions.iter().map(|&dir| dir.label().to_owned()));
 
             println!(
                 "  {:>4}  {:>5}  {:>5}  {:<14}  {:<20}  {}",
@@ -553,16 +519,14 @@ fn build_json(song: &Song, path: &str, fmt: &str) -> InfoOutput {
                 nav.push("repeat_open".to_owned());
             }
             if mh.repeat_close >= 0 {
-                nav.push(format!("repeat_close:{}", mh.repeat_close + 1));
+                nav.push(format!("repeat_close:{}", i16::from(mh.repeat_close) + 1));
             }
             if mh.repeat_alternative != 0 {
-                let endings = decode_volta_mask(mh.repeat_alternative);
+                let endings = mh.ending_numbers();
                 let labels: Vec<String> = endings.iter().map(|n| n.to_string()).collect();
                 nav.push(format!("volta:{}", labels.join(",")));
             }
-            if let Some(dir) = &mh.direction {
-                nav.push(direction_label(dir).to_owned());
-            }
+            nav.extend(mh.directions.iter().map(|&dir| dir.label().to_owned()));
 
             MeasureJson {
                 number: mh.number,

@@ -2,10 +2,31 @@ use super::*;
 use crate::error::{GpResult, ToPrimitiveGp};
 use crate::{
     io::primitive::*,
-    model::legacy::{effects::*, enums::*, key_signature::*, song::Song},
+    model::legacy::{
+        effects::*, enums::*, key_signature::*, note::write::written_notes, song::Song,
+    },
 };
 
-pub(super) fn write_beat_v3(song: &Song, data: &mut Vec<u8>, beat: &Beat) -> GpResult<()> {
+pub(super) fn write_beat_v3(
+    song: &Song,
+    data: &mut Vec<u8>,
+    beat: &Beat,
+    strings: &[(i8, i8)],
+) -> GpResult<()> {
+    // The beat as written: its effects flagged from the notes the file
+    // keeps (a dropped note's harmonic would land on a kept one).
+    // Copied only when a note is left out (already a loss), filtered once.
+    let kept;
+    let kept_notes: Vec<&Note> = written_notes(beat, strings).collect();
+    let beat = if kept_notes.len() == beat.notes.len() {
+        beat
+    } else {
+        kept = Beat {
+            notes: kept_notes.into_iter().cloned().collect(),
+            ..beat.clone()
+        };
+        &kept
+    };
     let mut flags = 0u8;
     if beat.duration.dotted {
         flags |= 0x01;
@@ -50,7 +71,7 @@ pub(super) fn write_beat_v3(song: &Song, data: &mut Vec<u8>, beat: &Beat) -> GpR
         song.write_mix_table_change(data, &beat.effect.mix_table_change, &(3, 0, 0));
     }
     use crate::model::legacy::note::SongNoteOps;
-    song.write_notes(data, beat, &Vec::new(), &(3, 0, 0))?;
+    song.write_notes(data, beat, strings, &(3, 0, 0))?;
     Ok(())
 }
 

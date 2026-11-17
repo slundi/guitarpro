@@ -8,14 +8,23 @@
 //! | `%`    | Repeat the previous measure  (`Single`) |
 //! | `%%`   | Repeat the previous two measures (`Double`) |
 //! | `%%%%` | Repeat the previous four measures (`Fourth`) |
+//!
+//! Also reads a score's repeat barlines, endings and direction signs
+//! and the order a score plays in ([`repeats_analysis`]), and a song's
+//! simile marks ([`simile_runs`]).
 
 use std::collections::BTreeMap;
 
+use serde::Serialize;
+
+use crate::model::directions::direction_to_jump;
+use crate::model::legacy::headers::MeasureHeader;
+use crate::model::legacy::{song::Song, track::Track as LegacyTrack};
 use crate::model::optimized::{
     beat::{Beat, Voice},
     global::MeasureIndex,
     note::{Note, NoteValue, PitchStep, TieType},
-    timeline::MeasureDef,
+    timeline::{Arrangement, EndingPlan, JumpKind, MeasureDef, ending_spans},
     track::{MeasureData, MeasureRepeat, MeasureRepeatKind, Track},
 };
 
@@ -180,6 +189,555 @@ pub fn apply_repeats(track: &mut Track, repeats: &BTreeMap<MeasureIndex, SimileM
 }
 
 // ---------------------------------------------------------------------------
+// Navigation of a song's measure headers
+// ---------------------------------------------------------------------------
+
+/// A measure's navigation marks: its repeat barlines, ending, direction
+/// signs and marker.
+#[derive(Debug, Clone, Serialize)]
+pub struct NavEvent {
+    /// 1-based bar number
+    pub bar: u16,
+    pub repeat_open: bool,
+    /// None = no close; Some(n) = the close's written count (2 without
+    /// one), as [`RepeatBlock::total_plays`]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repeat_close: Option<u32>,
+    /// The passes the close plays, as [`RepeatBlock::plays`]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repeat_plays: Option<u32>,
+    /// 1-based volta numbers decoded from bitmask
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub volta: Vec<u8>,
+    /// One direction sign, the one its reader kept before `directions`
+    /// had all of them (GP6+: a target over a jump, GP3–5: a jump over
+    /// a target), for clients from before that; none in a song from
+    /// another format.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub directions: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub marker: Option<String>,
+}
+
+/// A `|: … :|` repeat in a song's measure headers. Serialized with 1-based
+/// bar numbers: `open_bar`, `close_bar`, `total_plays`, `plays` and `volta_bars`
+/// (each `bar` and its `endings`).
+#[derive(Debug, Clone)]
+pub struct RepeatBlock {
+    /// 0-based index of the measure with `repeat_open`
+    pub open_idx: usize,
+    /// 0-based index of the measure with `repeat_close`
+    pub close_idx: usize,
+    /// Total plays as written: the close's repeat count (2 without one).
+    pub total_plays: u32,
+    /// The passes the play order plays ([`Arrangement::resolve`]): a
+    /// repeat with endings goes on to its last ending's number, a close in
+    /// an ending sending it back only on that ending's passes.
+    pub plays: u32,
+    /// Volta bracket measures: (0-based idx, volta_numbers)
+    pub voltas: Vec<(usize, Vec<u8>)>,
+}
+
+impl Serialize for RepeatBlock {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        #[derive(Serialize)]
+        struct VoltaBar<'a> {
+            bar: usize,
+            endings: &'a [u8],
+        }
+        #[derive(Serialize)]
+        struct Block<'a> {
+            open_bar: usize,
+            close_bar: usize,
+            total_plays: u32,
+            plays: u32,
+            volta_bars: Vec<VoltaBar<'a>>,
+        }
+        Block {
+            open_bar: self.open_idx + 1,
+            close_bar: self.close_idx + 1,
+            total_plays: self.total_plays,
+            plays: self.plays,
+            volta_bars: self
+                .voltas
+                .iter()
+                .map(|(index, endings)| VoltaBar {
+                    bar: index + 1,
+                    endings,
+                })
+                .collect(),
+        }
+        .serialize(serializer)
+    }
+}
+
+/// The label of the one sign a measure had before it kept all of them,
+/// as the reader of a song of `version` took it: the GPIF reader (GP6 and
+/// later) a target over a jump, the GP3–5 one a jump over a target; `None`
+/// without any. Labelled as [`NavEvent::directions`] are
+/// ([`DirectionSign::label`](crate::model::legacy::enums::DirectionSign::label)).
+pub(crate) fn direction_label(header: &MeasureHeader, version: (u8, u8, u8)) -> Option<String> {
+    let sign = if version.0 >= 6 {
+        header.directions.first()
+    } else {
+        header.directions.last()
+    };
+    sign.map(|sign| sign.label().to_owned())
+}
+
+/// Whether a song has jumps (D.S.S., al Double Coda, …) that
+/// [`RepeatsAnalysis::sequence`] can't follow: the model has a single segno
+/// and coda.
+pub fn has_unfollowed_jumps(headers: &[MeasureHeader]) -> bool {
+    headers.iter().any(has_unfollowed_jump)
+}
+
+/// Whether a measure has a jump the model can't hold
+/// ([`has_unfollowed_jumps`]).
+fn has_unfollowed_jump(header: &MeasureHeader) -> bool {
+    header
+        .directions
+        .iter()
+        .any(|sign| !sign.is_target() && direction_to_jump(sign).is_none())
+}
+
+/// A score's navigation marks, repeats and play order.
+#[derive(Debug, Clone)]
+pub struct RepeatsAnalysis {
+    /// The navigation marks of the measures that have any: repeats and
+    /// endings from the score's `timeline` (a song loses other formats'
+    /// endings past pass 8 and their repeat counts past 127), direction
+    /// signs and markers from the song's `headers`, read from a GP file of
+    /// `version`. With `version` `None` (a song from another format), its
+    /// events have no [`NavEvent::direction`] (its readers never kept one).
+    pub nav_events: Vec<NavEvent>,
+    /// The repeats in the `timeline`, each closed at a repeat close from
+    /// the last open one; without one, as [`Arrangement::resolve`] plays
+    /// it: from the start, or after the last repeat and the endings right
+    /// after it.
+    pub blocks: Vec<RepeatBlock>,
+    /// The bars in the order the score plays them, through its repeats,
+    /// endings and jumps ([`Arrangement::resolve`]).
+    pub sequence: PlaySequence,
+    /// Whether it has jumps the sequence leaves out: ones the model can't
+    /// hold ([`has_unfollowed_jumps`]: D.S.S., double coda) in a bar it
+    /// plays, or a D.C./D.S.
+    /// it can't follow ([`PlaySequence::skips_jumps`]).
+    pub skips_jumps: bool,
+}
+
+/// The most played bars a [`RepeatsReport`] lists: large repeat counts in
+/// nested repeats can make a short score play a million bars.
+pub const MAX_PLAY_SEQUENCE: usize = 10_000;
+
+/// A song's repeats as the CLI's `repeats --json` and the web server's
+/// repeats endpoint give them.
+#[derive(Debug, Clone, Serialize)]
+pub struct RepeatsReport {
+    pub written_measures: usize,
+    /// How many bars it plays (all of them, past [`MAX_PLAY_SEQUENCE`]).
+    pub sounding_measures: usize,
+    /// Whether the sounding measures follow a D.C./D.S. jump.
+    pub sounding_includes_jumps: bool,
+    /// Whether it has jumps the sounding measures leave out
+    /// ([`RepeatsAnalysis::skips_jumps`]).
+    pub sounding_skips_jumps: bool,
+    /// Whether the sounding measures were cut short at the resolver's
+    /// safety guard (repeats that don't resolve to an end).
+    pub sounding_truncated: bool,
+    pub navigation_events: Vec<NavEvent>,
+    pub repeat_blocks: Vec<RepeatBlock>,
+    /// The first [`MAX_PLAY_SEQUENCE`] of the sounding measures.
+    pub play_sequence: Vec<PlayedBar>,
+    /// Whether `play_sequence` stops short of `sounding_measures`.
+    pub play_sequence_truncated: bool,
+    pub simile_runs: Vec<SimileRun>,
+}
+
+impl RepeatsReport {
+    /// The report of `song`, its repeats and endings from `timeline` (see
+    /// [`repeats_analysis`], `version` the GP file's it was read from, if
+    /// any), its simile runs on the tracks matching `track_filter`
+    /// ([`simile_runs`]).
+    pub fn new(
+        song: &Song,
+        timeline: &[MeasureDef],
+        version: Option<(u8, u8, u8)>,
+        track_filter: Option<&str>,
+    ) -> Self {
+        Self::from_parts(
+            &song.measure_headers,
+            timeline,
+            version,
+            simile_runs(song, track_filter),
+        )
+    }
+
+    /// [`RepeatsReport::new`], given just the parts of the song it reads:
+    /// its measure `headers` and its simile runs (so a caller can take
+    /// those, not the whole song, off to another thread).
+    pub fn from_parts(
+        headers: &[MeasureHeader],
+        timeline: &[MeasureDef],
+        version: Option<(u8, u8, u8)>,
+        simile_runs: Vec<SimileRun>,
+    ) -> Self {
+        let RepeatsAnalysis {
+            nav_events,
+            blocks,
+            sequence,
+            skips_jumps,
+        } = repeats_analysis(headers, timeline, version, Some(MAX_PLAY_SEQUENCE));
+        RepeatsReport {
+            written_measures: headers.len(),
+            sounding_measures: sequence.played,
+            sounding_includes_jumps: sequence.follows_jumps,
+            sounding_skips_jumps: skips_jumps,
+            sounding_truncated: sequence.truncated,
+            navigation_events: nav_events,
+            repeat_blocks: blocks,
+            play_sequence_truncated: sequence.played > sequence.bars.len(),
+            play_sequence: sequence.bars,
+            simile_runs,
+        }
+    }
+}
+
+/// A score's [`RepeatsAnalysis`], working out the timeline's endings once
+/// for all three parts. The sequence keeps only its first `max_bars`
+/// bars, if given (a short score with long nested repeats plays up to a
+/// million), still counting them all ([`PlaySequence::played`]).
+pub fn repeats_analysis(
+    headers: &[MeasureHeader],
+    timeline: &[MeasureDef],
+    version: Option<(u8, u8, u8)>,
+    max_bars: Option<usize>,
+) -> RepeatsAnalysis {
+    let spans = ending_spans(timeline);
+    let plan = EndingPlan::new(timeline, &spans);
+    let sequence = play_sequence(timeline, &plan, max_bars);
+    RepeatsAnalysis {
+        nav_events: nav_events(headers, timeline, version, &plan),
+        blocks: repeat_blocks(timeline, &plan),
+        // Only a jump in a bar it plays is left out: one in a bar no pass
+        // reaches (an ending every pass skips) isn't missed. A sequence cut
+        // short at the guard didn't get to say which bars it reaches: any
+        // such jump counts.
+        skips_jumps: sequence.skips_jumps
+            || if sequence.truncated {
+                has_unfollowed_jumps(headers)
+            } else {
+                headers
+                    .iter()
+                    .zip(&sequence.reached)
+                    .any(|(header, &reached)| reached && has_unfollowed_jump(header))
+            },
+        sequence,
+    }
+}
+
+/// [`RepeatsAnalysis::nav_events`], given how the endings play.
+fn nav_events(
+    headers: &[MeasureHeader],
+    timeline: &[MeasureDef],
+    version: Option<(u8, u8, u8)>,
+    plan: &EndingPlan<'_>,
+) -> Vec<NavEvent> {
+    let endings = &plan.endings;
+    // Every measure of either (they're the same score's, as long).
+    (0..timeline.len().max(headers.len()))
+        .filter_map(|index| {
+            let measure = timeline.get(index);
+            let header = headers.get(index);
+            let repeat_open = measure.is_some_and(|m| m.has_navigation(JumpKind::RepeatOpen));
+            let count = measure.and_then(repeat_close_count);
+            let repeat_close = count.map(|count| u32::from(count.unwrap_or(2)));
+            let repeat_plays = count.map(|count| u32::from(plan.played_passes(index, count)));
+            let directions = header
+                .map(MeasureHeader::direction_labels)
+                .unwrap_or_default();
+            let marker = header
+                .and_then(|header| header.marker.as_ref())
+                .map(|marker| marker.title.clone());
+            let volta = endings
+                .get(index)
+                .copied()
+                .flatten()
+                .map(<[u8]>::to_vec)
+                .unwrap_or_default();
+            (repeat_open
+                || repeat_close.is_some()
+                || !volta.is_empty()
+                || !directions.is_empty()
+                || marker.is_some())
+            .then(|| NavEvent {
+                bar: u16::try_from(index + 1).unwrap_or(u16::MAX),
+                repeat_open,
+                repeat_close,
+                repeat_plays,
+                volta,
+                direction: header
+                    .zip(version)
+                    .and_then(|(header, version)| direction_label(header, version)),
+                directions,
+                marker,
+            })
+        })
+        .collect()
+}
+
+/// The repeat count of a measure's repeat close (`None` without one), if
+/// it has one.
+fn repeat_close_count(measure: &MeasureDef) -> Option<Option<u8>> {
+    measure
+        .navigation
+        .iter()
+        .find(|event| event.kind == JumpKind::RepeatClose)
+        .map(|event| event.repeat_count)
+}
+
+/// [`RepeatsAnalysis::blocks`], given each measure's ending passes.
+fn repeat_blocks(timeline: &[MeasureDef], plan: &EndingPlan<'_>) -> Vec<RepeatBlock> {
+    let endings = &plan.endings;
+    let mut blocks = Vec::new();
+    let mut open_stack: Vec<usize> = Vec::new(); // stack of open_idx
+    // Where a repeat closed without an open one starts.
+    let mut implicit_open = 0usize;
+
+    for (i, measure) in timeline.iter().enumerate() {
+        if measure.has_navigation(JumpKind::RepeatOpen) {
+            open_stack.push(i);
+        }
+        if let Some(count) = repeat_close_count(measure) {
+            let total_plays = u32::from(count.unwrap_or(2));
+            // As the play order plays it: a repeat with endings plays each.
+            let plays = u32::from(plan.played_passes(i, count));
+            let open_idx = open_stack.pop().unwrap_or_else(|| {
+                (implicit_open..i)
+                    .find(|&index| endings[index].is_none())
+                    .unwrap_or(i)
+            });
+            let voltas: Vec<(usize, Vec<u8>)> = (open_idx..=i)
+                .filter_map(|index| Some((index, endings[index]?.to_vec())))
+                .collect();
+            blocks.push(RepeatBlock {
+                open_idx,
+                close_idx: i,
+                total_plays,
+                plays,
+                voltas,
+            });
+            if open_stack.is_empty() {
+                implicit_open = i + 1;
+            }
+        }
+    }
+    blocks
+}
+
+/// One bar in the order a score plays.
+#[derive(Debug, Clone, Serialize)]
+pub struct PlayedBar {
+    /// 1-based bar number
+    #[serde(rename = "bar")]
+    pub bar_number: u16,
+    /// 1-based pass number within the innermost active repeat block
+    /// ([`Arrangement::passes`])
+    pub pass: u32,
+}
+
+/// The bars in the order a score plays them.
+#[derive(Debug, Clone)]
+pub struct PlaySequence {
+    /// The bars it plays, in order: the first `max_bars` given to
+    /// [`repeats_analysis`].
+    pub bars: Vec<PlayedBar>,
+    /// How many bars it plays (more than `bars` holds when cut to
+    /// `max_bars`).
+    pub played: usize,
+    /// Per measure: whether it plays at all ([`Arrangement::reached`]).
+    pub reached: Vec<bool>,
+    /// Whether it follows a D.C./D.S. jump.
+    pub follows_jumps: bool,
+    /// Whether it reaches a jump it can't follow (a D.S. without a segno
+    /// before it), whether or not it follows another
+    /// ([`Arrangement::unfollowable`]).
+    pub skips_jumps: bool,
+    /// Whether it was cut short at the resolver's safety guard
+    /// ([`Arrangement::truncated`]).
+    pub truncated: bool,
+}
+
+/// [`RepeatsAnalysis::sequence`], given how the timeline's endings play.
+fn play_sequence(
+    timeline: &[MeasureDef],
+    plan: &EndingPlan<'_>,
+    max_bars: Option<usize>,
+) -> PlaySequence {
+    let Arrangement {
+        order,
+        passes,
+        jumped,
+        unfollowable,
+        truncated,
+        played,
+        reached,
+    } = Arrangement::resolve_with_plan(timeline, plan, max_bars.unwrap_or(usize::MAX));
+    let bars = order
+        .into_iter()
+        .zip(passes)
+        .map(|(index, pass)| PlayedBar {
+            bar_number: index.0.saturating_add(1),
+            pass: pass.into(),
+        })
+        .collect();
+    PlaySequence {
+        bars,
+        played,
+        reached,
+        follows_jumps: jumped,
+        skips_jumps: unfollowable,
+        truncated,
+    }
+}
+
+/// A run of GP simile marks (`%`) on a track's bars. Serialized with
+/// 1-based bar ranges: `track`, `bars`, `source_bars` (left out for a run
+/// without enough bars before it to repeat) and `kind`.
+#[derive(Debug, Clone)]
+pub struct SimileRun {
+    pub track_name: String,
+    /// 0-based index of first bar in the run (within track.measures)
+    pub run_start: usize,
+    /// Length of the run in bars
+    pub run_len: usize,
+    /// 0-based index of the source bars being referenced: the block of
+    /// `source_len` bars right before the run, which each of its marks
+    /// repeats in turn
+    pub source_start: usize,
+    /// Length of the source block in bars: 1 for `%`, 2 for a double
+    pub source_len: usize,
+    /// "1-bar (Simple)", "2-bar (Double)", or "unknown (…)"
+    pub kind: String,
+}
+
+impl SimileRun {
+    /// Its bars, 1-based: first and last.
+    pub fn bars(&self) -> (usize, usize) {
+        (self.run_start + 1, self.run_start + self.run_len)
+    }
+
+    /// The bars it repeats, 1-based: first and last; `None` for a run
+    /// without them before it.
+    pub fn source_bars(&self) -> Option<(usize, usize)> {
+        (self.source_len > 0).then(|| (self.source_start + 1, self.source_start + self.source_len))
+    }
+}
+
+impl Serialize for SimileRun {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        #[derive(Serialize)]
+        struct Run<'a> {
+            track: &'a str,
+            bars: String,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            source_bars: Option<String>,
+            kind: &'a str,
+        }
+        let range = |(first, last): (usize, usize)| format!("{first}-{last}");
+        Run {
+            track: &self.track_name,
+            bars: range(self.bars()),
+            source_bars: self.source_bars().map(range),
+            kind: &self.kind,
+        }
+        .serialize(serializer)
+    }
+}
+
+/// The runs of simile marks on the tracks whose name contains
+/// `track_filter` (any case), or on all of them.
+pub fn simile_runs(song: &Song, track_filter: Option<&str>) -> Vec<SimileRun> {
+    song.tracks
+        .iter()
+        .filter(|track| {
+            track_filter.is_none_or(|f| track.name.to_lowercase().contains(&f.to_lowercase()))
+        })
+        .flat_map(track_simile_runs)
+        .collect()
+}
+
+/// The bars a simile mark repeats; `None` for an unknown mark.
+fn simile_step(mark: &str) -> Option<usize> {
+    match mark {
+        "Simple" => Some(1),
+        "FirstOfDouble" | "SecondOfDouble" => Some(2),
+        _ => None,
+    }
+}
+
+/// The runs of simile marks on a track, in order.
+pub fn track_simile_runs(track: &LegacyTrack) -> Vec<SimileRun> {
+    let mut runs = Vec::new();
+    let measures = &track.measures;
+    let mut i = 0usize;
+
+    while i < measures.len() {
+        let sm = match &measures[i].simile_mark {
+            Some(s) => s.as_str(),
+            None => {
+                i += 1;
+                continue;
+            }
+        };
+
+        let run_start = i;
+        i += 1;
+        let (step, kind_label) = match simile_step(sm) {
+            Some(step) => {
+                // Extend the run while marks of its kind continue.
+                while measures
+                    .get(i)
+                    .and_then(|m| m.simile_mark.as_deref())
+                    .is_some_and(|mark| simile_step(mark) == Some(step))
+                {
+                    i += 1;
+                }
+                let label = if step == 1 {
+                    "1-bar (Simple)"
+                } else {
+                    "2-bar (Double)"
+                };
+                (step, label.to_owned())
+            }
+            // Unknown — treat as 1-bar run
+            None => (1, format!("unknown ({sm})")),
+        };
+
+        let run_len = i - run_start;
+        // Each mark repeats the `step` bars right before the run; with
+        // fewer bars before it, it has none to repeat.
+        let (source_start, source_len) = match run_start.checked_sub(step) {
+            Some(source_start) => (source_start, step),
+            None => (run_start, 0),
+        };
+
+        runs.push(SimileRun {
+            track_name: track.name.clone(),
+            run_start,
+            run_len,
+            source_start,
+            source_len,
+            kind: kind_label,
+        });
+    }
+
+    runs
+}
+
+// ---------------------------------------------------------------------------
 // Internal fingerprinting
 // ---------------------------------------------------------------------------
 
@@ -260,8 +818,8 @@ fn note_key(note: &Note) -> u32 {
 fn fingerprint_note(note: &Note) -> NoteFingerprint {
     NoteFingerprint {
         key: note_key(note),
-        is_tie_end: matches!(note.tie, Some(TieType::End)),
-        is_tie_start: matches!(note.tie, Some(TieType::Start)),
+        is_tie_end: note.tie.is_some_and(TieType::ends_tie),
+        is_tie_start: note.tie.is_some_and(TieType::starts_tie),
     }
 }
 
@@ -272,7 +830,7 @@ fn fingerprint_beat(beat: &Beat) -> BeatFingerprint {
         dur_base: note_value_to_u8(beat.duration.base),
         dur_dots: beat.duration.dots,
         tuplet: beat.duration.tuplet.map(|t| (t.actual, t.normal)),
-        is_rest: beat.gp_rest || beat.notes.is_empty(),
+        is_rest: beat.is_rest(),
         notes,
     }
 }
@@ -375,6 +933,7 @@ mod tests {
             grace_notes: vec![],
             cue: false,
             chord: None,
+            fermata: false,
             gp_empty: false,
             gp_rest: false,
             gp_vibrato: false,
@@ -401,8 +960,10 @@ mod tests {
             track_id: TrackId(0),
             repeat: None,
             voices,
+            barline_right: None,
             gp_line_break: 0,
             gp_simile_mark: None,
+            clef: None,
         }
     }
 

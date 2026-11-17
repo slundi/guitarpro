@@ -320,8 +320,7 @@ impl SongTrackOps for Song {
             flags |= 0x04;
         }
         write_byte(data, flags);
-        write_byte_size_string(data, &self.tracks[number].name);
-        write_placeholder_default(data, 40 - self.tracks[number].name.len());
+        write_fixed_byte_size_string(data, &self.tracks[number].name, 40);
         write_i32(
             data,
             self.tracks[number].strings.len().to_i32_gp("strings len")?,
@@ -394,8 +393,7 @@ impl SongTrackOps for Song {
         }
         write_byte(data, flags1);
 
-        write_byte_size_string(data, &self.tracks[number].name);
-        write_placeholder_default(data, 40 - self.tracks[number].name.len());
+        write_fixed_byte_size_string(data, &self.tracks[number].name, 40);
 
         write_i32(
             data,

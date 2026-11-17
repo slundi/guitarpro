@@ -16,8 +16,10 @@
 pub mod mscx;
 
 pub use mscx::{
-    Instrument, MetaTag, Mscx, MscxBeat, MscxBeatKind, MscxDuration, MscxDurationKind, MscxKeySig,
-    MscxMeasure, MscxNote, MscxStaff, MscxTimeSig, MscxVoice, Part, Staff, StaffMeasureCount,
+    Instrument, MetaTag, Mscx, MscxBarLine, MscxBeat, MscxBeatKind, MscxChordMark, MscxDuration,
+    MscxDurationKind, MscxDynamic, MscxGrace, MscxHarmony, MscxJump, MscxKeyMode, MscxKeySig,
+    MscxLocation, MscxMarker, MscxMeasure, MscxMeasureMark, MscxNote, MscxSegment, MscxSlurEnd,
+    MscxStaff, MscxTimeSig, MscxVoice, MscxVolta, MscxVoltaMark, Part, Staff, StaffMeasureCount,
     StringData,
 };
 

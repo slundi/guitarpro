@@ -30,20 +30,204 @@ pub struct MeasureIndex(pub u16); // max 65535 measures; Ord needed for BTreeMap
 
 // --- Score (top level) --------------------------------------------------------
 
-#[derive(Serialize, Deserialize, Debug)]
+/// The form a [`Score`] is saved in now ([`Score::format_version`]).
+/// Saves without one (0) are from before it was kept: loading migrates
+/// them to this form, telling their older forms apart by what they hold,
+/// as nothing else says. A save with one is in its form: loading
+/// migrates nothing; one newer than this is refused.
+///
+/// It starts at 2: a binary save from before it was kept starts with an
+/// `Option` tag (0 or 1), which a binary reader would take for the version.
+pub const SCORE_FORMAT_VERSION: u32 = 2;
+
+#[derive(Serialize, Debug)]
 pub struct Score {
+    /// The form it's in: [`SCORE_FORMAT_VERSION`] for one made or loaded
+    /// now. First, so a binary (positional) reader can check it before
+    /// decoding the rest, which it can't migrate.
+    pub format_version: u32,
     pub metadata: Metadata,
     pub instruments: Vec<Instrument>, // indexed by InstrumentId
     pub staves: Vec<StaffDef>,        // indexed by StaffId
     pub tracks: Vec<Track>,           // indexed by TrackId
     /// Bracket/brace groupings across tracks (strings section, piano grand staff, etc.).
     pub groups: Vec<PartGroup>,
-    pub timeline: Vec<MeasureDef>, // ordered, shared across all tracks
+    /// Ordered, shared across all tracks.
+    pub timeline: Vec<MeasureDef>,
     pub lyric_lines: Vec<LyricLine>, // indexed by LyricLineId
     pub lyric_projections: Vec<LyricProjection>,
     /// Engraver's rendering intent (page size, fonts, line widths).
     /// `None` means the renderer uses its own defaults.
     pub defaults: Option<ScoreDefaults>,
+}
+
+impl Score {
+    /// Whether it's from a GP file: only the GP import fills GP's own
+    /// measure fields ([`MeasureDef::has_gp_fields`]) and gives notes their
+    /// own velocity ([`Note::gp_velocity`](crate::model::optimized::note::Note::gp_velocity)).
+    /// One stripped of all of those can't be told from another format's.
+    /// Loading an older save migrates what only GP's import left in an
+    /// older form by it.
+    pub(crate) fn is_gp_sourced(&self) -> bool {
+        is_gp_sourced(&self.timeline, &self.tracks)
+    }
+}
+
+/// [`Score::is_gp_sourced`], of its parts.
+fn is_gp_sourced(timeline: &[MeasureDef], tracks: &[Track]) -> bool {
+    timeline.iter().any(MeasureDef::has_gp_fields)
+        || tracks
+            .iter()
+            .flat_map(|track| track.measures.values())
+            .flat_map(|data| data.voices.values())
+            .flat_map(|voice| &voice.beats)
+            .flat_map(|beat| &beat.notes)
+            .any(|note| note.gp_velocity.is_some())
+}
+
+/// [`Score`] as serialized, by any form of an older save.
+#[derive(Deserialize)]
+struct SerializedScore {
+    /// 0 for a save from before it was kept.
+    #[serde(default)]
+    format_version: u32,
+    metadata: Metadata,
+    instruments: Vec<Instrument>,
+    staves: Vec<StaffDef>,
+    tracks: Vec<Track>,
+    groups: Vec<PartGroup>,
+    #[serde(deserialize_with = "crate::model::optimized::timeline::deserialize_timeline")]
+    timeline: crate::model::optimized::timeline::SerializedTimeline,
+    lyric_lines: Vec<LyricLine>,
+    lyric_projections: Vec<LyricProjection>,
+    defaults: Option<ScoreDefaults>,
+}
+
+/// A binary (positional) save can't be migrated, nor told from an older
+/// form but by its version: only one in the current form is read. A
+/// self-describing one (JSON) of any version up to the current is (1 is
+/// the current form there: only binary saves' enum indices changed).
+impl<'de> Deserialize<'de> for Score {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let serialized = if deserializer.is_human_readable() {
+            SerializedScore::deserialize(deserializer)?
+        } else {
+            deserializer.deserialize_struct("SerializedScore", SERIALIZED_FIELDS, BinaryScore)?
+        };
+        Score::try_from(serialized).map_err(serde::de::Error::custom)
+    }
+}
+
+/// [`SerializedScore`]'s fields, in order.
+const SERIALIZED_FIELDS: &[&str] = &[
+    "format_version",
+    "metadata",
+    "instruments",
+    "staves",
+    "tracks",
+    "groups",
+    "timeline",
+    "lyric_lines",
+    "lyric_projections",
+    "defaults",
+];
+
+/// Reads a binary (positional) save: its version first, refusing one not
+/// in the current form before decoding the rest, which would read an
+/// older layout as this one's (failing on some field, or reading garbage).
+struct BinaryScore;
+
+impl<'de> serde::de::Visitor<'de> for BinaryScore {
+    type Value = SerializedScore;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a score")
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+        use serde::de::Error;
+
+        // The next field, `at` its place (for the error when it's missing).
+        macro_rules! field {
+            ($at:expr, $ty:ty) => {
+                seq.next_element::<$ty>()?
+                    .ok_or_else(|| A::Error::invalid_length($at, &self))?
+            };
+        }
+        let format_version = field!(0, u32);
+        if format_version != SCORE_FORMAT_VERSION {
+            return Err(A::Error::custom(format!(
+                "binary score format version {format_version} isn't this library's ({SCORE_FORMAT_VERSION})"
+            )));
+        }
+        Ok(SerializedScore {
+            format_version,
+            metadata: field!(1, Metadata),
+            instruments: field!(2, Vec<Instrument>),
+            staves: field!(3, Vec<StaffDef>),
+            tracks: field!(4, Vec<Track>),
+            groups: field!(5, Vec<PartGroup>),
+            timeline: field!(6, TimelineField).0,
+            lyric_lines: field!(7, Vec<LyricLine>),
+            lyric_projections: field!(8, Vec<LyricProjection>),
+            defaults: field!(9, Option<ScoreDefaults>),
+        })
+    }
+}
+
+/// [`SerializedScore::timeline`], read on its own.
+struct TimelineField(crate::model::optimized::timeline::SerializedTimeline);
+
+impl<'de> Deserialize<'de> for TimelineField {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        crate::model::optimized::timeline::deserialize_timeline(deserializer).map(TimelineField)
+    }
+}
+
+impl TryFrom<SerializedScore> for Score {
+    type Error = String;
+
+    fn try_from(serialized: SerializedScore) -> Result<Self, Self::Error> {
+        if serialized.format_version > SCORE_FORMAT_VERSION {
+            return Err(format!(
+                "score format version {} is newer than this library's ({SCORE_FORMAT_VERSION})",
+                serialized.format_version
+            ));
+        }
+        let tracks = serialized.tracks;
+        // Where the score is from, worked out once (it walks every note)
+        // and only if a migration needs it.
+        let mut gp_sourced: Option<bool> = None;
+        // An older timeline's voltas are read by where the score is from.
+        let timeline = serialized.timeline.into_timeline(|timeline| {
+            *gp_sourced.get_or_insert_with(|| is_gp_sourced(timeline, &tracks))
+        });
+        let mut score = Score {
+            metadata: serialized.metadata,
+            instruments: serialized.instruments,
+            staves: serialized.staves,
+            tracks,
+            groups: serialized.groups,
+            timeline,
+            lyric_lines: serialized.lyric_lines,
+            lyric_projections: serialized.lyric_projections,
+            defaults: serialized.defaults,
+            format_version: serialized.format_version,
+        };
+        // Only an unversioned save can be in an older form (its timeline's
+        // `volta`s are migrated above: see `SerializedTimeline`).
+        if score.format_version == 0 {
+            crate::model::directions::migrate_direction_signs(&mut score);
+            // The migrations change nothing that tells where it's from.
+            let gp_sourced = gp_sourced.unwrap_or_else(|| score.is_gp_sourced());
+            if gp_sourced {
+                crate::convert::optimized::legacy::migrate_tie_starts(&mut score);
+                crate::convert::optimized::legacy::migrate_dynamics(&mut score);
+            }
+            score.format_version = SCORE_FORMAT_VERSION;
+        }
+        Ok(score)
+    }
 }
 
 // --- Part grouping ------------------------------------------------------------
@@ -132,6 +316,20 @@ pub struct Transpose {
     pub chromatic: i16,
     /// Additional octave adjustment applied on top of `chromatic`.
     pub octave_change: Option<i8>,
+}
+
+impl Transpose {
+    /// The same transposition with `octave_change` folded into the
+    /// chromatic and diatonic steps (a bass clarinet's −2 and one octave
+    /// down: −14 semitones), as formats without an octave field write it.
+    pub fn folded(&self) -> Transpose {
+        let octaves = i16::from(self.octave_change.unwrap_or(0));
+        Transpose {
+            diatonic: self.diatonic.map(|steps| steps + 7 * octaves),
+            chromatic: self.chromatic + 12 * octaves,
+            octave_change: None,
+        }
+    }
 }
 
 // --- Instrument ---------------------------------------------------------------

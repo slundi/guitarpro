@@ -17,7 +17,7 @@
 
 use crate::analysis::chords::PitchClass;
 use crate::model::legacy::key_signature::KeySignature;
-use crate::model::optimized::{beat::Beat, note::PitchStep, track::Track};
+use crate::model::optimized::{beat::Beat, track::Track};
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -290,21 +290,7 @@ fn note_to_pc(note: &crate::model::optimized::note::Note, strings: &[(i8, i8)]) 
     {
         return Some(((open as i32 + f as i32).rem_euclid(12)) as u8);
     }
-    note.pitch
-        .as_ref()
-        .map(|p| (pitch_step_semitone(p.step) + p.alter as i32).rem_euclid(12) as u8)
-}
-
-fn pitch_step_semitone(step: PitchStep) -> i32 {
-    match step {
-        PitchStep::C => 0,
-        PitchStep::D => 2,
-        PitchStep::E => 4,
-        PitchStep::F => 5,
-        PitchStep::G => 7,
-        PitchStep::A => 9,
-        PitchStep::B => 11,
-    }
+    note.pitch.map(|p| p.midi().rem_euclid(12) as u8)
 }
 
 /// Score a `(root, scale)` pair against a pitch-class histogram.
@@ -463,6 +449,7 @@ mod tests {
             grace_notes: vec![],
             cue: false,
             chord: None,
+            fermata: false,
             gp_empty: false,
             gp_rest: false,
             gp_vibrato: false,
@@ -494,8 +481,10 @@ mod tests {
             track_id: TrackId(0),
             repeat: None,
             voices,
+            barline_right: None,
             gp_line_break: 0,
             gp_simile_mark: None,
+            clef: None,
         }
     }
 

@@ -128,6 +128,9 @@ impl SongMeasureOps for Song {
         }
         self.current_track = None;
         self.current_measure_number = None;
+        for track in &mut self.tracks {
+            resolve_tied_frets(track);
+        }
         Ok(())
     }
 
@@ -278,11 +281,152 @@ impl SongMeasureOps for Song {
         write_i32(data, voice_data.beats.len().to_i32_gp("beats count")?);
         for beat in &voice_data.beats {
             if version.0 == 3 {
-                self.write_beat_v3(data, beat)?;
+                self.write_beat_v3(data, beat, &self.tracks[track].strings)?;
             } else {
                 self.write_beat(data, beat, &self.tracks[track].strings, version)?;
             }
         }
         Ok(())
+    }
+}
+
+/// Whether a beat's notes go on the [`TieChains`]: not a rest's or an
+/// empty beat's. A fixed rule, the same for all three walks.
+pub(crate) fn on_tie_chains(status: &BeatStatus) -> bool {
+    *status == BeatStatus::Normal
+}
+
+/// GP's tie chains: GP marks only a tie's end, tying the note from the
+/// last one sounding on its string in its voice (rests, empty beats and
+/// rest notes don't count), or with none there, from the last one on that
+/// string in an earlier measure, in any voice (its own, of notes starting
+/// together in several). The reader, the import into
+/// the optimized model and the export from it all pair ties by this rule.
+/// `T` is what is kept of each string's last note.
+pub(crate) struct TieChains<T> {
+    /// Per voice and string: its last note in this measure.
+    voices: std::collections::HashMap<u8, std::collections::HashMap<i8, T>>,
+    /// Per string: its last notes before this measure (several, starting
+    /// together in several voices), by voice.
+    earlier: std::collections::HashMap<i8, Vec<(u8, T)>>,
+    /// This measure's notes: string, start, voice and what is kept.
+    this_measure: Vec<(i8, i64, u8, T)>,
+}
+
+impl<T: Clone> TieChains<T> {
+    pub(crate) fn new() -> Self {
+        TieChains {
+            voices: std::collections::HashMap::new(),
+            earlier: std::collections::HashMap::new(),
+            this_measure: Vec::new(),
+        }
+    }
+
+    /// Starts the next measure.
+    pub(crate) fn next_measure(&mut self) {
+        self.voices.clear();
+        // The last to sound, not the last voice's: by start, in time order.
+        self.this_measure
+            .sort_by_key(|&(string, start, _, _)| (string, start));
+        let mut notes = self.this_measure.drain(..).peekable();
+        while let Some((string, start, voice, kept)) = notes.next() {
+            let mut last = vec![(voice, kept)];
+            let mut last_start = start;
+            while let Some((_, start, voice, kept)) =
+                notes.next_if(|&(next, _, _, _)| next == string)
+            {
+                if start != last_start {
+                    last.clear();
+                    last_start = start;
+                }
+                last.push((voice, kept));
+            }
+            self.earlier.insert(string, last);
+        }
+    }
+
+    /// The note a tie on `string` in `voice` is from.
+    pub(crate) fn previous(&self, voice: u8, string: i8) -> Option<&T> {
+        self.voices
+            .get(&voice)
+            .and_then(|strings| strings.get(&string))
+            .or_else(|| {
+                let last = self.earlier.get(&string)?;
+                // The last added: notes come in order within a voice.
+                last.iter()
+                    .rev()
+                    .find(|(from, _)| *from == voice)
+                    .or(last.last())
+                    .map(|(_, kept)| kept)
+            })
+    }
+
+    /// A note sounding on `string` in `voice` (not a rest note) from
+    /// `start` (a tick, in any measure-wide frame): it becomes the last
+    /// there.
+    pub(crate) fn note(&mut self, voice: u8, string: i8, start: i64, kept: T) {
+        self.voices
+            .entry(voice)
+            .or_default()
+            .insert(string, kept.clone());
+        self.this_measure.push((string, start, voice, kept));
+    }
+
+    /// One note of a beat on the chains (see [`on_tie_chains`]), in order:
+    /// the pairing rule all three walks share. A rest note isn't on them:
+    /// `keep` isn't called. Otherwise `keep` gets the note it's tied from,
+    /// if it `ends` a tie and one is there, and gives what is kept of it:
+    /// it becomes the last on its string.
+    pub(crate) fn link(
+        &mut self,
+        voice: u8,
+        string: i8,
+        start: i64,
+        rest: bool,
+        ends: bool,
+        keep: impl FnOnce(Option<T>) -> T,
+    ) {
+        if rest {
+            return;
+        }
+        let from = if ends {
+            self.previous(voice, string).cloned()
+        } else {
+            None
+        };
+        self.note(voice, string, start, keep(from));
+    }
+}
+
+/// GP marks only a tie's end, not its fret: gives each tied note the fret
+/// of the note it's tied from ([`TieChains`]); one with nothing before it
+/// keeps the file's.
+pub(crate) fn resolve_tied_frets(track: &mut crate::model::legacy::track::Track) {
+    let mut chains = TieChains::new();
+    for measure in &mut track.measures {
+        chains.next_measure();
+        for (voice, beats) in measure.voices.iter_mut().map(|v| &mut v.beats).enumerate() {
+            let voice = voice as u8;
+            // Where the voice is: a beat without a start (no reader makes
+            // one) starts where the one before it ends, not all at 0.
+            let mut at: Option<i64> = None;
+            for beat in beats {
+                let start = beat.start.or(at).unwrap_or_default();
+                // One of unknown length leaves the next where it starts.
+                at = Some(start + beat.duration.time().map_or(0, i64::from));
+                if !on_tie_chains(&beat.status) {
+                    continue;
+                }
+                for note in &mut beat.notes {
+                    let (rest, ends) = (note.kind == NoteType::Rest, note.kind == NoteType::Tie);
+                    chains.link(voice, note.string, start, rest, ends, |from| {
+                        if let Some(fret) = from {
+                            note.value = fret;
+                        }
+                        note.value
+                    });
+                }
+            }
+        }
     }
 }

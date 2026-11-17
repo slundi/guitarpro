@@ -88,6 +88,10 @@ pub struct HairpinEvent {
     /// Span identifier (1-based, scoped per track). Links start to stop.
     pub id: u8,
     pub kind: HairpinKind,
+    /// Written as a "cresc."/"dim." text line instead of the wedge (on
+    /// the start).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub line: bool,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Debug)]

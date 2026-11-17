@@ -275,12 +275,18 @@ pub(crate) fn encode_windows1252(value: &str) -> std::borrow::Cow<'_, [u8]> {
     encoded
 }
 
-pub(crate) fn write_byte_size_string(data: &mut Vec<u8>, value: &str) {
+/// Write a string into a fixed-width field: its length in 1 byte, then
+/// `width` bytes of characters, truncated or padded with zeros. The padding
+/// follows the encoded length, which differs from `value.len()` for
+/// non-ASCII text (`ö` is 2 bytes in UTF-8, 1 in Windows-1252).
+pub(crate) fn write_fixed_byte_size_string(data: &mut Vec<u8>, value: &str, width: usize) {
     let encoded = encode_windows1252(value);
-    let count = encoded.len().min(255) as u8;
-    write_byte(data, count);
-    data.extend(encoded.iter().take(count as usize));
+    let count = encoded.len().min(width).min(255);
+    write_byte(data, count as u8);
+    data.extend(encoded.iter().take(count));
+    write_placeholder_default(data, width - count);
 }
+
 pub(crate) fn write_int_size_string(data: &mut Vec<u8>, value: &str) {
     let encoded = encode_windows1252(value);
     write_i32(data, encoded.len() as i32);
@@ -298,8 +304,7 @@ pub(crate) fn write_int_byte_size_string(data: &mut Vec<u8>, value: &str) {
 pub(crate) fn write_version(data: &mut Vec<u8>, version: (u8, u8, u8)) {
     for v in VERSIONS {
         if version == v.0 {
-            write_byte_size_string(data, v.2);
-            write_placeholder_default(data, 30 - v.2.len());
+            write_fixed_byte_size_string(data, v.2, 30);
             break;
         }
     }
@@ -343,16 +348,6 @@ mod test {
         );
     }
 
-    #[test]
-    fn test_write_byte_size_string() {
-        let mut out: Vec<u8> = Vec::with_capacity(32);
-        write_byte_size_string(&mut out, "FICHIER GUITAR PRO v3.00");
-        let expected_result: Vec<u8> = vec![
-            0x18, 0x46, 0x49, 0x43, 0x48, 0x49, 0x45, 0x52, 0x20, 0x47, 0x55, 0x49, 0x54, 0x41,
-            0x52, 0x20, 0x50, 0x52, 0x4f, 0x20, 0x76, 0x33, 0x2e, 0x30, 0x30,
-        ];
-        assert_eq!(out, expected_result);
-    }
     #[test]
     fn test_write_int_size_string() {
         let mut out: Vec<u8> = Vec::with_capacity(16);

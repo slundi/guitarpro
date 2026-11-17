@@ -44,8 +44,10 @@ pub struct LoadedFile {
     pub song: Song,
     pub score: LoadedScore,
     pub file_name: String,
-    #[cfg_attr(not(test), allow(dead_code))] // read in tests + Part 8 (format-aware re-encoding)
     pub ext: String,
+    /// The Guitar Pro version the song was read from; `None` for one from
+    /// another format (set by whoever builds the session, which knows).
+    gp_version: Option<(u8, u8, u8)>,
     /// Preserved MSCZ thumbnail (embedded PNG), if the source was `.mscz`
     /// and the archive contained one. Enables `GET /api/score/:id/thumbnail`
     /// without re-reading the archive.
@@ -62,6 +64,7 @@ impl LoadedFile {
         score: LoadedScore,
         file_name: String,
         ext: String,
+        gp_version: Option<(u8, u8, u8)>,
     ) -> Self {
         Self {
             bytes,
@@ -69,9 +72,16 @@ impl LoadedFile {
             score,
             file_name,
             ext,
+            gp_version,
             thumbnail: None,
             last_accessed: Mutex::new(Instant::now()),
         }
+    }
+
+    /// The Guitar Pro version of a song read from a GP file; `None` for
+    /// one read from another format (MSCZ).
+    pub fn gp_version(&self) -> Option<(u8, u8, u8)> {
+        self.gp_version
     }
 
     /// Construct a session with an embedded thumbnail (MSCZ path).
@@ -212,14 +222,17 @@ pub fn session_from_bytes(bytes: Vec<u8>, file_name: String) -> Result<LoadedFil
     if ext == "mscz" {
         let session = parse_mscz(&bytes)?;
         return Ok(
-            LoadedFile::new(bytes, session.song, session.score, file_name, ext)
+            LoadedFile::new(bytes, session.song, session.score, file_name, ext, None)
                 .with_thumbnail(session.thumbnail),
         );
     }
 
     let song = parse_song(&ext, &bytes)?;
     let score = legacy_song_to_loaded_score(&song);
-    Ok(LoadedFile::new(bytes, song, score, file_name, ext))
+    let gp_version = Some(song.version.number);
+    Ok(LoadedFile::new(
+        bytes, song, score, file_name, ext, gp_version,
+    ))
 }
 
 /// Load, validate, parse, and convert a GP file from disk into a [`LoadedFile`].
@@ -276,6 +289,7 @@ mod tests {
             score,
             "dummy.gp5".to_string(),
             "gp5".to_string(),
+            Some((5, 1, 0)),
         )
     }
 

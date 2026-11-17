@@ -2,28 +2,33 @@
 
 use std::collections::HashMap;
 
+use crate::convert::legacy::beat_status;
+use crate::convert::legacy::dynamics::{keep_dynamic_changes, velocity_to_dynamic};
+use crate::model::directions::{add_direction_jumps, direction_to_jump};
 use crate::model::{
     legacy::{
         beat::{Beat as LBeat, Voice as LVoice},
-        effects::DEFAULT_VELOCITY,
         enums::{
-            BeatStrokeDirection, DirectionSign, Fingering as LFingering, HarmonicType, NoteType,
-            Octave, SlapEffect, SlideType, TupletBracket, VoiceDirection,
+            BeatStrokeDirection, Fingering as LFingering, HarmonicType, NoteType, Octave,
+            SlapEffect, SlideType, TupletBracket, VoiceDirection,
         },
         headers::MeasureHeader,
         key_signature::{
             DURATION_QUARTER_TIME, Duration as LDuration, KeySignature as LKeySignature,
         },
-        measure::Measure as LMeasure,
+        measure::{Measure as LMeasure, TieChains, on_tie_chains},
         mix_table::MixTableItem as LMixTableItem,
         note::Note as LNote,
         song::Song,
     },
     optimized::{
         LoadedScore,
-        beat::{Beat, Duration, Dynamic, Tuplet, Voice},
+        beat::{Beat, Duration, Tuplet, Voice},
         beat::{GpChord, GpMixTableChange, GpMixTableItem},
-        global::{Instrument, InstrumentId, InstrumentKind, MeasureIndex, Score, StaffId, TrackId},
+        global::{
+            Instrument, InstrumentId, InstrumentKind, MeasureIndex, SCORE_FORMAT_VERSION, Score,
+            StaffId, TrackId,
+        },
         metadata::{Identification, KeySignature, Metadata, Mode, TimeSignature},
         note::{
             Articulation, Finger, GpBendEffect, GpBendPoint, GpGraceEffect, GpHarmonicEffect, Note,
@@ -32,6 +37,7 @@ use crate::model::{
         },
         timeline::{
             Barline, BarlineStyle, JumpKind, Marker, MarkerKind, MeasureDef, NavigationEvent,
+            set_endings,
         },
         track::{Clef, MeasureData, StaffDef, StaffDisplay, Track},
     },
@@ -58,6 +64,7 @@ pub fn legacy_song_to_loaded_score(song: &Song) -> LoadedScore {
             lyric_lines: Vec::new(),
             lyric_projections: Vec::new(),
             defaults: None,
+            format_version: SCORE_FORMAT_VERSION,
         },
         layout: None,
     }
@@ -237,31 +244,17 @@ fn build_metadata(song: &Song, timeline: &[MeasureDef]) -> Metadata {
         }
     }
 
-    // Direction signs on measure headers (Coda, Fine, Segno, Da Capo, etc.)
+    // Direction signs the model has no jump for (double coda, segno
+    // segno…), kept for the export: the others are the measures' navigation.
     for (i, header) in song.measure_headers.iter().enumerate() {
-        if let Some(d) = &header.direction {
-            let name = match d {
-                DirectionSign::Coda => "Coda",
-                DirectionSign::DoubleCoda => "DoubleCoda",
-                DirectionSign::Segno => "Segno",
-                DirectionSign::SegnoSegno => "SegnoSegno",
-                DirectionSign::Fine => "Fine",
-                DirectionSign::DaCapo => "DaCapo",
-                DirectionSign::DaCapoAlCoda => "DaCapoAlCoda",
-                DirectionSign::DaCapoAlDoubleCoda => "DaCapoAlDoubleCoda",
-                DirectionSign::DaCapoAlFine => "DaCapoAlFine",
-                DirectionSign::DaSegno => "DaSegno",
-                DirectionSign::DaSegnoAlCoda => "DaSegnoAlCoda",
-                DirectionSign::DaSegnoAlDoubleCoda => "DaSegnoAlDoubleCoda",
-                DirectionSign::DaSegnoAlFine => "DaSegnoAlFine",
-                DirectionSign::DaSegnoSegno => "DaSegnoSegno",
-                DirectionSign::DaSegnoSegnoAlCoda => "DaSegnoSegnoAlCoda",
-                DirectionSign::DaSegnoSegnoAlDoubleCoda => "DaSegnoSegnoAlDoubleCoda",
-                DirectionSign::DaSegnoSegnoAlFine => "DaSegnoSegnoAlFine",
-                DirectionSign::DaCoda => "DaCoda",
-                DirectionSign::DaDoubleCoda => "DaDoubleCoda",
-            };
-            misc.push((format!("gp.direction.{i}"), name.to_string()));
+        let kept: Vec<&str> = header
+            .directions
+            .iter()
+            .filter(|sign| direction_to_jump(sign).is_none())
+            .map(|sign| sign.name())
+            .collect();
+        if !kept.is_empty() {
+            misc.push(crate::model::directions::direction_entry(i, kept));
         }
     }
 
@@ -380,7 +373,10 @@ fn build_metadata(song: &Song, timeline: &[MeasureDef]) -> Metadata {
 // Timeline
 // ---------------------------------------------------------------------------
 
-fn build_timeline(song: &Song) -> Vec<MeasureDef> {
+/// The global timeline (measures, repeats, endings, jumps) of a legacy
+/// [`Song`], as [`legacy_song_to_loaded_score`] gives it, without
+/// converting its tracks.
+pub fn build_timeline(song: &Song) -> Vec<MeasureDef> {
     let mut measures = Vec::new();
     let mut prev_tempo: f32 = song.tempo as f32;
     let mut prev_time = TimeSignature {
@@ -431,8 +427,6 @@ fn build_timeline(song: &Song) -> Vec<MeasureDef> {
                 measure_index: MeasureIndex(i as u16),
                 kind: JumpKind::RepeatOpen,
                 repeat_count: None,
-                volta: None,
-                volta_last: false,
             });
         }
         if header.repeat_close >= 0 {
@@ -440,23 +434,14 @@ fn build_timeline(song: &Song) -> Vec<MeasureDef> {
                 measure_index: MeasureIndex(i as u16),
                 kind: JumpKind::RepeatClose,
                 repeat_count: Some(header.repeat_close as u8 + 1),
-                volta: if header.repeat_alternative > 0 {
-                    Some(header.repeat_alternative)
-                } else {
-                    None
-                },
-                volta_last: false,
-            });
-        } else if header.repeat_alternative > 0 {
-            // Volta bracket without a repeat close in this measure
-            navigation.push(NavigationEvent {
-                measure_index: MeasureIndex(i as u16),
-                kind: JumpKind::RepeatClose,
-                repeat_count: None,
-                volta: Some(header.repeat_alternative),
-                volta_last: false,
             });
         }
+        add_direction_jumps(
+            &mut navigation,
+            MeasureIndex(i as u16),
+            header.directions.iter().filter_map(direction_to_jump),
+        );
+        // Alternate endings become barline endings (`add_alternate_endings`).
 
         let numerator = header.time_signature.numerator as u32;
         let denom_val = header.time_signature.denominator.value as u32;
@@ -510,7 +495,19 @@ fn build_timeline(song: &Song) -> Vec<MeasureDef> {
         });
     }
 
+    add_alternate_endings(&song.measure_headers, &mut measures);
     measures
+}
+
+/// GP's alternate endings (per measure, a bitmask of the passes it's
+/// played on) as barline [`Ending`]s, see [`set_endings`].
+///
+/// [`Ending`]: crate::model::optimized::timeline::Ending
+fn add_alternate_endings(headers: &[MeasureHeader], measures: &mut [MeasureDef]) {
+    let passes: Vec<Vec<u8>> = headers.iter().map(MeasureHeader::ending_numbers).collect();
+    set_endings(measures, &passes, |index| {
+        headers.get(index).is_some_and(|h| h.repeat_close >= 0)
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -628,6 +625,9 @@ fn build_tracks(
                     measures.insert(measure_index, md);
                 }
             }
+            keep_dynamic_changes(&mut measures);
+            // GP6+ (GPIF) stores each tied note's fret: keep it.
+            link_ties(&mut measures, song.version.number.0 < 6);
 
             Track {
                 id: track_id,
@@ -660,8 +660,10 @@ fn build_measure_data(
         track_id,
         repeat: None,
         voices,
+        barline_right: None,
         gp_line_break: from_line_break(&legacy_measure.line_break),
         gp_simile_mark: legacy_measure.simile_mark.clone(),
+        clef: None,
     }
 }
 
@@ -690,7 +692,7 @@ fn build_beat(legacy_beat: &LBeat, measure_start: i64, strings: &[(i8, i8)]) -> 
     let dynamic = legacy_beat
         .notes
         .first()
-        .and_then(|n| velocity_to_dynamic(n.velocity));
+        .map(|n| velocity_to_dynamic(n.velocity));
     let notes = legacy_beat
         .notes
         .iter()
@@ -875,6 +877,7 @@ fn build_beat(legacy_beat: &LBeat, measure_start: i64, strings: &[(i8, i8)]) -> 
         grace_notes: Vec::new(),
         cue: false,
         chord: None,
+        fermata: false,
     }
 }
 
@@ -883,7 +886,10 @@ fn build_note(legacy_note: &LNote, strings: &[(i8, i8)]) -> Note {
     let is_tie = legacy_note.kind == NoteType::Tie;
     let is_dead = legacy_note.kind == NoteType::Dead;
 
-    let pitch = if is_rest || is_tie {
+    // A tied note's fret is the one it's tied from, as the reader found it
+    // (or, with nothing to tie from, the file's); `link_ties` gives a GP3–5 one that
+    // one's anyway.
+    let pitch = if is_rest {
         None
     } else if legacy_note.string > 0 && (legacy_note.string as usize) <= strings.len() {
         let string_idx = (legacy_note.string - 1) as usize;
@@ -1186,23 +1192,133 @@ pub(crate) fn midi_to_pitch(midi: i8) -> Pitch {
     }
 }
 
-fn velocity_to_dynamic(v: i16) -> Option<Dynamic> {
-    // Legacy velocities are packed as: unpacked = MIN_VELOCITY + VELOCITY_INCREMENT * (packed - 1)
-    // MIN_VELOCITY = 15, VELOCITY_INCREMENT = 16
-    // packed 1..8 → unpacked 15, 31, 47, 63, 79, 95, 111, 127
-    if v == DEFAULT_VELOCITY {
-        return None; // default — no explicit dynamic marker
+/// Scores saved from GP before ties were linked on import marked only each
+/// tie's end, leaving its start unmarked and its pitch unset: links a
+/// track's ties as the GP import does now, when it has tie ends but no tie
+/// start (the current form always marks both). Only for a score from GP
+/// ([`Score::is_gp_sourced`], which the caller checks): another format's
+/// may have a tie end without a start of its own, which stays so.
+pub(crate) fn migrate_tie_starts(score: &mut Score) {
+    for track in &mut score.tracks {
+        let ties = track
+            .measures
+            .values()
+            .flat_map(|data| data.voices.values())
+            .flat_map(|voice| &voice.beats)
+            .flat_map(|beat| &beat.notes)
+            .filter_map(|note| note.tie);
+        // Tie ends but no tie start: a track in the current form marks
+        // both, so the first start ends the search.
+        let mut has_end = false;
+        let mut has_start = false;
+        for tie in ties {
+            if tie.starts_tie() {
+                has_start = true;
+                break;
+            }
+            has_end |= tie == TieType::End;
+        }
+        if has_end && !has_start {
+            link_ties(&mut track.measures, true);
+        }
     }
-    Some(match v {
-        ..=22 => Dynamic::PPP,
-        23..=38 => Dynamic::PP,
-        39..=54 => Dynamic::P,
-        55..=70 => Dynamic::MP,
-        71..=86 => Dynamic::MF,
-        87..=102 => Dynamic::F,
-        103..=118 => Dynamic::FF,
-        _ => Dynamic::FFF,
-    })
+}
+
+/// A GP-sourced score saved before the dynamics were kept as changes
+/// marked every beat's level except GP's default forte, which it left
+/// unmarked; the export now reads an unmarked beat as its voice's last
+/// level. Marks those beats forte again, then keeps only the changes, as
+/// the import does now. Only for a score from GP (the caller checks).
+pub(crate) fn migrate_dynamics(score: &mut Score) {
+    for track in &mut score.tracks {
+        for data in track.measures.values_mut() {
+            for voice in data.voices.values_mut() {
+                for beat in &mut voice.beats {
+                    if beat.dynamic.is_none() && !beat.notes.is_empty() {
+                        beat.dynamic = Some(crate::model::optimized::beat::Dynamic::F);
+                    }
+                }
+            }
+        }
+        keep_dynamic_changes(&mut track.measures);
+    }
+}
+
+/// GP marks only a tie's end: ties it from the note it's tied from
+/// ([`TieChains`]), marking that one's start (as the model writes a tie),
+/// and, with `take_pitch`, gives it that one's fret and pitch, whether or not
+/// a reader resolved its fret. Without it (a GP6+ song, whose file stores
+/// each tied note's fret), the tied note keeps its own.
+pub(crate) fn link_ties(
+    measures: &mut std::collections::BTreeMap<MeasureIndex, MeasureData>,
+    take_pitch: bool,
+) {
+    // A note's place: measure, voice, beat and note index.
+    type At = (MeasureIndex, u8, usize, usize);
+    fn note_at(
+        measures: &mut std::collections::BTreeMap<MeasureIndex, MeasureData>,
+        (measure, voice, beat, note): At,
+    ) -> Option<&mut Note> {
+        measures
+            .get_mut(&measure)?
+            .voices
+            .get_mut(&voice)?
+            .beats
+            .get_mut(beat)?
+            .notes
+            .get_mut(note)
+    }
+
+    let mut chains: TieChains<At> = TieChains::new();
+    // (from, to), in time order: a chain's links follow each other.
+    let mut links: Vec<(At, At)> = Vec::new();
+    for (&index, data) in measures.iter() {
+        chains.next_measure();
+        let mut voices: Vec<_> = data.voices.iter().collect();
+        voices.sort_by_key(|(id, _)| **id);
+        for (&voice, beats) in voices.into_iter().map(|(id, v)| (id, &v.beats)) {
+            // By its id, not its place among this measure's voices: a
+            // voice missing from one measure mustn't shift the others onto
+            // another voice's chain. (Ids are the voices' slots in the file,
+            // as the reader and the export number them.)
+            for (b, beat) in beats.iter().enumerate() {
+                if !on_tie_chains(&beat_status(beat)) {
+                    continue;
+                }
+                for (n, note) in beat.notes.iter().enumerate() {
+                    // A note without a string isn't on a chain, as a rest
+                    // note isn't.
+                    let Some(string) = note.string else {
+                        continue;
+                    };
+                    let at = (index, voice, b, n);
+                    let ends = note.tie.is_some_and(TieType::ends_tie);
+                    let start = beat.tick_offset.into();
+                    chains.link(voice, string as i8, start, note.gp_is_rest, ends, |from| {
+                        if let Some(from) = from {
+                            links.push((from, at));
+                        }
+                        at
+                    });
+                }
+            }
+        }
+    }
+    for (from, to) in links {
+        let Some(previous) = note_at(measures, from) else {
+            continue;
+        };
+        let tied_from = previous.tie.is_some_and(TieType::ends_tie);
+        previous.tie = TieType::from_ends(tied_from, true);
+        if !take_pitch {
+            continue;
+        }
+        let (fret, pitch) = (previous.fret, previous.pitch);
+        if let Some(note) = note_at(measures, to) {
+            note.fret = fret;
+            note.pitch = pitch;
+        }
+    }
 }
 
 pub(crate) fn legacy_key_to_opt_key(key: &LKeySignature) -> KeySignature {

@@ -186,7 +186,10 @@ zoomValue.textContent = `${savedPct}%`;
 interface RepeatsBlock {
   open_bar: number;
   close_bar: number;
+  /** Passes as written on the repeat close. */
   total_plays: number;
+  /** Passes as played: raised to the last ending's number for a repeat with endings. */
+  plays: number;
   volta_bars: Array<{ bar: number; endings: number[] }>;
 }
 
@@ -194,20 +197,31 @@ interface RepeatsData {
   written_measures: number;
   sounding_measures: number;
   sounding_includes_jumps: boolean;
+  /** Jumps the sequence can't follow (D.S.S., double coda, D.S. without a segno) were skipped. */
+  sounding_skips_jumps: boolean;
+  /** The repeats don't resolve to an end: the sequence was cut short. */
+  sounding_truncated: boolean;
   navigation_events: Array<{
     bar: number;
     repeat_open: boolean;
     repeat_close?: number;
+    /** Passes the close plays (`repeat_close` is as written). */
+    repeat_plays?: number;
     volta?: number[];
+    /** One sign, as the GP reader kept it before `directions` (GP files only). */
     direction?: string;
+    /** Every direction sign in the bar. */
+    directions?: string[];
     marker?: string;
   }>;
   repeat_blocks: RepeatsBlock[];
   play_sequence: Array<{ bar: number; pass: number }>;
+  /** The server lists only the first bars of a very long sequence. */
+  play_sequence_truncated: boolean;
   simile_runs: Array<{
     track: string;
     bars: string;
-    source_bars: string;
+    source_bars?: string;
     kind: string;
   }>;
 }
@@ -268,7 +282,11 @@ function renderRepeatsSidebar(): void {
     summary.textContent =
       `${blocks.length} block${blocks.length !== 1 ? "s" : ""} · ` +
       `${repeatsData.sounding_measures} sounding bars` +
-      (repeatsData.sounding_includes_jumps ? " (excl. jumps)" : "");
+      (repeatsData.sounding_includes_jumps ? " (incl. jumps)" : "") +
+      (repeatsData.sounding_skips_jumps
+        ? " (without jumps that can't be followed: D.S.S., double coda, D.S. without a segno)"
+        : "") +
+      (repeatsData.sounding_truncated ? " (cut short: the repeats don't resolve to an end)" : "");
     repeatsInfo.appendChild(summary);
 
     for (const [i, block] of blocks.entries()) {
@@ -281,7 +299,7 @@ function renderRepeatsSidebar(): void {
       swatch.style.background = color;
 
       const label = document.createElement("span");
-      label.textContent = `Bars ${block.open_bar}–${block.close_bar} ×${block.total_plays}`;
+      label.textContent = `Bars ${block.open_bar}–${block.close_bar} ×${block.plays}`;
       if (block.volta_bars.length > 0) {
         const voltaDesc = block.volta_bars.map(v => `[${v.endings.join(",")}] bar ${v.bar}`).join(", ");
         label.title = voltaDesc;
@@ -311,7 +329,7 @@ function renderRepeatsSidebar(): void {
 
       const lbl = document.createElement("span");
       lbl.textContent = `${run.track}: bars ${run.bars}`;
-      lbl.title = `source: bars ${run.source_bars} · ${run.kind}`;
+      lbl.title = `source: ${run.source_bars ? `bars ${run.source_bars}` : "none"} · ${run.kind}`;
 
       item.append(glyph, lbl);
       repeatsInfo.appendChild(item);
@@ -390,7 +408,7 @@ function drawRepeatsOverlay(): void {
     text.setAttribute("font-weight", "bold");
     text.setAttribute("text-anchor", "end");
     text.setAttribute("dominant-baseline", "hanging");
-    text.textContent = `×${block.total_plays}`;
+    text.textContent = `×${block.plays}`;
     g.appendChild(text);
 
     // Volta bar markers
@@ -520,7 +538,11 @@ function renderSequence(): void {
     i = end + 1;
   }
 
-  sequenceList.textContent = parts.join(", ");
+  const more = repeatsData.play_sequence_truncated
+    ? `, … (${repeatsData.sounding_measures - seq.length} more)`
+    : "";
+  const cut = repeatsData.sounding_truncated && !repeatsData.play_sequence_truncated ? ", … (cut short)" : "";
+  sequenceList.textContent = parts.join(", ") + more + cut;
 }
 
 // ── Form analysis state ───────────────────────────────────────────────────────

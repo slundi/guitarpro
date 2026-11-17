@@ -238,8 +238,7 @@ impl SongChordOps for Song {
             write_i32(data, 0);
         }
         write_bool(data, chord.add == Some(true));
-        write_byte_size_string(data, &chord.name);
-        write_placeholder_default(data, 22 - chord.name.len());
+        write_fixed_byte_size_string(data, &chord.name, 22);
         write_byte(
             data,
             chord.fifth.as_ref().map(from_chord_alteration).unwrap_or(0),
@@ -350,9 +349,7 @@ impl SongChordOps for Song {
                 write_i32(data, 0);
             }
             write_bool(data, c.add == Some(true));
-            let name_bytes = c.name.len().min(22);
-            write_byte_size_string(data, &c.name);
-            write_placeholder_default(data, 22 - name_bytes);
+            write_fixed_byte_size_string(data, &c.name, 22);
             if let Some(f) = &c.fifth {
                 write_byte(data, from_chord_alteration(f));
             } else {

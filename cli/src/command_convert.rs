@@ -3,8 +3,8 @@ use std::path::Path;
 
 use bpaf::Bpaf;
 use guitarpro::Song;
-use guitarpro::convert::guitarpro::musicxml_to_legacy_song;
-use guitarpro::convert::legacy::loaded_score_to_legacy_song;
+use guitarpro::convert::guitarpro::musicxml_to_legacy_song_with_losses;
+use guitarpro::convert::legacy::loaded_score_to_legacy_song_with_losses;
 use guitarpro::convert::mscz::{loaded_score_to_mscx, mscx_to_loaded_score};
 use guitarpro::convert::musicxml::song_to_score_partwise;
 use guitarpro::convert::optimized::legacy::legacy_song_to_loaded_score;
@@ -255,7 +255,11 @@ pub(crate) fn load_as_song(path: &str, fmt: Format) -> anyhow::Result<Song> {
         Format::MusicXml => {
             let data = read_bytes(path)?;
             let sp = parse_musicxml(&data)?;
-            Ok(musicxml_to_legacy_song(&sp))
+            let (song, losses) = musicxml_to_legacy_song_with_losses(&sp);
+            for (feature, count) in losses.iter() {
+                eprintln!("warning: not kept: {feature} ×{count}");
+            }
+            Ok(song)
         }
         Format::Score => {
             let text = fs::read_to_string(path)
@@ -266,14 +270,15 @@ pub(crate) fn load_as_song(path: &str, fmt: Format) -> anyhow::Result<Song> {
                 score,
                 layout: None,
             };
-            Ok(loaded_score_to_legacy_song(&loaded))
+            Ok(to_legacy_song(&loaded))
         }
         Format::Mscz => {
             let data = read_bytes(path)?;
             let file = read_mscz_bytes(&data)
                 .map_err(|e| anyhow::anyhow!("cannot read MSCZ '{}': {}", path, e))?;
             let outcome = mscx_to_loaded_score(&file.mscx);
-            Ok(loaded_score_to_legacy_song(&outcome.score))
+            crate::loader::warn_import_losses(&outcome.report);
+            Ok(to_legacy_song(&outcome.score))
         }
         _ => {
             let (song, _) = crate::loader::load_song(path)?;
@@ -282,11 +287,26 @@ pub(crate) fn load_as_song(path: &str, fmt: Format) -> anyhow::Result<Song> {
     }
 }
 
+/// A score as the legacy `Song` conversions go through, warning of what
+/// that loses.
+fn to_legacy_song(score: &guitarpro::model::optimized::LoadedScore) -> Song {
+    let (song, losses) = loaded_score_to_legacy_song_with_losses(score);
+    for (feature, count) in losses.iter() {
+        eprintln!("warning: not kept: {feature} ×{count}");
+    }
+    song
+}
+
 /// Encode a legacy `Song` into the bytes for the target format.
 pub(crate) fn encode_song(song: &Song, dst: Format) -> anyhow::Result<Vec<u8>> {
     match dst {
         Format::Gp3 | Format::Gp4 | Format::Gp5 => {
-            let ver = dst.gp_write_version().unwrap();
+            let ver = dst
+                .gp_write_version()
+                .ok_or_else(|| anyhow::anyhow!("{} has no GP write version", dst.label()))?;
+            for (feature, count) in song.write_losses(ver).iter() {
+                eprintln!("warning: not kept in {}: {feature} ×{count}", dst.label());
+            }
             song.write(ver, None)
                 .map_err(|e| anyhow::anyhow!("{} encode failed: {}", dst.label(), e))
         }
